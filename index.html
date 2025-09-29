@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YDE Senior Fund</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .bebas-neue {
+            font-family: 'Bebas Neue', sans-serif;
+        }
+        .page-content {
+            display: none;
+        }
+        .page-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-slate-950 py-4 px-6 md:px-12 fixed w-full top-0 z-50 shadow-lg">
+        <nav class="container mx-auto flex justify-between items-center">
+            <!-- Logo -->
+            <a href="/" class="flex items-center space-x-2">
+                <img src="https://raw.githubusercontent.com/ToratYosef/ToratYosef..github.io/refs/heads/main/assets/logos.jpeg" alt="YDE Logo" class="h-16 md:h-20 w-auto rounded-full">
+            </a>
+
+            <!-- Navigation Links -->
+            <ul class="flex items-center space-x-4 md:space-x-8 text-sm md:text-base font-semibold">
+                <li><a href="/split-the-pot/" class="text-white hover:text-yellow-400 transition-colors duration-300">Split the Pot</a></li>
+                <li><a href="/spin-the-wheel/" class="text-white hover:text-yellow-400 transition-colors duration-300">Spin the Wheel</a></li>
+                <li><a href="/donate/" class="py-2 px-4 rounded-full bg-yellow-400 text-slate-950 hover:bg-yellow-500 transition-colors duration-300 font-bold">Donate Now</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-grow pt-24">
+        
+        <!-- Home Page -->
+        <section id="home" class="page-content active">
+            <div class="relative bg-cover bg-center h-screen" style="background-image: url('https://raw.githubusercontent.com/ToratYosef/ToratYosef..github.io/refs/heads/main/assets/kotel.jpg');">
+                <!-- Overlay to darken image for text visibility -->
+                <div class="absolute inset-0 bg-slate-950 opacity-60"></div>
+                
+                <div class="relative z-10 flex flex-col items-center justify-center h-full text-center p-4">
+                    <h1 class="bebas-neue text-4xl md:text-6xl lg:text-8xl font-bold text-white mb-4 drop-shadow-lg">
+                        Support the YDE Senior Fund
+                    </h1>
+                    <p class="text-lg md:text-2xl text-white mb-8 max-w-2xl">
+                        Join us in building a bright future for the Class of 2026. Your generous contribution makes a world of difference.
+                    </p>
+                    <a href="/options/" class="py-4 px-8 md:text-lg lg:text-xl rounded-full bg-yellow-400 text-slate-950 font-bold shadow-lg transform transition-transform duration-300 hover:scale-105 hover:shadow-xl">
+                        Support Senior Fund
+                    </a>
+                </div>
+            </div>
+
+            <!-- New section for reasons to support -->
+            <div class="bg-gray-900 py-16 px-4">
+                <div class="container mx-auto text-center">
+                    <h2 class="bebas-neue text-4xl md:text-5xl font-bold text-white mb-12">
+                        Why Your Support Matters
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
+                        <!-- Reason 1: Israel Trip -->
+                        <div class="bg-slate-800 p-8 rounded-xl shadow-lg transform transition-transform duration-300 hover:scale-105">
+                            <div class="flex justify-center mb-4">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-12 h-12 text-yellow-400">
+                                    <path fill-rule="evenodd" d="M12.963 2.293a.75.75 0 0 0-.966 0l-5.7 5.7a.75.75 0 0 0 .966 1.132L12 4.47v9.886c0 .414.336.75.75.75h.75a.75.75 0 0 0 .75-.75V4.47l4.733 4.455a.75.75 0 0 0 .966-1.132l-5.7-5.7Z" clip-rule="evenodd" />
+                                    <path fill-rule="evenodd" d="M12 15a.75.75 0 0 0-.75.75v5.063l-4.733-4.455a.75.75 0 0 0-.966 1.132l5.7 5.7a.75.75 0 0 0 .966 0l5.7-5.7a.75.75 0 0 0-.966-1.132L12.75 20.813v-5.063A.75.75 0 0 0 12 15Z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <h3 class="bebas-neue text-2xl font-bold text-white mb-2">A Trip of a Lifetime</h3>
+                            <p class="text-gray-200">Your contribution will directly fund the senior trip to Israel, making this once-in-a-lifetime journey possible for every student.</p>
+                        </div>
+                        <!-- Reason 2: Ma'aser Money -->
+                        <div class="bg-slate-800 p-8 rounded-xl shadow-lg transform transition-transform duration-300 hover:scale-105">
+                            <div class="flex justify-center mb-4">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-12 h-12 text-yellow-400">
+                                  <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 6a.75.75 0 0 0-1.5 0v6a.75.75 0 0 0 .75.75h4.5a.75.75 0 0 0 0-1.5h-3.75V6Z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <h3 class="bebas-neue text-2xl font-bold text-white mb-2">Ma'aser Money</h3>
+                            <p class="text-gray-200">Your donation can be made using Ma'aser funds. This is a great way to fulfill the mitzvah of charity while supporting a meaningful cause.</p>
+                        </div>
+                        <!-- Reason 3: Unforgettable Moments -->
+                        <div class="bg-slate-800 p-8 rounded-xl shadow-lg transform transition-transform duration-300 hover:scale-105">
+                            <div class="flex justify-center mb-4">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-12 h-12 text-yellow-400">
+                                    <path fill-rule="evenodd" d="M19.5 7.5a3 3 0 0 1-3 3H12a3 3 0 0 1-3-3V1.5a.75.75 0 0 0-1.5 0V7.5a4.5 4.5 0 0 0 4.5 4.5h1.5a.75.75 0 0 0 .75-.75V1.5a.75.75 0 0 0-1.5 0v6a.75.75 0 0 0 .75.75Z" clip-rule="evenodd" />
+                                    <path fill-rule="evenodd" d="M8.25 10.5A3 3 0 0 0 5.25 7.5V1.5a.75.75 0 0 0-1.5 0V7.5a4.5 4.5 0 0 1 4.5 4.5h1.5a.75.75 0 0 0 .75-.75V1.5a.75.75 0 0 0-1.5 0v6a.75.75 0 0 0 .75.75H8.25Z" clip-rule="evenodd" />
+                                    <path d="M1.5 15a.75.75 0 0 0 0 1.5h18a.75.75 0 0 0 0-1.5H1.5Z" />
+                                    <path d="M1.5 19.5a.75.75 0 0 0 0 1.5h18a.75.75 0 0 0 0-1.5H1.5Z" />
+                                </svg>
+                            </div>
+                            <h3 class="bebas-neue text-2xl font-bold text-white mb-2">Unforgettable Moments</h3>
+                            <p class="text-gray-200">We aim to create memorable senior events and graduation celebrations that will be cherished for a lifetime.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Other Pages -->
+        <section id="split" class="page-content py-16">
+            <div class="container mx-auto text-center p-4 bg-slate-900 rounded-lg shadow-xl">
+                <h2 class="bebas-neue text-4xl md:text-5xl lg:text-6xl font-bold text-yellow-400 mb-6">Split the Pot</h2>
+                <p class="text-lg md:text-xl text-gray-200 mb-8">
+                    Get ready for our exciting raffle! More details coming soon on how to win big while supporting a great cause.
+                </p>
+                <img src="https://placehold.co/600x400/1f2937/d1d5db?text=Split+the+Pot+Details" alt="Split the Pot graphic" class="mx-auto rounded-lg shadow-xl">
+            </div>
+        </section>
+
+        <section id="spin" class="page-content py-16">
+            <div class="container mx-auto text-center p-4 bg-slate-900 rounded-lg shadow-xl">
+                <h2 class="bebas-neue text-4xl md:text-5xl lg:text-6xl font-bold text-yellow-400 mb-6">Spin the Wheel</h2>
+                <p class="text-lg md:text-xl text-gray-200 mb-8">
+                    Try your luck with our virtual spin wheel! You could win amazing prizes just for donating.
+                </p>
+                <img src="https://placehold.co/600x400/1f2937/d1d5db?text=Spin+the+Wheel+Graphic" alt="Spin the Wheel graphic" class="mx-auto rounded-lg shadow-xl">
+            </div>
+        </section>
+
+        <section id="donate" class="page-content py-16">
+            <div class="container mx-auto text-center p-4 bg-slate-900 rounded-lg shadow-xl">
+                <h2 class="bebas-neue text-4xl md:text-5xl lg:text-6xl font-bold text-yellow-400 mb-6">Donate Now</h2>
+                <p class="text-lg md:text-xl text-gray-200 mb-8 max-w-2xl mx-auto">
+                    Every donation, big or small, helps us reach our goal. Thank you for your support!
+                </p>
+                <!-- Donation form/details would go here -->
+                <div class="bg-slate-900 p-8 rounded-xl shadow-xl max-w-lg mx-auto">
+                    <form>
+                        <div class="mb-4">
+                            <label for="amount" class="block text-gray-200 text-sm font-bold mb-2 text-left">Donation Amount</label>
+                            <input type="number" id="amount" name="amount" placeholder="$100" class="shadow appearance-none border rounded w-full py-3 px-4 text-gray-900 leading-tight focus:outline-none focus:shadow-outline">
+                        </div>
+                        <div class="mb-6">
+                            <label for="name" class="block text-gray-200 text-sm font-bold mb-2 text-left">Your Name (Optional)</label>
+                            <input type="text" id="name" name="name" placeholder="John Doe" class="shadow appearance-none border rounded w-full py-3 px-4 text-gray-900 leading-tight focus:outline-none focus:shadow-outline">
+                        </div>
+                        <button type="submit" class="w-full py-3 rounded-full bg-yellow-400 hover:bg-yellow-500 text-slate-950 font-bold transition-colors duration-300">
+                            Submit Donation
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-950 py-8 mt-auto">
+        <div class="container mx-auto px-4 text-center">
+            <h3 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4">Quick Links</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-gray-400 mb-8">
+                <!-- Person 1 -->
+                <div>
+                    <p class="font-bold text-white">Morris E.</p>
+                    <p>+1 (848)-282-6434</p>
+                </div>
+                <!-- Person 2 -->
+                <div>
+                    <p class="font-bold text-white">David K.</p>
+                    <p>+1 (917) 858-0904</p>
+                </div>
+                <!-- Person 3 -->
+                <div>
+                    <p class="font-bold text-white">Saul S.</p>
+                    <p>+1 (929)-584-5753</p>
+                </div>
+            </div>
+            <p class="text-sm text-gray-500 mt-8">
+                &copy; 2026 YDE Senior Fund. All Rights Reserved.<br/>
+                Website created by Saul Setton
+            </p>
+        </div>
+    </footer>
+
+    <!-- JavaScript for page navigation -->
+    <script>
+        function showPage(pageId) {
+            // Hide all pages
+            const pages = document.querySelectorAll('.page-content');
+            pages.forEach(page => {
+                page.classList.remove('active');
+            });
+            // Show the requested page
+            const activePage = document.getElementById(pageId);
+            if (activePage) {
+                activePage.classList.add('active');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+    </script>
+</body>
+</html>

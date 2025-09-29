@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Successful - YDE Senior Fund</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .bebas-neue { font-family: 'Bebas Neue', sans-serif; }
+        body {
+            background-color: #0d1222;
+            background-image: linear-gradient(135deg, #0d1222 0%, #151a2d 100%);
+        }
+        .glass-panel {
+            background: rgba(43, 49, 63, 0.4);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .checkmark-icon {
+            display: inline-block;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background-color: #4CAF50; /* A green for success */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
+            animation: popIn 0.5s ease-out;
+        }
+        .checkmark-icon svg {
+            fill: none;
+            stroke: white;
+            stroke-width: 6;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-dasharray: 1000;
+            stroke-dashoffset: 1000;
+            animation: drawCheckmark 1s ease-in-out forwards;
+        }
+        @keyframes popIn {
+            0% { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes drawCheckmark {
+            to { stroke-dashoffset: 0; }
+        }
+    </style>
+</head>
+<body class="text-white min-h-screen flex flex-col items-center justify-center p-4">
+
+    <!-- Success Container -->
+    <div class="glass-panel p-8 rounded-2xl shadow-2xl text-center max-w-xl w-full">
+        <div class="checkmark-icon mx-auto mb-6">
+            <svg viewBox="0 0 52 52">
+                <path d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+            </svg>
+        </div>
+        <h1 id="success-message" class="bebas-neue text-4xl sm:text-5xl font-bold text-yellow-400 mb-2">Thank you!</h1>
+        <p class="text-lg sm:text-xl text-gray-300 mb-6">Your donation has been received successfully.</p>
+        
+        <p class="text-2xl font-bold text-white mb-8"><span id="donor-name"></span></p>
+
+        <p class="text-3xl sm:text-4xl bebas-neue font-bold text-yellow-400 mb-8">
+            $<span id="donation-amount">0.00</span>
+        </p>
+
+        <a href="/" class="py-3 px-8 rounded-full bg-yellow-400 text-black font-bold hover:bg-yellow-500 transition-colors duration-300 inline-block">
+            Return to Home
+        </a>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const name = urlParams.get('name');
+            const amount = urlParams.get('amount');
+
+            const donorNameElement = document.getElementById('donor-name');
+            const donationAmountElement = document.getElementById('donation-amount');
+
+            if (name) {
+                donorNameElement.textContent = `Hello, ${decodeURIComponent(name)}.`;
+            }
+
+            if (amount) {
+                donationAmountElement.textContent = parseFloat(amount).toFixed(2);
+            }
+        });
+    </script>
+</body>
+</html>

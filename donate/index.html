@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YDE Senior Fund - Donate</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://js.stripe.com/v3/fingerprinted/css/elements-inner-f9037c9f803c0032ac30e9d693f1d828.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .bebas-neue { font-family: 'Bebas Neue', sans-serif; }
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        .spinner { animation: spin 0.8s linear infinite; }
+        body {
+            background-color: #0d1222;
+            background-image: linear-gradient(135deg, #0d1222 0%, #151a2d 100%);
+        }
+        .glass-panel {
+            background: rgba(43, 49, 63, 0.4);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .donation-option-card {
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            border: 2px solid transparent;
+        }
+        .donation-option-card.selected {
+            background-color: rgba(251, 191, 36, 0.2);
+            border-color: #FBBF24;
+            box-shadow: 0 0 15px rgba(251, 191, 36, 0.5);
+        }
+        @media (max-width: 767px) {
+            #main-menu li { width: 100%; }
+            #main-menu li a {
+                display: block;
+                text-align: center;
+                padding: 0.75rem 1rem;
+            }
+            #main-menu li:last-child a { margin-top: 0.5rem; }
+        }
+    </style>
+</head>
+<body class="text-white min-h-screen flex flex-col">
+
+    <!-- Global Loading Overlay -->
+    <div id="globalLoadingOverlay" class="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center gap-4 hidden">
+        <div class="spinner w-12 h-12 border-4 border-t-4 border-yellow-400 border-opacity-20 rounded-full"></div>
+        <p id="globalSpinnerText" class="text-white text-xl font-semibold">Loading...</p>
+    </div>
+
+    <!-- Custom Popup Modal -->
+    <div id="customPopupOverlay" class="fixed inset-0 z-[101] bg-black/75 flex items-center justify-center p-4 hidden">
+        <div id="customPopup" class="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-sm w-full text-center scale-95 transition-all duration-300">
+            <h2 id="popupTitle" class="bebas-neue text-3xl font-bold text-yellow-400 mb-4"></h2>
+            <p id="popupMessage" class="text-gray-300 text-lg mb-6"></p>
+            <button id="popupCloseButton" class="w-full py-3 rounded-full bg-yellow-400 text-black font-bold hover:bg-yellow-500 transition-colors">OK</button>
+        </div>
+    </div>
+
+    <!-- Header for navigation -->
+    <header class="bg-black/40 py-4 px-4 md:px-12 w-full top-0 z-50 shadow-2xl backdrop-blur-sm">
+        <nav class="container mx-auto flex justify-between items-center flex-wrap md:flex-nowrap">
+            <div class="flex items-center justify-between w-full md:w-auto">
+                <a href="/" class="flex items-center space-x-2">
+                    <img src="https://raw.githubusercontent.com/ToratYosef/ToratYosef..github.io/refs/heads/main/assets/logos.jpeg" alt="YDE Logo" class="h-14 sm:h-16 md:h-20 w-auto rounded-full ring-2 ring-yellow-400 p-1">
+                </a>
+                <button id="menu-toggle" class="md:hidden text-white focus:outline-none" aria-label="Toggle menu">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                </button>
+            </div>
+            <ul id="main-menu" class="hidden md:flex flex-col md:flex-row items-center space-y-2 md:space-y-0 md:space-x-8 text-base font-semibold w-full md:w-auto mt-4 md:mt-0">
+                <li><a href="/split-the-pot/" class="text-white hover:text-yellow-400 transition-colors duration-300">Split the Pot</a></li>
+                <li><a href="/spin-the-wheel/" class="text-white hover:text-yellow-400 transition-colors duration-300">Spin the Wheel</a></li>
+                <li><a href="/donate/" class="py-2 px-4 rounded-full bg-yellow-400 text-black hover:bg-yellow-500 transition-colors duration-300 font-bold block">Donate Now</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="flex-grow pt-12 sm:pt-20 px-4 md:px-8 lg:px-16">
+        <div class="container mx-auto text-center p-4 sm:p-6 md:p-12 glass-panel rounded-2xl shadow-2xl max-w-7xl">
+            <h1 class="bebas-neue text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-4 drop-shadow-lg">
+                Support the YDE Senior Fund
+            </h1>
+            <p class="text-base sm:text-lg md:text-xl text-gray-300 mb-8">
+                Your contribution helps make a difference for our senior students.
+            </p>
+
+            <div id="donation-form" class="glass-panel p-6 rounded-2xl shadow-2xl max-w-xl mx-auto mb-12">
+                <h2 class="bebas-neue text-3xl font-bold text-white mb-4">Choose Your Impact</h2>
+                
+                <div id="donation-options" class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
+                    <div class="donation-option-card bg-slate-700/60 p-4 rounded-xl shadow-lg hover:scale-105 transform" data-amount="118">
+                        <p class="bebas-neue text-2xl font-bold text-yellow-400">$118</p>
+                        <p class="text-sm text-gray-300">Oh Bagel Breakfast</p>
+                    </div>
+                    <div class="donation-option-card bg-slate-700/60 p-4 rounded-xl shadow-lg hover:scale-105 transform" data-amount="201">
+                        <p class="bebas-neue text-2xl font-bold text-yellow-400">$201</p>
+                        <p class="text-sm text-gray-300">Sarah's Tent Friday Mazza</p>
+                    </div>
+                    <div class="donation-option-card bg-slate-700/60 p-4 rounded-xl shadow-lg hover:scale-105 transform" data-amount="26">
+                        <p class="bebas-neue text-2xl font-bold text-yellow-400">$26</p>
+                        <p class="text-sm text-gray-300">Morning Coffee</p>
+                    </div>
+                    <div class="donation-option-card bg-slate-700/60 p-4 rounded-xl shadow-lg hover:scale-105 transform" data-amount="72">
+                        <p class="bebas-neue text-2xl font-bold text-yellow-400">$72</p>
+                        <p class="text-sm text-gray-300">Morning Muffins</p>
+                    </div>
+                    <div class="donation-option-card bg-slate-700/60 p-4 rounded-xl shadow-lg hover:scale-105 transform" data-amount="180">
+                        <p class="bebas-neue text-2xl font-bold text-yellow-400">$180</p>
+                        <p class="text-sm text-gray-300">Benny's Pizza Lunch</p>
+                    </div>
+                    <div class="donation-option-card bg-slate-700/60 p-4 rounded-xl shadow-lg hover:scale-105 transform col-span-full" data-amount="other">
+                        <p class="bebas-neue text-2xl font-bold text-yellow-400">Other</p>
+                        <p class="text-sm text-gray-300">Choose custom amount</p>
+                    </div>
+                </div>
+
+                <div id="other-amount-container" class="mb-6 hidden">
+                    <label for="other-amount" class="text-sm text-gray-400 block mb-2">Please enter your amount:</label>
+                    <input type="number" id="other-amount" placeholder="Enter Amount" min="1" class="w-full py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300">
+                </div>
+                
+                <div class="bebas-neue text-2xl font-bold text-yellow-400 text-center mt-4">Total: $<span id="calculated-total-amount">0.00</span></div>
+
+                <div id="user-info-form" class="space-y-4 mt-6">
+                    <div><input type="text" id="donation-name" placeholder="Full Name" class="w-full py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300"></div>
+                    <div><input type="email" id="donation-email" placeholder="Email Address" class="w-full py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300"></div>
+                    <div><input type="tel" id="donation-phone" placeholder="Phone Number" class="w-full py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300"></div>
+                </div>
+                
+                <div class="flex items-center justify-center gap-2 mt-4 text-gray-300">
+                    <input type="checkbox" id="cover-fees-checkbox" class="h-4 w-4 rounded-full text-yellow-400 focus:ring-yellow-400 border-gray-600 bg-gray-700">
+                    <label for="cover-fees-checkbox" class="text-sm md:text-base">I would like to cover the processing fees</label>
+                </div>
+                
+                <button id="donation-proceed-to-payment" class="w-full py-3 mt-6 rounded-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold transition-colors duration-300 relative overflow-hidden">
+                    <span class="button-text">Proceed to Payment</span>
+                    <div class="button-spinner absolute inset-0 m-auto w-8 h-8 border-4 border-t-4 border-black border-opacity-20 rounded-full hidden"></div>
+                </button>
+
+                <div id="stripe-donation-payment-element" class="hidden">
+                    <div id="donation-payment-element-container"></div>
+                    <button id="stripe-donation-pay-button" class="w-full py-3 mt-4 rounded-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold transition-colors duration-300 hidden">
+                        <span class="button-text">Pay Now</span>
+                        <div class="button-spinner absolute inset-0 m-auto w-8 h-8 border-4 border-t-4 border-black border-opacity-20 rounded-full hidden"></div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-black/40 py-8 mt-auto shadow-[0_-5px_15px_rgba(0,0,0,0.5)]">
+        <div class="container mx-auto px-4 text-center">
+            <h3 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4">Contact</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 text-gray-400 mb-8">
+                <div>
+                    <p class="font-bold text-white">Morris E.</p>
+                    <p>+1 (848)-282-6434</p>
+                </div>
+                <div>
+                    <p class="font-bold text-white">Daniel K.</p>
+                    <p>+1 (917) 858-0904</p>
+                </div>
+                <div>
+                    <p class="font-bold text-white">Saul S.</p>
+                    <p>+1 (929)-584-5753</p>
+                </div>
+            </div>
+            <p class="text-sm text-gray-500 mt-8">
+                &copy; 2026 YDE Senior Fund. All Rights Reserved.<br/>
+                Website created by Saul Setton
+            </p>
+        </div>
+    </footer>
+
+    <!-- Firebase and Stripe Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
+    <script src="https://js.stripe.com/v3/"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // UI Elements
+            const donationOptions = document.querySelectorAll('.donation-option-card');
+            const otherAmountContainer = document.getElementById('other-amount-container');
+            const otherAmountInput = document.getElementById('other-amount');
+            const totalAmountDisplay = document.getElementById('calculated-total-amount');
+            const donationProceedToPaymentButton = document.getElementById('donation-proceed-to-payment');
+            const stripeDonationPaymentElement = document.getElementById('stripe-donation-payment-element');
+            const donationPaymentElementContainer = document.getElementById('donation-payment-element-container');
+            const stripeDonationPayButton = document.getElementById('stripe-donation-pay-button');
+            const donationNameInput = document.getElementById('donation-name');
+            const donationEmailInput = document.getElementById('donation-email');
+            const donationPhoneInput = document.getElementById('donation-phone');
+            const coverFeesCheckbox = document.getElementById('cover-fees-checkbox');
+
+            // Common UI Elements
+            const globalLoadingOverlay = document.getElementById('globalLoadingOverlay');
+            const globalSpinnerText = document.getElementById('globalSpinnerText');
+            const customPopupOverlay = document.getElementById('customPopupOverlay');
+            const customPopup = document.getElementById('customPopup');
+            const popupTitle = document.getElementById('popupTitle');
+            const popupMessage = document.getElementById('popupMessage');
+            const popupCloseButton = document.getElementById('popupCloseButton');
+            const menuToggle = document.getElementById('menu-toggle');
+            const mainMenu = document.getElementById('main-menu');
+
+            // Stripe & Firebase Initialization
+            const stripe = Stripe('pk_test_51RZEPeCMmspEQNuYXLdVBGpSSPewOBaH5d4eSIwrSDBeEsW9pBh7WAyDwFn8IzNyrYIY2SuV3pDXiNTmvJnr7YpC00JPzJh1lP');
+            let elements;
+            let baseDonationAmount = 0;
+            let finalDonationAmount = 0;
+
+            const firebaseConfig = {
+              apiKey: "AIzaSyAT539nr_s2OxHPTAmkxwMpaWt-FiDTgQs",
+              authDomain: "yderaffle.firebaseapp.com",
+              projectId: "yderaffle",
+              storageBucket: "yderaffle.firebasestorage.app",
+              messagingSenderId: "967768309102",
+              appId: "1:967768309102:web:c89d61a747e8cb941f557f"
+            };
+            firebase.initializeApp(firebaseConfig);
+            const functions = firebase.functions();
+
+            // Helper Functions
+            function showCustomPopup(title, message) {
+              popupTitle.textContent = title;
+              popupMessage.textContent = message;
+              customPopupOverlay.classList.remove('hidden');
+              setTimeout(() => { customPopup.classList.add('scale-100'); }, 10);
+            }
+            function hideCustomPopup() {
+                customPopup.classList.remove('scale-100');
+                setTimeout(() => { customPopupOverlay.classList.add('hidden'); }, 300);
+            }
+            function showGlobalLoadingOverlay(message = "Loading...") {
+                globalSpinnerText.textContent = message;
+                globalLoadingOverlay.classList.remove('hidden');
+            }
+            function hideGlobalLoadingOverlay() {
+                globalLoadingOverlay.classList.add('hidden');
+            }
+            function updateAmountDisplay(amount) {
+                totalAmountDisplay.textContent = amount.toFixed(2);
+            }
+
+            function calculateAndDisplayAmount() {
+                let amount = baseDonationAmount;
+                if (coverFeesCheckbox.checked) {
+                    // Formula to cover fees: (amount + fixed_fee) / (1 - percentage_fee)
+                    amount = (amount + 0.30) / (1 - 0.029);
+                }
+                finalDonationAmount = amount;
+                updateAmountDisplay(finalDonationAmount);
+            }
+
+            // Event Listeners
+            popupCloseButton.addEventListener('click', hideCustomPopup);
+            menuToggle.addEventListener('click', () => {
+                mainMenu.classList.toggle('hidden');
+            });
+            document.addEventListener('click', (event) => {
+                if (!mainMenu.contains(event.target) && !menuToggle.contains(event.target) && !mainMenu.classList.contains('hidden')) {
+                    mainMenu.classList.add('hidden');
+                }
+            });
+
+            donationOptions.forEach(card => {
+                const amount = card.dataset.amount;
+                card.addEventListener('click', () => {
+                    donationOptions.forEach(c => c.classList.remove('selected'));
+                    card.classList.add('selected');
+
+                    if (amount === 'other') {
+                        otherAmountContainer.classList.remove('hidden');
+                        otherAmountInput.focus();
+                        baseDonationAmount = parseFloat(otherAmountInput.value) || 0;
+                    } else {
+                        otherAmountContainer.classList.add('hidden');
+                        otherAmountInput.value = '';
+                        baseDonationAmount = parseFloat(amount);
+                    }
+                    calculateAndDisplayAmount();
+                });
+            });
+            otherAmountInput.addEventListener('input', () => {
+                const amount = parseFloat(otherAmountInput.value);
+                if (!isNaN(amount) && amount > 0) {
+                    baseDonationAmount = amount;
+                } else if (otherAmountInput.value === '') {
+                    baseDonationAmount = 0;
+                }
+                calculateAndDisplayAmount();
+            });
+            coverFeesCheckbox.addEventListener('change', calculateAndDisplayAmount);
+
+            donationProceedToPaymentButton.addEventListener('click', async () => {
+                const name = donationNameInput.value.trim();
+                const email = donationEmailInput.value.trim();
+                const phone = donationPhoneInput.value.trim();
+                
+                if (!name || !email || !phone) { showCustomPopup('Missing Information', 'Please fill in all fields.'); return; }
+                if (finalDonationAmount < 1) { showCustomPopup('Invalid Amount', 'Please select or enter a donation amount greater than $1.00.'); return; }
+                
+                showGlobalLoadingOverlay("Setting up donation...");
+                
+                try {
+                    const createDonationPaymentIntentCallable = functions.httpsCallable('createDonationPaymentIntent');
+                    const { data } = await createDonationPaymentIntentCallable({
+                        amount: finalDonationAmount.toFixed(2), // Send fixed amount for calculation consistency
+                        name: name,
+                        email: email,
+                        phone: phone
+                    });
+
+                    elements = stripe.elements({ clientSecret: data.clientSecret });
+                    const paymentElement = elements.create('payment');
+                    paymentElement.mount(donationPaymentElementContainer);
+
+                    // Toggle visibility to show Stripe form
+                    document.getElementById('user-info-form').classList.add('hidden');
+                    document.getElementById('donation-options').classList.add('hidden');
+                    document.querySelector('#donation-form .bebas-neue.text-3xl').textContent = "Confirm Details";
+                    document.querySelector('#donation-form .bebas-neue.text-2xl').classList.remove('hidden'); // Show total
+                    document.getElementById('cover-fees-checkbox').parentElement.classList.add('hidden');
+                    donationProceedToPaymentButton.classList.add('hidden');
+                    
+                    stripeDonationPaymentElement.classList.remove('hidden');
+                    stripeDonationPayButton.classList.remove('hidden');
+                    hideGlobalLoadingOverlay();
+
+                } catch (error) {
+                    console.error('Error setting up donation payment:', error);
+                    showCustomPopup('Payment Error', 'Could not set up donation. Please try again.');
+                    hideGlobalLoadingOverlay();
+                }
+            });
+            stripeDonationPayButton.addEventListener('click', async (event) => {
+                event.preventDefault();
+                showGlobalLoadingOverlay("Processing donation...");
+
+                const { error } = await stripe.confirmPayment({
+                    elements,
+                    confirmParams: {
+                        // Pass name and amount as URL parameters to the success page
+                        return_url: `${window.location.origin}/successful.html?name=${encodeURIComponent(donationNameInput.value)}&amount=${finalDonationAmount.toFixed(2)}`,
+                    }
+                });
+
+                if (error) {
+                    showCustomPopup('Payment Failed', error.message);
+                    console.error("Stripe confirmPayment error:", error);
+                    hideGlobalLoadingOverlay();
+                }
+            });
+            
+            // Initial call to set the display to $0.00
+            calculateAndDisplayAmount();
+        });
+    </script>
+</body>
+</html>

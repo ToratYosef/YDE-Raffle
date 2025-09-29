@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YDE Senior Fund - Spin to Win</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Stripe CSS for payment element -->
+    <link rel="stylesheet" href="https://js.stripe.com/v3/fingerprinted/css/elements-inner-f9037c9f803c0032ac30e9d693f1d828.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .bebas-neue { font-family: 'Bebas Neue', sans-serif; }
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        .spinner {
+          animation: spin 0.8s linear infinite;
+        }
+        body {
+            background-color: #0d1222;
+            background-image: linear-gradient(135deg, #0d1222 0%, #151a2d 100%);
+        }
+        .glass-panel {
+            background: rgba(43, 49, 63, 0.4);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        @media (max-width: 767px) {
+            #main-menu li {
+                width: 100%;
+            }
+            #main-menu li a {
+                display: block;
+                text-align: center;
+                padding: 0.75rem 1rem;
+            }
+            #main-menu li:last-child a {
+                margin-top: 0.5rem;
+            }
+        }
+        /* Continuous Flashing for Spin (Re-added) */
+        .flashing-text {
+            animation: flash 0.1s linear infinite alternate;
+        }
+        @keyframes flash {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+        
+        /* Target Blink for Result (Final 3-second display) */
+        .result-blink-red {
+            animation: red-flash 0.3s linear infinite alternate;
+            color: #ef4444 !important; /* Tailwind red-500 */
+        }
+        @keyframes red-flash {
+            from { opacity: 1; color: #ef4444; }
+            to { opacity: 0.2; color: #facc15; } /* Fade to yellow-400 for contrast */
+        }
+        .relative-container {
+            position: relative;
+        }
+        .absolute-spinner {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 20; /* Ensure spinner is on top */
+        }
+        .absolute-form {
+            position: relative;
+            z-index: 10;
+        }
+        /* Modal-specific styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(8px);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background: rgba(43, 49, 63, 0.9);
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            transform: scale(0.9);
+            transition: transform 0.3s ease-out;
+        }
+        .modal-content.is-active {
+            transform: scale(1);
+        }
+    </style>
+</head>
+<body class="text-white min-h-screen flex flex-col">
+
+    <!-- Global Loading Overlay -->
+    <div id="globalLoadingOverlay" class="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center gap-4 hidden">
+        <div class="spinner w-12 h-12 border-4 border-t-4 border-yellow-400 border-opacity-20 rounded-full"></div>
+        <p id="globalSpinnerText" class="text-white text-xl font-semibold">Loading...</p>
+    </div>
+
+    <!-- Custom Popup Modal -->
+    <div id="customPopupOverlay" class="fixed inset-0 z-[101] bg-black/75 flex items-center justify-center p-4 hidden">
+        <div id="customPopup" class="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-sm w-full text-center scale-95 transition-all duration-300">
+            <h2 id="popupTitle" class="bebas-neue text-3xl font-bold text-yellow-400 mb-4"></h2>
+            <p id="popupMessage" class="text-gray-300 text-lg mb-6"></p>
+            <button id="popupCloseButton" class="w-full py-3 rounded-full bg-yellow-400 text-black font-bold hover:bg-yellow-500 transition-colors">OK</button>
+        </div>
+    </div>
+
+    <!-- Spinning Wheel Modal -->
+    <div id="spinModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4">Spinning... </h2>
+            <div class="bg-slate-700/60 w-64 h-64 mx-auto flex items-center justify-center rounded-full shadow-lg border-4 border-yellow-400/20 mb-8">
+                <!-- Class handled in JS now: when spinning, adds 'flashing-text'; when revealing, adds 'result-blink-red' -->
+                <p id="modalFlashingNumber" class="bebas-neue text-8xl font-bold text-white"></p> 
+            </div>
+            <div id="modalResultDisplay" class="hidden">
+                <p class="bebas-neue text-4xl font-bold text-yellow-400">Your Ticket Price:</p>
+                <p id="modalWinningTicketNumber" class="bebas-neue text-6xl font-bold text-white mt-2"></p> 
+            </div>
+        </div>
+    </div>
+
+    <!-- Header for navigation -->
+    <header class="bg-black/40 py-4 px-4 md:px-12 w-full top-0 z-50 shadow-2xl backdrop-blur-sm">
+        <nav class="container mx-auto flex justify-between items-center flex-wrap md:flex-nowrap">
+            <div class="flex items-center justify-between w-full md:w-auto">
+                <a href="/" class="flex items-center space-x-2">
+                    <img src="https://raw.githubusercontent.com/ToratYosef/ToratYosef..github.io/refs/heads/main/assets/logos.jpeg" alt="YDE Logo" class="h-14 sm:h-16 md:h-20 w-auto rounded-full ring-2 ring-yellow-400 p-1">
+                </a>
+                <button id="menu-toggle" class="md:hidden text-white focus:outline-none" aria-label="Toggle menu">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                </button>
+            </div>
+            <ul id="main-menu" class="hidden md:flex flex-col md:flex-row items-center space-y-2 md:space-y-0 md:space-x-8 text-base font-semibold w-full md:w-auto mt-4 md:mt-0">
+                <li><a href="/split-the-pot/" class="text-white hover:text-yellow-400 transition-colors duration-300">Split the Pot</a></li>
+                <li><a href="/spin-the-wheel/" class="text-white hover:text-yellow-400 transition-colors duration-300">Spin the Wheel</a></li>
+                <li><a href="/donate/" class="py-2 px-4 rounded-full bg-yellow-400 text-black hover:bg-yellow-500 transition-colors duration-300 font-bold block">Donate Now</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="flex-grow pt-12 sm:pt-20 px-4 md:px-8 lg:px-16">
+        <section id="spin-to-win-section">
+            <div class="container mx-auto text-center p-4 sm:p-6 md:p-12 glass-panel rounded-2xl shadow-2xl">
+                <h1 class="bebas-neue text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-4 drop-shadow-lg">
+                    Spin to Win
+                </h1>
+                <p class="text-base sm:text-lg md:text-xl text-gray-300 mb-8">
+                    You might pay as little as $1 and win a Rolex!
+                </p>
+
+                <!-- Prize Display Section -->
+                <div class="mb-12">
+                    <h2 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4">Prizes </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <div class="bg-slate-700/60 p-6 rounded-xl shadow-lg">
+                            <h3 class="bebas-neue text-2xl font-bold text-white mb-2">Rolex</h3>
+                            <p class="text-gray-300">Prize 1</p>
+                        </div>
+                        <div class="bg-slate-700/60 p-6 rounded-xl shadow-lg">
+                            <h3 class="bebas-neue text-2xl font-bold text-white mb-2">Rolex</h3>
+                            <p class="text-gray-300">Prize 2</p>
+                        </div>
+                        <div class="bg-slate-700/60 p-6 rounded-xl shadow-lg">
+                            <h3 class="bebas-neue text-2xl font-bold text-white mb-2">$15k Cash </h3>
+                            <p class="text-gray-300">Prize 3</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Counter -->
+                <div class="mb-12">
+                    <h2 class="bebas-neue text-3xl font-bold text-yellow-400 mb-2">Tickets Left</h2>
+                    <div class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold bebas-neue text-white">
+                        <span id="ticketsLeftCounter">0</span>
+                    </div>
+                </div>
+
+                <!-- How it Works Section -->
+                <div class="mb-12">
+                    <h2 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4">How It Works </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <div class="bg-slate-700/60 p-6 rounded-xl shadow-lg">
+                            <p class="bebas-neue text-4xl text-yellow-400 mb-2">1</p>
+                            <h3 class="bebas-neue text-2xl font-bold text-white mb-2">Prepay</h3>
+                            <p class="text-gray-300">Submit payment and get charged a random amount (between $1 - $650).</p>
+                        </div>
+                        <div class="bg-slate-700/60 p-6 rounded-xl shadow-lg">
+                            <p class="bebas-neue text-4xl text-yellow-400 mb-2">2</p>
+                            <h3 class="bebas-neue text-2xl font-bold text-white mb-2">Take a Chance</h3>
+                            <p class="text-gray-300">The system will assign you a random number, which is your ticket price.</p>
+                        </div>
+                        <div class="bg-slate-700/60 p-6 rounded-xl shadow-lg">
+                            <p class="bebas-neue text-4xl text-yellow-400 mb-2">3</p>
+                            <h3 class="bebas-neue text-2xl font-bold text-white mb-2">Win Big</h3>
+                            <p class="text-gray-300">Each ticket number is unique, giving you a chance to win a Rolex!</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payment Form Section -->
+                <div class="relative-container glass-panel p-6 rounded-2xl shadow-2xl max-w-lg mx-auto mb-12">
+                    <div id="initial-form" class="space-y-4" autocomplete="off" novalidate>
+                        <h2 class="bebas-neue text-3xl font-bold text-white mb-4">Enter for a Chance to Win!</h2>
+                        <div>
+                            <input type="text" id="spin-name" name="name" placeholder="Full Name" class="w-full py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300" required>
+                        </div>
+                        <div>
+                            <input type="email" id="spin-email" name="email" placeholder="Email Address" class="w-full py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300" required>
+                        </div>
+                        <div>
+                            <input type="tel" id="spin-phone" name="phone" placeholder="Phone Number" class="w-full py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300" required>
+                        </div>
+                     
+                        <button id="spin-proceed-to-payment" class="w-full py-3 rounded-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold transition-colors duration-300 relative overflow-hidden">
+                            <span class="button-text">Proceed to Payment</span>
+                            <div class="button-spinner absolute inset-0 m-auto w-8 h-8 border-4 border-t-4 border-black border-opacity-20 rounded-full hidden"></div>
+                        </button>
+                    </div>
+
+                    <!-- Stripe payment element container -->
+                    <div id="spin-stripe-payment-element" class="hidden">
+                           <h2 class="bebas-neue text-3xl font-bold text-white mb-4">Payment Details</h2>
+                        <div id="spin-payment-element-container"></div>
+                        <button id="spin-stripe-pay-button" class="w-full py-3 mt-4 rounded-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold transition-colors duration-300 hidden">
+                            <span class="button-text">Pay Now</span>
+                            <div class="button-spinner absolute inset-0 m-auto w-8 h-8 border-4 border-t-4 border-black border-opacity-20 rounded-full hidden"></div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+    
+    <footer class="bg-black/40 py-8 mt-auto shadow-[0_-5px_15px_rgba(0,0,0,0.5)]">
+        <div class="container mx-auto px-4 text-center">
+            <h3 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4">Contact</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 text-gray-400 mb-8">
+                <div>
+                    <p class="font-bold text-white">Morris E.</p>
+                    <p>+1 (848)-282-6434</p>
+                </div>
+                <div>
+                    <p class="font-bold text-white">Jack B.</p>
+                    <p>+1 (347) 625-0226</p>
+                </div>
+                <div>
+                    <p class="font-bold text-white">Saul S.</p>
+                    <p>+1 (929)-584-5753</p>
+                </div>
+            </div>
+            <p class="text-sm text-gray-500 mt-8">
+                &copy; 2026 YDE Senior Fund. All Rights Reserved.<br/>
+                Website created by Saul Setton
+            </p>
+        </div>
+    </footer>
+
+    <!-- Firebase and Stripe Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
+    <script src="https://js.stripe.com/v3/"></script>
+
+    <script>
+        // --- Referrer Helper Function (NEW) ---
+        function getQueryParam(param) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(param);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- UI Elements ---
+            const initialForm = document.getElementById('initial-form');
+            const spinProceedToPaymentButton = document.getElementById('spin-proceed-to-payment');
+            const spinStripePayButton = document.getElementById('spin-stripe-pay-button');
+            const spinNameInput = document.getElementById('spin-name');
+            const spinEmailInput = document.getElementById('spin-email');
+            const spinPhoneInput = document.getElementById('spin-phone');
+            const spinStripePaymentElement = document.getElementById('spin-stripe-payment-element');
+            const spinPaymentElementContainer = document.getElementById('spin-payment-element-container');
+            const ticketsLeftCounter = document.getElementById('ticketsLeftCounter');
+
+            // Common UI Elements
+            const globalLoadingOverlay = document.getElementById('globalLoadingOverlay');
+            const globalSpinnerText = document.getElementById('globalSpinnerText');
+            const customPopupOverlay = document.getElementById('customPopupOverlay');
+            const customPopup = document.getElementById('customPopup');
+            const popupTitle = document.getElementById('popupTitle');
+            const popupMessage = document.getElementById('popupMessage');
+            const popupCloseButton = document.getElementById('popupCloseButton');
+            const menuToggle = document.getElementById('menu-toggle');
+            const mainMenu = document.getElementById('main-menu');
+
+            // Modal elements
+            const spinModal = document.getElementById('spinModal');
+            const modalFlashingNumber = document.getElementById('modalFlashingNumber');
+            const modalResultDisplay = document.getElementById('modalResultDisplay');
+            const modalWinningTicketNumber = document.getElementById('modalWinningTicketNumber');
+            
+            // --- Global State ---
+            const TOTAL_ROLEX_TICKETS = 650;
+            const SPIN_DURATION = 5000;
+            let elements;
+            let spinTicketNumber = 0;
+            let flashInterval;
+
+            // --- Referrer Logic Initialization (NEW) ---
+            const referrerRefId = getQueryParam('ref');
+            if (referrerRefId) {
+                console.log('Referrer ID found:', referrerRefId);
+            }
+
+            // --- Stripe & Firebase Initialization ---
+            const stripe = Stripe('pk_test_51RZEPeCMmspEQNuYXLdVBGpSSPewOBaH5d4eSIwrSDBeEsW9pBh7WAyDwFn8IzNyrYIY2SuV3pDXiNTmvJnr7YpC00JPzJh1lP');
+
+            const firebaseConfig = {
+              apiKey: "AIzaSyAT539nr_s2OxHPTAmkxwMpaWt-FiDTgQs",
+              authDomain: "yderaffle.firebaseapp.com",
+              projectId: "yderaffle",
+              storageBucket: "yderaffle.firebasestorage.app",
+              messagingSenderId: "967768309102",
+              appId: "1:967768309102:web:c89d61a747e8cb941f557f"
+            };
+            firebase.initializeApp(firebaseConfig);
+            const db = firebase.firestore();
+            const auth = firebase.auth();
+            const functions = firebase.functions();
+
+            // --- Helper Functions ---
+            function showCustomPopup(title, message) {
+              popupTitle.textContent = title;
+              popupMessage.textContent = message;
+              customPopupOverlay.classList.remove('hidden');
+              setTimeout(() => { customPopup.classList.add('scale-100'); }, 10);
+            }
+
+            function hideCustomPopup() {
+                customPopup.classList.remove('scale-100');
+                setTimeout(() => { customPopupOverlay.classList.add('hidden'); }, 300);
+            }
+
+            function showGlobalLoadingOverlay(message = "Loading...", disableForm = false) {
+                globalSpinnerText.textContent = message;
+                globalLoadingOverlay.classList.remove('hidden');
+            }
+
+            function hideGlobalLoadingOverlay() {
+                globalLoadingOverlay.classList.add('hidden');
+            }
+            
+            // --- Spin to Win Logic ---
+
+            function startSpinAnimation() {
+                modalFlashingNumber.classList.remove('result-blink-red'); // Clear final state
+                modalFlashingNumber.classList.add('flashing-text'); // ADD flashing during spin
+                modalResultDisplay.classList.add('hidden');
+                spinModal.classList.remove('hidden');
+                
+                let hasShownOne = false;
+                
+                // Use setInterval to change the number rapidly, creating the spin illusion
+                flashInterval = setInterval(() => {
+                    if (!hasShownOne) {
+                        modalFlashingNumber.textContent = 1;
+                        hasShownOne = true;
+                    } else {
+                        // Rapidly cycling number between 1 and 650
+                        const randomNumber = Math.floor(Math.random() * TOTAL_ROLEX_TICKETS) + 1;
+                        modalFlashingNumber.textContent = randomNumber;
+                    }
+                }, 100);
+            }
+
+            function stopSpinAnimationAndReveal(finalTicketNumber) {
+                clearInterval(flashInterval);
+                
+                modalFlashingNumber.classList.remove('flashing-text'); // STOP flashing from the spin animation
+                modalFlashingNumber.textContent = finalTicketNumber;
+                modalWinningTicketNumber.textContent = `$${finalTicketNumber}.00`;
+                modalResultDisplay.classList.remove('hidden');
+                
+                // Start 3-second red blink
+                modalFlashingNumber.classList.add('result-blink-red');
+
+                // Prepare final redirect URL
+                const name = encodeURIComponent(spinNameInput.value.trim());
+                // Include referrer in the success URL if you want it tracked on the successful page
+                const refParam = referrerRefId ? `&ref=${referrerRefId}` : '';
+                const redirectUrl = `${window.location.origin}/successful/?name=${name}&tickets=1&amount=${finalTicketNumber}${refParam}`;
+
+                // Set timeout for final redirect after 3 seconds of blinking
+                setTimeout(() => {
+                    modalFlashingNumber.classList.remove('result-blink-red');
+                    window.location.href = redirectUrl;
+                }, 3000); // 3 second blink duration
+            }
+
+            // Simple client-side validation for the initial form
+            function validateInitialForm() {
+                const name = spinNameInput.value.trim();
+                const email = spinEmailInput.value.trim();
+                const phone = spinPhoneInput.value.trim();
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                // Simple phone number check (at least 7 digits, cleans non-digits)
+                const phoneDigits = phone.replace(/\D/g, '');
+
+                if (!name) { showCustomPopup('Missing Field', 'Please enter your full name.'); return false; }
+                if (!email) { showCustomPopup('Missing Field', 'Please enter your email address.'); return false; }
+                if (!emailRegex.test(email)) { showCustomPopup('Invalid Email', 'Please enter a valid email address.'); return false; }
+                if (!phone) { showCustomPopup('Missing Field', 'Please enter your phone number.'); return false; }
+                if (phoneDigits.length < 7) { showCustomPopup('Invalid Phone', 'Please enter a valid phone number (at least 7 digits).'); return false; }
+
+                return true;
+            }
+
+            // --- Event Listeners ---
+            popupCloseButton.addEventListener('click', hideCustomPopup);
+            menuToggle.addEventListener('click', () => { 
+                mainMenu.classList.toggle('hidden'); 
+                document.body.classList.toggle('overflow-hidden');
+            });
+            
+            spinProceedToPaymentButton.addEventListener('click', async () => {
+                // Perform robust client-side validation
+                if (!validateInitialForm()) {
+                    return;
+                }
+                
+                showGlobalLoadingOverlay("Preparing your ticket...", true);
+                
+                try {
+                    const createSpinPaymentIntentCallable = functions.httpsCallable('createSpinPaymentIntent');
+                    
+                    // --- Send Referrer ID to Firebase (NEW) ---
+                    const requestData = {
+                        name: spinNameInput.value.trim(),
+                        email: spinEmailInput.value.trim(),
+                        phone: spinPhoneInput.value.trim(),
+                        referral: referrerRefId || null // Pass the referral ID if it exists
+                    };
+
+                    const { data } = await createSpinPaymentIntentCallable(requestData);
+
+                    spinTicketNumber = data.ticketNumber;
+                    
+                    // Stripe elements initialization
+                    elements = stripe.elements({ clientSecret: data.clientSecret, fonts: [{ cssSrc: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap' }] });
+                    const paymentElement = elements.create('payment');
+                    paymentElement.mount(spinPaymentElementContainer);
+                    
+                    // Hide user info form, show payment element
+                    initialForm.classList.add('hidden');
+                    spinStripePaymentElement.classList.remove('hidden');
+                    spinStripePayButton.classList.remove('hidden');
+
+                    hideGlobalLoadingOverlay();
+
+                } catch (error) {
+                    console.error('Error setting up payment:', error);
+                    showCustomPopup('Payment Setup Error', 'Could not set up payment. Please check your connection and try again.');
+                    hideGlobalLoadingOverlay();
+                }
+            });
+
+            spinStripePayButton.addEventListener('click', async (event) => {
+                event.preventDefault();
+
+                // Show the modal and start the spin animation immediately
+                spinStripePaymentElement.classList.add('hidden');
+                initialForm.classList.add('hidden');
+                spinModal.classList.remove('hidden');
+                startSpinAnimation();
+
+                // Use a placeholder return_url and 'redirect: if_required' so we can capture the success 
+                const PLACEHOLDER_RETURN_URL = `${window.location.origin}/spin-the-wheel-processing/`;
+
+                const { error, paymentIntent } = await stripe.confirmPayment({
+                    elements,
+                    confirmParams: { 
+                        return_url: PLACEHOLDER_RETURN_URL,
+                    },
+                    redirect: 'if_required' // Crucial: tell Stripe to only redirect if 3D secure is required
+                });
+
+                if (error) {
+                    // This error handles payment element validation issues (like missing required fields) or general failure.
+                    clearInterval(flashInterval); // Stop spin on immediate failure
+                    showCustomPopup('Payment Failed', error.message || 'Payment could not be processed due to an error. Please check your card details and required fields.');
+                    console.error("Stripe confirmPayment error:", error);
+                    
+                    // Reset UI: Hide modal, show payment form again
+                    spinModal.classList.add('hidden');
+                    initialForm.classList.add('hidden');
+                    spinStripePaymentElement.classList.remove('hidden');
+                    spinStripePayButton.classList.remove('hidden');
+
+                } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+                    // Payment succeeded client-side (no 3D secure redirect required)
+                    // Wait for the visual spin duration to complete before revealing the result
+                    setTimeout(() => {
+                        // 1. Stop spin, reveal number, start 3s red blink, then redirect
+                        stopSpinAnimationAndReveal(spinTicketNumber);
+                    }, SPIN_DURATION); // Wait 5 seconds for the spin visualization
+
+                } else {
+                    // Payment requires action (e.g., 3D secure) and Stripe has initiated a redirect.
+                    console.log("Payment requires action or is pending. Letting Stripe handle the redirect flow.");
+                }
+            });
+
+            // --- Firebase Initialization and Real-time Listener ---
+            auth.onAuthStateChanged(async (user) => {
+                if (user) {
+                    console.log('User signed in with UID:', user.uid);
+                    // Ensure to use the correct collection path based on your security rules.
+                    db.collection('rolex_tickets').onSnapshot((querySnapshot) => { 
+                        const ticketsSold = querySnapshot.size;
+                        const ticketsLeft = TOTAL_ROLEX_TICKETS - ticketsSold;
+                        ticketsLeftCounter.textContent = ticketsLeft;
+                    }, (error) => { console.error("Error listening to tickets:", error); });
+                } else {
+                    try {
+                        await auth.signInAnonymously();
+                    } catch (error) {
+                        console.error('Anonymous sign-in failed:', error);
+                        showCustomPopup('Authentication Error', 'Could not sign you in. Please try again later.');
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

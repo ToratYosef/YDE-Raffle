@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YDE Senior Fund - Split the Pot</title>
+    <!-- Use Tailwind CSS for a modern, utility-first approach to styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://js.stripe.com/v3/fingerprinted/css/elements-inner-f9037c9f803c0032ac30e9d693f1d828.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .bebas-neue { font-family: 'Bebas Neue', sans-serif; }
+        /* A simple spinning animation for the loading spinner */
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        .spinner {
+          animation: spin 0.8s linear infinite;
+        }
+        /* Gradient for the main body background */
+        body {
+            background-color: #0d1222;
+            background-image: linear-gradient(135deg, #0d1222 0%, #151a2d 100%);
+        }
+        /* Custom styles for the form container to create a glass-like effect */
+        .glass-panel {
+            background: rgba(43, 49, 63, 0.4);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        /* Mobile-first adjustment for header navigation */
+        @media (max-width: 767px) {
+            #main-menu li {
+                width: 100%; /* Make list items take full width on mobile */
+            }
+            #main-menu li a {
+                display: block; /* Make links fill the list item */
+                text-align: center;
+                padding: 0.75rem 1rem; /* Add padding for touch targets */
+            }
+            /* Style the 'Donate Now' button to look like a full-width block link on mobile */
+            #main-menu li:last-child a {
+                margin-top: 0.5rem; /* Separator from other links */
+            }
+        }
+    </style>
+</head>
+<body class="text-white min-h-screen flex flex-col">
+
+    <!-- Global Loading Overlay -->
+    <div id="globalLoadingOverlay" class="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center gap-4 hidden">
+        <div class="spinner w-12 h-12 border-4 border-t-4 border-yellow-400 border-opacity-20 rounded-full"></div>
+        <p id="globalSpinnerText" class="text-white text-xl font-semibold">Loading...</p>
+    </div>
+
+    <!-- Custom Popup Modal -->
+    <div id="customPopupOverlay" class="fixed inset-0 z-[101] bg-black/75 flex items-center justify-center p-4 hidden">
+        <div id="customPopup" class="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-sm w-full text-center scale-95 transition-all duration-300">
+            <h2 id="popupTitle" class="bebas-neue text-3xl font-bold text-yellow-400 mb-4"></h2>
+            <p id="popupMessage" class="text-gray-300 text-lg mb-6"></p>
+            <button id="popupCloseButton" class="w-full py-3 rounded-full bg-yellow-400 text-black font-bold hover:bg-yellow-500 transition-colors">OK</button>
+        </div>
+    </div>
+
+    <!-- Updated Header for better mobile layout -->
+    <header class="bg-black/40 py-4 px-4 md:px-12 w-full top-0 z-50 shadow-2xl backdrop-blur-sm">
+        <nav class="container mx-auto flex justify-between items-center flex-wrap md:flex-nowrap">
+            <div class="flex items-center justify-between w-full md:w-auto">
+                <a href="/" class="flex items-center space-x-2">
+                    <img src="https://raw.githubusercontent.com/ToratYosef/ToratYosef..github.io/refs/heads/main/assets/logos.jpeg" alt="YDE Logo" class="h-14 sm:h-16 md:h-20 w-auto rounded-full ring-2 ring-yellow-400 p-1">
+                </a>
+                <button id="menu-toggle" class="md:hidden text-white focus:outline-none" aria-label="Toggle menu">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                </button>
+            </div>
+            <ul id="main-menu" class="hidden md:flex flex-col md:flex-row items-center space-y-2 md:space-y-0 md:space-x-8 text-base font-semibold w-full md:w-auto mt-4 md:mt-0">
+                <li><a href="/split-the-pot/" class="text-white hover:text-yellow-400 transition-colors duration-300">Split the Pot</a></li>
+                <li><a href="/spin-the-wheel/" class="text-white hover:text-yellow-400 transition-colors duration-300">Spin the Wheel</a></li>
+                <li><a href="/donate/" class="py-2 px-4 rounded-full bg-yellow-400 text-black hover:bg-yellow-500 transition-colors duration-300 font-bold block">Donate Now</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="flex-grow pt-12 sm:pt-20 px-4 md:px-8 lg:px-16">
+        <div class="container mx-auto text-center p-4 sm:p-6 md:p-12 glass-panel rounded-2xl shadow-2xl max-w-7xl">
+            <h1 class="bebas-neue text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-4 drop-shadow-lg">
+                Split the Pot Raffle
+            </h1>
+            <p class="text-base sm:text-lg md:text-xl text-gray-300 mb-8">
+                Your ticket purchase goes directly to the Senior Fund.
+            </p>
+
+            <!-- Grid adjusted to be one column on mobile, two on desktop -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8 mb-12">
+                <div class="bg-slate-700/60 p-4 sm:p-6 rounded-xl shadow-lg transform transition-transform duration-300 hover:scale-105 border border-yellow-400/20">
+                    <p class="text-sm uppercase tracking-wider text-yellow-400 font-semibold mb-2">Total Tickets Sold</p>
+                    <div class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold bebas-neue text-white">
+                        <span id="ticketCounter">0</span>
+                    </div>
+                </div>
+
+                <div class="bg-slate-700/60 p-4 sm:p-6 rounded-xl shadow-lg transform transition-transform duration-300 hover:scale-105 border border-yellow-400/20">
+                    <p class="text-sm uppercase tracking-wider text-yellow-400 font-semibold mb-2">Winner Takes Home</p>
+                    <div class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold bebas-neue text-white">
+                        <span id="potCounter">$0.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form container for better mobile spacing -->
+            <div id="main-container" class="glass-panel p-6 rounded-2xl shadow-2xl max-w-lg mx-auto mb-12">
+                <h2 class="bebas-neue text-3xl font-bold text-white mb-4">Buy Your Tickets!</h2>
+                
+                <div id="payment-form" class="space-y-4" autocomplete="off" novalidate>
+                    <div>
+                        <!-- Consistent mobile friendly input padding -->
+                        <input type="text" id="name" name="name" placeholder="Full Name" class="w-full py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300" required>
+                    </div>
+                    <div>
+                        <input type="email" id="email" name="email" placeholder="Email Address" class="w-full py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300" required>
+                    </div>
+                    <div>
+                        <input type="tel" id="phone" name="phone" placeholder="Phone Number" class="w-full py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300" required>
+                    </div>
+                
+                    <!-- Ticket Quantity: Stack vertically on small screens, horizontal on larger screens -->
+                    <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+                        <label for="quantity" class="font-bold text-yellow-400 bebas-neue text-lg block text-center mb-1 sm:mb-0 sm:hidden md:block">Tickets:</label>
+                        <div class="flex items-center justify-center gap-4">
+                            <!-- Removed +/- buttons from mobile view, visible only on medium screens and up -->
+                            <button type="button" class="hidden md:flex w-full md:w-12 h-12 bg-yellow-400 text-black rounded-full items-center justify-center font-bold text-2xl hover:bg-yellow-500 transition-colors" id="decrease-quantity">-</button>
+                            <input type="number" id="quantity" class="w-full h-12 text-center py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300" value="1" min="1" max="9999999999999999999999" aria-label="Number of tickets">
+                            <!-- Removed +/- buttons from mobile view, visible only on medium screens and up -->
+                            <button type="button" class="hidden md:flex w-full md:w-12 h-12 bg-yellow-400 text-black rounded-full items-center justify-center font-bold text-2xl hover:bg-yellow-500 transition-colors" id="increase-quantity">+</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Fee Coverage Checkbox -->
+                    <div class="flex items-center justify-center gap-2 mt-4 text-gray-300">
+                        <input type="checkbox" id="cover-fees-checkbox" class="h-4 w-4 rounded-full text-yellow-400 focus:ring-yellow-400 border-gray-600 bg-gray-700">
+                        <label for="cover-fees-checkbox" class="text-sm md:text-base">I would like to cover the processing fees</label>
+                    </div>
+
+                    <div id="total-amount-display" class="bebas-neue text-2xl font-bold text-yellow-400 text-center mt-4">Total: $<span id="calculated-total-amount">0.00</span></div>
+
+                    <button id="proceed-to-payment" class="w-full py-3 rounded-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold transition-colors duration-300 relative overflow-hidden">
+                        <span class="button-text">Proceed to Payment</span>
+                        <div class="button-spinner absolute inset-0 m-auto w-8 h-8 border-4 border-t-4 border-black border-opacity-20 rounded-full hidden"></div>
+                    </button>
+
+                    <!-- Stripe payment element container -->
+                    <div id="stripe-payment-element" class="hidden">
+                        <div id="payment-element">
+                            <!-- Stripe Elements will be inserted here -->
+                        </div>
+                        <button id="stripe-pay-button" class="w-full py-3 mt-4 rounded-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold transition-colors duration-300 hidden">
+                            <span class="button-text">Pay</span>
+                            <div class="button-spinner absolute inset-0 m-auto w-8 h-8 border-4 border-t-4 border-black border-opacity-20 rounded-full hidden"></div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <footer class="bg-black/40 py-8 mt-auto shadow-[0_-5px_15px_rgba(0,0,0,0.5)]">
+        <div class="container mx-auto px-4 text-center">
+            <h3 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4">Contact</h3>
+            <!-- Grid adjusted to stack on mobile, three columns on desktop -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 text-gray-400 mb-8">
+                <div>
+                    <p class="font-bold text-white">David H.</p>
+                    <p>+1 (680)-234-0314</p>
+                </div>
+                <div>
+                    <p class="font-bold text-white">Daniel K.</p>
+                    <p>+1 (917) 858-0904</p>
+                </div>
+                <div>
+                    <p class="font-bold text-white">Saul S.</p>
+                    <p>+1 (929)-584-5753</p>
+                </div>
+            </div>
+            <p class="text-sm text-gray-500 mt-8">
+                &copy; 2026 YDE Senior Fund. All Rights Reserved.<br/>
+                Website created by Saul Setton
+            </p>
+        </div>
+    </footer>
+
+    <!-- Firebase and Stripe Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
+    <script src="https://js.stripe.com/v3/"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- UI Elements ---
+            const proceedToPaymentButton = document.getElementById('proceed-to-payment');
+            const stripePayButton = document.getElementById('stripe-pay-button');
+            const nameInput = document.getElementById('name');
+            const emailInput = document.getElementById('email');
+            const phoneInput = document.getElementById('phone');
+            const quantityInput = document.getElementById('quantity');
+            const decreaseQuantityButton = document.getElementById('decrease-quantity');
+            const increaseQuantityButton = document.getElementById('increase-quantity');
+            const totalAmountDisplay = document.getElementById('calculated-total-amount');
+            const coverFeesCheckbox = document.getElementById('cover-fees-checkbox');
+
+            // --- Modal and Loading Overlays ---
+            const formInputs = document.querySelectorAll('#payment-form input');
+            const globalLoadingOverlay = document.getElementById('globalLoadingOverlay');
+            const globalSpinnerText = document.getElementById('globalSpinnerText');
+            const customPopupOverlay = document.getElementById('customPopupOverlay');
+            const customPopup = document.getElementById('customPopup');
+            const popupTitle = document.getElementById('popupTitle');
+            const popupMessage = document.getElementById('popupMessage');
+            const popupCloseButton = document.getElementById('popupCloseButton');
+            const menuToggle = document.getElementById('menu-toggle');
+            const mainMenu = document.getElementById('main-menu');
+            const ticketCounter = document.getElementById('ticketCounter');
+            const potCounter = document.getElementById('potCounter');
+
+            // --- Referral Logic Variables ---
+            let referrerRefId = null;
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('ref')) {
+                referrerRefId = urlParams.get('ref');
+                console.log(`Referral ID found in URL: ${referrerRefId}`);
+            }
+
+            // --- Stripe & Firebase Initialization ---
+            const stripe = Stripe('pk_test_51RZEPeCMmspEQNuYXLdVBGpSSPewOBaH5d4eSIwrSDBeEsW9pBh7WAyDwFn8IzNyrYIY2SuV3pDXiNTmvJnr7YpC00JPzJh1lP');
+            let elements;
+            let baseAmount = 0;
+
+            const firebaseConfig = {
+              apiKey: "AIzaSyAT539nr_s2OxHPTAmkxwMpaWt-FiDTgQs",
+              authDomain: "yderaffle.firebaseapp.com",
+              projectId: "yderaffle",
+              storageBucket: "yderaffle.firebasestorage.app",
+              messagingSenderId: "967768309102",
+              appId: "1:967768309102:web:c89d61a747e8cb941f557f"
+            };
+            firebase.initializeApp(firebaseConfig);
+            const db = firebase.firestore();
+            const auth = firebase.auth();
+            const functions = firebase.functions();
+
+            // --- Pricing Tiers ---
+            const PRICES = [
+                { count: 55, cost: 401 },
+                { count: 40, cost: 300 },
+                { count: 20, cost: 150 },
+                { count: 10, cost: 80 },
+                { count: 5,  cost: 50 },
+                { count: 1,  cost: 12 },
+            ];
+
+            // --- Helper Functions ---
+            function showCustomPopup(title, message) {
+              popupTitle.textContent = title;
+              popupMessage.textContent = message;
+              customPopupOverlay.classList.remove('hidden');
+              setTimeout(() => { customPopup.classList.add('scale-100'); }, 10);
+            }
+
+            function hideCustomPopup() {
+                customPopup.classList.remove('scale-100');
+                setTimeout(() => { customPopupOverlay.classList.add('hidden'); }, 300);
+            }
+
+            function setFormInputsDisabled(disabled) {
+                formInputs.forEach(input => input.disabled = disabled);
+                quantityInput.disabled = disabled;
+                decreaseQuantityButton.disabled = disabled;
+                increaseQuantityButton.disabled = disabled;
+            }
+
+            function showGlobalLoadingOverlay(message = "Loading...", disableForm = false) {
+                globalSpinnerText.textContent = message;
+                globalLoadingOverlay.classList.remove('hidden');
+                if (disableForm) {
+                    setFormInputsDisabled(true);
+                }
+            }
+
+            function hideGlobalLoadingOverlay() {
+                globalLoadingOverlay.classList.add('hidden');
+                setFormInputsDisabled(false);
+            }
+            
+            function calculateBaseCost(numTickets) {
+                let remaining = numTickets;
+                let totalCost = 0;
+                PRICES.forEach(tier => {
+                    const numBundles = Math.floor(remaining / tier.count);
+                    if (numBundles > 0) {
+                        totalCost += numBundles * tier.cost;
+                        remaining %= tier.count;
+                    }
+                });
+                return totalCost;
+            }
+
+            function updateCalculatedTotal() {
+                let quantity = parseInt(quantityInput.value, 10);
+                if (isNaN(quantity) || quantity < 1) {
+                    quantity = 1;
+                    quantityInput.value = 1;
+                }
+                if (quantity > 999999999999999999) {
+                    quantity = 999999999999999999;
+                    quantityInput.value = 999999999999999999;
+                }
+                
+                baseAmount = calculateBaseCost(quantity);
+                let finalAmount = baseAmount;
+                
+                if (coverFeesCheckbox.checked) {
+                    // Calculate the final amount including fees: (Base Amount + Fixed Fee) / (1 - Percentage Fee)
+                    finalAmount = (baseAmount + 0.30) / (1 - 0.029);
+                }
+
+                totalAmountDisplay.textContent = finalAmount.toFixed(2);
+
+                decreaseQuantityButton.disabled = quantity <= parseInt(quantityInput.min, 10);
+                increaseQuantityButton.disabled = quantity >= parseInt(quantityInput.max, 10);
+            }
+
+            function resetPaymentUI() {
+                hideGlobalLoadingOverlay();
+                setFormInputsDisabled(false);
+                document.getElementById('stripe-payment-element').classList.add('hidden');
+                proceedToPaymentButton.classList.remove('hidden');
+                nameInput.value = '';
+                emailInput.value = '';
+                phoneInput.value = '';
+                quantityInput.value = '1';
+                coverFeesCheckbox.checked = false;
+                updateCalculatedTotal();
+            }
+
+            // --- Event Listeners ---
+            popupCloseButton.addEventListener('click', hideCustomPopup);
+            
+            // Toggle mobile menu visibility
+            menuToggle.addEventListener('click', () => { 
+                mainMenu.classList.toggle('hidden'); 
+                document.body.classList.toggle('overflow-hidden');
+            });
+            
+            decreaseQuantityButton.addEventListener('click', () => {
+                let currentQuantity = parseInt(quantityInput.value, 10);
+                if (currentQuantity > parseInt(quantityInput.min, 10)) {
+                    quantityInput.value = currentQuantity - 1;
+                    updateCalculatedTotal();
+                }
+            });
+
+            increaseQuantityButton.addEventListener('click', () => {
+                let currentQuantity = parseInt(quantityInput.value, 10);
+                if (currentQuantity < parseInt(quantityInput.max, 10)) {
+                    quantityInput.value = currentQuantity + 1;
+                    updateCalculatedTotal();
+                }
+            });
+
+            quantityInput.addEventListener('change', updateCalculatedTotal);
+            quantityInput.addEventListener('input', updateCalculatedTotal);
+            coverFeesCheckbox.addEventListener('change', updateCalculatedTotal);
+            
+            // "Proceed to Payment" button click event for Stripe
+            proceedToPaymentButton.addEventListener('click', async () => {
+                const name = nameInput.value.trim();
+                const email = emailInput.value.trim();
+                const phone = phoneInput.value.trim();
+                const quantity = parseInt(quantityInput.value, 10);
+                const chargedAmount = parseFloat(document.getElementById('calculated-total-amount').textContent);
+                const coverFees = coverFeesCheckbox.checked;
+
+                if (!name || !email || !phone) {
+                    showCustomPopup('Missing Information', 'Please fill in all fields before proceeding.');
+                    return;
+                }
+                if (isNaN(quantity) || quantity < 1) {
+                    showCustomPopup('Invalid Quantity', 'Please enter a valid number of tickets (at least 1).');
+                    return;
+                }
+                
+                showGlobalLoadingOverlay("Setting up payment...", true);
+
+                try {
+                    const createPaymentIntentCallable = functions.httpsCallable('createStripePaymentIntent');
+                    const { data } = await createPaymentIntentCallable({
+                        chargedAmount: chargedAmount,
+                        baseAmount: baseAmount,
+                        ticketsBought: quantity,
+                        name: name,
+                        email: email,
+                        phone: phone,
+                        coverFees: coverFees,
+                        referral: referrerRefId
+                    });
+
+                    // Initialize the Stripe Elements with the client secret
+                    elements = stripe.elements({ clientSecret: data.clientSecret });
+                    
+                    const paymentElement = elements.create('payment');
+                    paymentElement.mount('#payment-element');
+
+                    // Hide user info form, show payment element
+                    nameInput.classList.add('hidden');
+                    emailInput.classList.add('hidden');
+                    phoneInput.classList.add('hidden');
+                    document.getElementById('quantity').parentElement.parentElement.classList.add('hidden');
+                    coverFeesCheckbox.parentElement.classList.add('hidden');
+
+                    document.querySelector('#main-container h2').textContent = "Confirm Payment";
+
+                    proceedToPaymentButton.classList.add('hidden');
+                    document.getElementById('stripe-payment-element').classList.remove('hidden');
+                    stripePayButton.classList.remove('hidden');
+                    hideGlobalLoadingOverlay();
+
+                } catch (error) {
+                    console.error('Error starting Stripe payment:', error);
+                    showCustomPopup('Payment Error', 'Could not set up payment. Please try again.');
+                    hideGlobalLoadingOverlay();
+                    // Show the input fields again on failure
+                    nameInput.classList.remove('hidden');
+                    emailInput.classList.remove('hidden');
+                    phoneInput.classList.remove('hidden');
+                    document.getElementById('quantity').parentElement.parentElement.classList.remove('hidden');
+                    coverFeesCheckbox.parentElement.classList.remove('hidden');
+                    document.querySelector('#main-container h2').textContent = "Buy Your Tickets!";
+                }
+            });
+            
+            // Stripe "Pay" button event listener
+            stripePayButton.addEventListener('click', async (event) => {
+                event.preventDefault();
+                showGlobalLoadingOverlay("Processing payment...", true);
+                
+                // Construct the return URL with user details and referral ID
+                const name = encodeURIComponent(nameInput.value.trim());
+                const tickets = quantityInput.value;
+                const refParam = referrerRefId ? `&ref=${referrerRefId}` : '';
+                const returnUrl = `${window.location.origin}/success/?name=${name}&tickets=${tickets}${refParam}`;
+
+                const { error } = await stripe.confirmPayment({
+                    elements,
+                    confirmParams: {
+                        return_url: returnUrl,
+                    }
+                });
+
+                if (error) {
+                    if (error.type === "card_error" || error.type === "validation_error") {
+                        showCustomPopup('Payment Failed', error.message);
+                    } else {
+                        showCustomPopup('An Unexpected Error Occurred', 'Please try again later.');
+                    }
+                    console.error("Stripe confirmPayment error:", error);
+                    hideGlobalLoadingOverlay();
+                }
+            });
+
+            // --- Firebase Initialization and Real-time Listener ---
+            auth.onAuthStateChanged(async (user) => {
+                if (user) {
+                    console.log('User signed in with UID:', user.uid);
+                    
+                    const counterDocRef = db.collection('counters').doc('raffle_totals');
+                    counterDocRef.onSnapshot((docSnap) => {
+                        if (docSnap.exists) {
+                            const data = docSnap.data();
+                            const totalTickets = data.totalTickets || 0;
+                            const totalAmount = data.totalAmount || 0;
+                            ticketCounter.textContent = totalTickets.toLocaleString();
+                            // Only half the total amount goes to the winner
+                            potCounter.textContent = `$${(totalAmount / 2).toFixed(2).toLocaleString()}`;
+                        } else {
+                            console.warn("Counter document does not exist. Please create it at 'counters/raffle_totals'.");
+                            ticketCounter.textContent = '0';
+                            potCounter.textContent = '$0.00';
+                        }
+                    }, (error) => {
+                        console.error('Error listening to raffle totals:', error);
+                        showCustomPopup('Database Error', 'Could not load current totals. Please refresh the page.');
+                    });
+                } else {
+                    console.log('No user signed in. Attempting anonymous sign-in...');
+                    try {
+                        await auth.signInAnonymously();
+                    } catch (error) {
+                        console.error('Anonymous sign-in failed:', error);
+                        showCustomPopup('Authentication Error', 'Could not sign you in. Please try again later.');
+                    }
+                }
+            });
+
+            // Initial calculation on page load
+            updateCalculatedTotal();
+        });
+    </script>
+</body>
+</html>

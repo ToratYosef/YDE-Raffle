@@ -1,0 +1,21 @@
+{
+  "name": "firebase-functions",
+  "description": "Firebase backend for the raffle app",
+  "scripts": {
+    "serve": "firebase emulators:start --only functions",
+    "shell": "firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "engines": {
+    "node": "18"
+  },
+  "dependencies": {
+    "firebase-admin": "^11.11.0",
+    "firebase-functions": "^4.5.0",
+    "stripe": "^14.1.0",
+    "@google-cloud/firestore": "^4.14.0"
+  },
+  "private": true
+}

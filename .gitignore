@@ -1,0 +1,4 @@
+node_modules
+# Ignore large media files
+*.mp4
+*.mov

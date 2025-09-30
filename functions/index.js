@@ -1,13 +1,11 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
-const cors = require('cors'); // Re-added cors package
+const cors = require('cors'); 
 
-// NOTE: Replace this with your actual Stripe initialization if this is not a mock environment
 const stripe = require('stripe')(functions.config().stripe.secret_key);
 
 admin.initializeApp();
 
-// The manual CORS handler is re-added as requested for the legacy Promise-wrapped functions.
 const corsHandler = cors({
   origin: [
     'https://yderaffle.web.app',
@@ -15,39 +13,56 @@ const corsHandler = cors({
   ],
 });
 
+// --- SECURITY AND ROLE CHECK HELPERS (NEW/UPDATED) ---
+
 /**
- * NEW: Scheduled function to remove reserved Rolex tickets older than 10 minutes.
+ * Checks if the user is authorized as a super admin.
+ */
+function isSuperAdmin(context) {
+    // Check for 'superAdmin' claim set by the admin creation script
+    return context.auth && context.auth.token.superAdmin === true;
+}
+
+/**
+ * Checks if the user is authorized as an admin (referrer, general admin, or super admin).
+ */
+function isAdmin(context) {
+    return context.auth && (
+        context.auth.token.superAdmin === true || 
+        context.auth.token.referrer === true || 
+        context.auth.token.admin === true
+    );
+}
+
+// --- TICKET CLEANUP FUNCTIONS ---
+
+/**
+ * Scheduled function to remove reserved Rolex tickets older than 5 minutes.
  * Runs every 5 minutes to clean up stale reservations.
  */
 exports.cleanupReservedTickets = functions.pubsub.schedule('every 5 minutes').onRun(async (context) => {
     const db = admin.firestore();
-    // 10 minutes in milliseconds
-    const tenMinutesInMs = 10 * 60 * 1000; 
-    const tenMinutesAgo = new Date(Date.now() - tenMinutesInMs); 
-
-    console.log(`Starting cleanup of reserved tickets older than: ${tenMinutesAgo.toISOString()}`);
+    // 5 minutes in milliseconds (Cleanup duration)
+    const fiveMinutesInMs = 5 * 60 * 1000; 
+    const fiveMinutesAgo = new Date(Date.now() - fiveMinutesInMs); 
 
     try {
-        // Find tickets that are 'reserved' AND were reserved before 10 minutes ago
+        // Find tickets that are 'reserved' AND were reserved before 5 minutes ago
         const reservedTicketsSnapshot = await db.collection('rolex_tickets')
             .where('status', '==', 'reserved')
-            // Firestore must be queried by the timestamp field, which is set as serverTimestamp()
-            .where('timestamp', '<', tenMinutesAgo) 
+            .where('timestamp', '<', fiveMinutesAgo) 
             .get();
 
         if (reservedTicketsSnapshot.empty) {
-            console.log('No expired reserved tickets found.');
             return null;
         }
 
         const batch = db.batch();
         reservedTicketsSnapshot.forEach(doc => {
-            console.log(`Deleting expired reserved ticket: ${doc.id}`);
             batch.delete(doc.ref);
         });
 
         await batch.commit();
-        console.log(`Successfully deleted ${reservedTicketsSnapshot.size} expired reserved tickets.`);
         return null;
 
     } catch (error) {
@@ -56,19 +71,110 @@ exports.cleanupReservedTickets = functions.pubsub.schedule('every 5 minutes').on
     }
 });
 
+/**
+ * Callable function to retrieve counts of reserved and expired tickets for the admin tool.
+ * Requires Admin role.
+ */
+exports.getReservedTicketCounts = functions.https.onCall(async (data, context) => {
+    // UPDATED: Use isAdmin check
+    if (!isAdmin(context)) {
+        throw new functions.https.HttpsError('permission-denied', 'Access denied. Requires Admin role.');
+    }
+
+    const db = admin.firestore();
+    const fiveMinutesInMs = 5 * 60 * 1000;
+    const tenMinutesInMs = 10 * 60 * 1000;
+    const fiveMinutesAgo = new Date(Date.now() - fiveMinutesInMs);
+    const tenMinutesAgo = new Date(Date.now() - tenMinutesInMs);
+    
+    let totalReserved = 0;
+    let expired5Min = 0;
+    let expired10Min = 0;
+
+    try {
+        const allReservedSnapshot = await db.collection('rolex_tickets')
+            .where('status', '==', 'reserved')
+            .get();
+
+        totalReserved = allReservedSnapshot.size;
+
+        allReservedSnapshot.forEach(doc => {
+            const ticket = doc.data();
+            const timestamp = ticket.timestamp.toDate();
+
+            if (timestamp < fiveMinutesAgo) {
+                expired5Min++;
+            }
+            if (timestamp < tenMinutesAgo) {
+                expired10Min++;
+            }
+        });
+
+        return { totalReserved, expired5Min, expired10Min };
+
+    } catch (error) {
+        console.error('Error fetching reserved ticket counts:', error);
+        throw new functions.https.HttpsError('internal', 'Failed to retrieve ticket counts.', error.message);
+    }
+});
+
+/**
+ * Callable function to manually delete reserved tickets older than 5 minutes.
+ * Requires Admin role.
+ */
+exports.deleteExpiredReservedTickets = functions.https.onCall(async (data, context) => {
+    // UPDATED: Use isAdmin check
+    if (!isAdmin(context)) {
+        throw new functions.https.HttpsError('permission-denied', 'Access denied. Requires Admin role.');
+    }
+
+    const db = admin.firestore();
+    const fiveMinutesInMs = 5 * 60 * 1000;
+    const fiveMinutesAgo = new Date(Date.now() - fiveMinutesInMs); 
+
+    try {
+        // Find tickets that are 'reserved' AND were reserved before 5 minutes ago
+        const reservedTicketsSnapshot = await db.collection('rolex_tickets')
+            .where('status', '==', 'reserved')
+            .where('timestamp', '<', fiveMinutesAgo) 
+            .get();
+
+        if (reservedTicketsSnapshot.empty) {
+            return { deletedCount: 0, message: 'No reserved tickets older than 5 minutes found to delete.' };
+        }
+
+        const batch = db.batch();
+        reservedTicketsSnapshot.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+
+        await batch.commit();
+        
+        return { deletedCount: reservedTicketsSnapshot.size, message: `Successfully deleted ${reservedTicketsSnapshot.size} reserved tickets older than 5 minutes.` };
+
+    } catch (error) {
+        console.error('Error during manual reserved ticket cleanup:', error);
+        throw new functions.https.HttpsError('internal', 'Failed to perform manual cleanup.', error.message);
+    }
+});
+
+
+// --- PAYMENT INTENT FUNCTIONS (UPDATED FOR NEW DATA STRUCTURE) ---
 
 /**
  * Firebase Callable Function to create a Stripe PaymentIntent for the Spin to Win game (Rolex).
- * UPDATED: Now handles and saves the referrerRefId to Firestore and Stripe metadata.
+ * UPDATED: Uses firstName, phoneNumber, and amountPaid data structure.
  */
 exports.createSpinPaymentIntent = functions.https.onCall(async (data, context) => {
     let ticketNumber;
     const SOURCE_APP_TAG = 'YDE Spin The Wheel';
 
     try {
-        // ADDED referral here
         const { name, email, phone, referral } = data;
         const TOTAL_TICKETS = 650;
+        
+        // Extract first name for new structure (Split the Pot uses this)
+        const firstName = name.split(' ')[0] || name; 
 
         if (!name || !email || !phone) {
             throw new functions.https.HttpsError('invalid-argument', 'Missing required fields: name, email, or phone.');
@@ -77,25 +183,23 @@ exports.createSpinPaymentIntent = functions.https.onCall(async (data, context) =
         const db = admin.firestore();
         let foundUniqueTicket = false;
 
-        // Loop to find a unique ticket number
-        for (let i = 0; i < TOTAL_TICKETS * 2; i++) { // A safety net loop
+        for (let i = 0; i < TOTAL_TICKETS * 2; i++) { 
             const randomTicket = Math.floor(Math.random() * TOTAL_TICKETS) + 1;
             const ticketRef = db.collection('rolex_tickets').doc(randomTicket.toString());
 
             try {
-                // Check if the ticket number is already taken using a transaction
                 await db.runTransaction(async (transaction) => {
                     const docSnapshot = await transaction.get(ticketRef);
                     if (!docSnapshot.exists) {
                         transaction.set(ticketRef, {
                             status: 'reserved',
-                            // The serverTimestamp is crucial for the cleanup function to work
                             timestamp: admin.firestore.FieldValue.serverTimestamp(), 
                             name: name,
+                            firstName: firstName, // New field based on requested structure
                             email: email,
-                            phone: phone,
+                            phoneNumber: phone, // Renamed field
                             sourceApp: SOURCE_APP_TAG,
-                            referrerRefId: referral || null // SAVING REFERRAL TO RESERVED TICKET
+                            referrerRefId: referral || null
                         });
                         foundUniqueTicket = true;
                     }
@@ -107,7 +211,6 @@ exports.createSpinPaymentIntent = functions.https.onCall(async (data, context) =
                 }
             } catch (e) {
                 console.error("Transaction failed: ", e);
-                // Continue loop to try again
             }
         }
 
@@ -120,7 +223,7 @@ exports.createSpinPaymentIntent = functions.https.onCall(async (data, context) =
         const paymentIntent = await stripe.paymentIntents.create({
             amount: amountInCents,
             currency: 'usd',
-            description: `YDE Spin The Wheel - Ticket ${ticketNumber}`, // Added payment description
+            description: `YDE Spin The Wheel - Ticket ${ticketNumber}`, 
             metadata: {
                 name,
                 email,
@@ -129,7 +232,7 @@ exports.createSpinPaymentIntent = functions.https.onCall(async (data, context) =
                 ticketNumber: ticketNumber,
                 entryType: 'rolex',
                 sourceApp: SOURCE_APP_TAG,
-                referrerRefId: referral || null // SAVING REFERRAL TO STRIPE METADATA
+                referrerRefId: referral || null 
             },
         });
 
@@ -137,7 +240,6 @@ exports.createSpinPaymentIntent = functions.https.onCall(async (data, context) =
 
     } catch (error) {
         console.error('Error creating Stripe PaymentIntent for spin game:', error);
-        // Clean up the reserved ticket if payment intent creation fails
         if (ticketNumber) {
             try {
                 // If payment creation fails, remove the reserved ticket immediately
@@ -146,7 +248,6 @@ exports.createSpinPaymentIntent = functions.https.onCall(async (data, context) =
                 console.error('Failed to clean up reserved ticket:', cleanupError);
             }
         }
-        // Return a proper HttpsError to the client
         if (error.code && error.message) {
              throw new functions.https.HttpsError(error.code, error.message);
         } else {
@@ -157,10 +258,9 @@ exports.createSpinPaymentIntent = functions.https.onCall(async (data, context) =
 
 /**
  * Firebase Callable Function to create a Stripe PaymentIntent for the raffle (Split The Pot).
- * Added sourceApp tag and payment description.
  */
 exports.createStripePaymentIntent = functions.https.onCall(async (data, context) => {
-    const SOURCE_APP_TAG = 'YDE Split The Pot'; // Added tag
+    const SOURCE_APP_TAG = 'YDE Split The Pot'; 
 
     try {
         const { chargedAmount, baseAmount, ticketsBought, name, email, phone, referral } = data;
@@ -174,7 +274,7 @@ exports.createStripePaymentIntent = functions.https.onCall(async (data, context)
         const paymentIntent = await stripe.paymentIntents.create({
             amount: amountToChargeInCents,
             currency: 'usd',
-            description: `YDE Split The Pot - ${ticketsBought} Tickets`, // Added payment description
+            description: `YDE Split The Pot - ${ticketsBought} Tickets`, 
             metadata: {
                 name,
                 email,
@@ -183,7 +283,7 @@ exports.createStripePaymentIntent = functions.https.onCall(async (data, context)
                 baseAmount,
                 referrerRefId: referral || '',
                 entryType: 'raffle',
-                sourceApp: SOURCE_APP_TAG // Added tag to Stripe metadata
+                sourceApp: SOURCE_APP_TAG 
             },
         });
 
@@ -196,26 +296,23 @@ exports.createStripePaymentIntent = functions.https.onCall(async (data, context)
             phone,
             referrerRefId: referral || null,
             status: 'created',
-            sourceApp: SOURCE_APP_TAG, // Added tag to Firestore record
+            sourceApp: SOURCE_APP_TAG, 
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
-        // The return value is automatically wrapped in a Promise by the onCall function.
         return { clientSecret: paymentIntent.client_secret, paymentIntentId: paymentIntent.id };
 
     } catch (error) {
         console.error('Error creating Stripe PaymentIntent:', error);
-        // Properly throw an HttpsError to the client.
         throw new functions.https.HttpsError('internal', 'Failed to create PaymentIntent.');
     }
 });
 
 /**
- * NEW: Firebase Callable Function to create a Stripe PaymentIntent for a general donation.
- * Added sourceApp tag and payment description.
+ * Firebase Callable Function to create a Stripe PaymentIntent for a general donation.
  */
 exports.createDonationPaymentIntent = functions.https.onCall(async (data, context) => {
-    const SOURCE_APP_TAG = 'YDE Donation'; // Added tag
+    const SOURCE_APP_TAG = 'YDE Donation'; 
 
     try {
         const { amount, name, email, phone } = data;
@@ -229,14 +326,14 @@ exports.createDonationPaymentIntent = functions.https.onCall(async (data, contex
         const paymentIntent = await stripe.paymentIntents.create({
             amount: amountInCents,
             currency: 'usd',
-            description: `YDE Donation`, // Added payment description
+            description: `YDE Donation`, 
             metadata: {
                 name,
                 email,
                 phone,
                 amount,
                 entryType: 'donation',
-                sourceApp: SOURCE_APP_TAG // Added tag to Stripe metadata
+                sourceApp: SOURCE_APP_TAG 
             },
         });
 
@@ -246,7 +343,7 @@ exports.createDonationPaymentIntent = functions.https.onCall(async (data, contex
             phone,
             amount,
             status: 'created',
-            sourceApp: SOURCE_APP_TAG, // Added tag to Firestore record
+            sourceApp: SOURCE_APP_TAG, 
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
@@ -260,7 +357,7 @@ exports.createDonationPaymentIntent = functions.https.onCall(async (data, contex
 
 /**
  * Stripe Webhook Listener (HTTP Request Function).
- * UPDATED: Ensures referrerRefId is saved when Rolex ticket is marked 'paid'.
+ * UPDATED: Uses the requested simplified field names for splitThePotTickets.
  */
 exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
     const sig = req.headers['stripe-signature'];
@@ -276,45 +373,45 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
 
     if (event.type === 'payment_intent.succeeded') {
       const paymentIntent = event.data.object;
-      console.log('PaymentIntent Succeeded:', paymentIntent.id);
 
-      // Destructure referrerRefId from metadata
       const { name, email, phone, ticketsBought, baseAmount, referrerRefId, ticketNumber, entryType, sourceApp } = paymentIntent.metadata;
 
+      // Extract first name for the new structure
+      const firstName = name.split(' ')[0] || name;
+      
       try {
         const db = admin.firestore();
 
-        // Check if the webhook has already been processed for this intent
         const intentDocRef = db.collection('stripe_payment_intents').doc(paymentIntent.id);
         const intentDoc = await intentDocRef.get();
         if (intentDoc.data() && intentDoc.data().webhookProcessed) {
-          console.log('PaymentIntent already processed:', paymentIntent.id);
           return res.status(200).send('Webhook event already processed.');
         }
 
-        // Handle different entry types based on metadata
+        // --- Rolex Ticket Processing ---
         if (entryType === 'rolex') {
             const rolexTicketRef = db.collection('rolex_tickets').doc(ticketNumber);
-            // It is safe to use set or update here. If the ticket was cleaned up by the cron job 
-            // before the payment succeeded, this will re-create it with the 'paid' status.
-            await rolexTicketRef.set({ 
+            await rolexTicketRef.update({
                 status: 'paid',
                 paymentIntentId: paymentIntent.id,
                 name,
+                firstName: firstName, // Added for consistency
                 email,
-                phone,
-                amountPaid: paymentIntent.amount / 100,
+                phoneNumber: phone, // Renamed field
+                amountPaid: paymentIntent.amount / 100, // Renamed field
                 timestamp: admin.firestore.FieldValue.serverTimestamp(),
                 sourceApp: sourceApp || 'YDE Spin The Wheel (Webhook)',
-                referrerRefId: referrerRefId || null // ENSURING REFERRAL IS SAVED ON PAYMENT SUCCESS
-            }, { merge: true }); 
-            console.log(`Successfully processed Rolex Ticket ${ticketNumber}.`);
-        } else if (entryType === 'raffle') {
-            const tickets = parseInt(ticketsBought);
-            const chargedAmount = paymentIntent.amount / 100;
-            const amountForPot = parseFloat(baseAmount);
+                referrerRefId: referrerRefId || null 
+            });
+        } 
+        
+        // --- Raffle (Split The Pot) Processing ---
+        else if (entryType === 'raffle') {
+            const ticketCount = parseInt(ticketsBought); // New field name
+            const amountPaid = paymentIntent.amount / 100; // New field name
 
             let referrerUid = null;
+            let referrerName = null;
             if (referrerRefId) {
                 const referrerQuerySnapshot = await db.collection('referrers')
                     .where('refId', '==', referrerRefId)
@@ -323,51 +420,54 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
 
                 if (!referrerQuerySnapshot.empty) {
                     referrerUid = referrerQuerySnapshot.docs[0].id;
+                    referrerName = referrerQuerySnapshot.docs[0].data().name;
                 }
             }
 
+            // Using the requested new document structure for splitThePotTickets
             await db.collection('splitThePotTickets').add({
-              name,
-              email,
-              phone,
+              firstName: firstName, // New field
+              phoneNumber: phone, // New field name
+              email: email, // Added for completeness, if available
               referrerRefId: referrerRefId || null,
               referrerUid,
-              amount: chargedAmount,
-              ticketsBought: tickets,
-              paymentStatus: 'completed',
-              paymentIntentId: paymentIntent.id,
+              referrerName,
+              amountPaid: amountPaid, // New field name
+              ticketCount: ticketCount, // New field name
+              paymentMethod: 'Stripe', // Added paymentMethod
               timestamp: admin.firestore.FieldValue.serverTimestamp(),
               entryType: 'stripe',
-              sourceApp: sourceApp || 'YDE Split The Pot (Webhook)' // Use tag
+              sourceApp: sourceApp || 'YDE Split The Pot (Webhook)' 
             });
 
+            const amountForPot = parseFloat(baseAmount);
             const raffleTotalsRef = db.collection('counters').doc('raffle_totals');
             await raffleTotalsRef.set({
-                totalTickets: admin.firestore.FieldValue.increment(tickets),
+                totalTickets: admin.firestore.FieldValue.increment(ticketCount),
                 totalAmount: admin.firestore.FieldValue.increment(amountForPot)
             }, { merge: true });
 
             if (referrerUid) {
                 const referrerRef = db.collection('referrers').doc(referrerUid);
                 await referrerRef.set({
-                    totalTickets: admin.firestore.FieldValue.increment(tickets),
+                    totalTickets: admin.firestore.FieldValue.increment(ticketCount),
                     totalAmount: admin.firestore.FieldValue.increment(amountForPot)
                 }, { merge: true });
             }
-            console.log(`Successfully processed Split the Pot entry.`);
-        } else if (entryType === 'donation') {
+        } 
+        
+        // --- Donation Processing ---
+        else if (entryType === 'donation') {
             const donationIntentRef = db.collection('stripe_donation_payment_intents').doc(paymentIntent.id);
             await donationIntentRef.update({
                 status: 'succeeded',
-                amountPaid: paymentIntent.amount / 100,
+                amountPaid: paymentIntent.amount / 100, // New field name
                 webhookProcessed: true,
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-                sourceApp: sourceApp || 'YDE Donation (Webhook)' // Use tag
+                sourceApp: sourceApp || 'YDE Donation (Webhook)' 
             });
-            console.log(`Successfully processed donation from ${name}.`);
         }
 
-        // Update the payment intent document in the relevant collection (or a new one for this purpose)
         await intentDocRef.update({
           status: 'succeeded',
           webhookProcessed: true,
@@ -381,16 +481,177 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
         res.status(500).send('Internal Server Error during webhook processing.');
       }
     } else {
-      console.log(`Received unhandled event type: ${event.type}`);
       res.status(200).send('Webhook event ignored (uninteresting type).');
     }
 });
 
+
+// --- ADMIN/REFERRER MANAGEMENT FUNCTIONS (NEW) ---
+
+/**
+ * Callable function to create a new referrer account.
+ * Requires Super Admin role.
+ */
+exports.createReferrer = functions.https.onCall(async (data, context) => {
+    if (!isSuperAdmin(context)) {
+        throw new functions.https.HttpsError('permission-denied', 'Only Super Admins can create new referrers.');
+    }
+    const { email, password, name, goal } = data;
+
+    if (!email || !password || !name) {
+        throw new functions.https.HttpsError('invalid-argument', 'Missing required fields.');
+    }
+
+    try {
+        const userRecord = await admin.auth().createUser({ email, password, displayName: name });
+        const uid = userRecord.uid;
+
+        // Set custom claims for referrer access
+        await admin.auth().setCustomUserClaims(uid, { referrer: true });
+
+        const refId = uid.substring(0, 6).toUpperCase(); 
+
+        await admin.firestore().collection('referrers').doc(uid).set({
+            name,
+            email,
+            refId,
+            goal: goal || 0, // Goal tracking
+            totalTickets: 0,
+            totalAmount: 0,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        return { success: true, message: `Referrer ${name} created successfully with Ref ID: ${refId}.` };
+    } catch (error) {
+        console.error('Error creating new referrer:', error);
+        throw new functions.https.HttpsError('internal', 'Failed to create referrer.', error.message);
+    }
+});
+
+/**
+ * Callable function to create a new Admin account (non-SuperAdmin, non-Referrer viewer).
+ * Requires Super Admin role.
+ */
+exports.createAdmin = functions.https.onCall(async (data, context) => {
+    if (!isSuperAdmin(context)) {
+        throw new functions.https.HttpsError('permission-denied', 'Only Super Admins can create new admins.');
+    }
+    const { email, password, name } = data;
+
+    if (!email || !password || !name) {
+        throw new functions.https.HttpsError('invalid-argument', 'Missing required fields.');
+    }
+
+    try {
+        const userRecord = await admin.auth().createUser({ email, password, displayName: name });
+        const uid = userRecord.uid;
+
+        // Set custom claims for general admin access (can view dashboard, run cleanup, etc.)
+        await admin.auth().setCustomUserClaims(uid, { admin: true });
+
+        return { success: true, message: `Admin ${name} created successfully.` };
+    } catch (error) {
+        console.error('Error creating new admin:', error);
+        throw new functions.https.HttpsError('internal', 'Failed to create admin.', error.message);
+    }
+});
+
+
+// --- DASHBOARD DATA FUNCTION (REPLACING getReferrerDashboardData) ---
+
+/**
+ * Callable function to get dashboard data based on user role.
+ * Requires Admin role.
+ */
+exports.getAdminDashboardData = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated.');
+    }
+
+    const uid = context.auth.uid;
+    const isSuperAdminUser = isSuperAdmin(context);
+    const isReferrerUser = context.auth.token.referrer === true;
+
+    if (!isAdmin(context)) {
+        throw new functions.https.HttpsError('permission-denied', 'User is not authorized as Admin, Super Admin, or Referrer.');
+    }
+
+    const db = admin.firestore();
+    let rolexEntries = [];
+    let raffleEntries = [];
+    let donationEntries = [];
+    let referrers = [];
+    let userData = {};
+
+    try {
+        // 1. Fetch User/Referrer Data (needed for referrer name, goal, and filtering)
+        if (isReferrerUser || isSuperAdminUser) {
+            const userDoc = await db.collection('referrers').doc(uid).get();
+            if (userDoc.exists) {
+                userData = { uid, ...userDoc.data() };
+            }
+        }
+        
+        // 2. Determine Query scope
+        let raffleQuery = db.collection('splitThePotTickets');
+        let rolexQuery = db.collection('rolex_tickets');
+        
+        // If a standard referrer, filter sales to only show their own
+        if (isReferrerUser && !isSuperAdminUser) {
+            const refId = userData.refId || 'INVALID_REF_ID';
+            // Filter by UIDs for raffle (more reliable)
+            raffleQuery = raffleQuery.where('referrerUid', '==', uid); 
+            // Filter by Ref ID for Rolex (stored as referrerRefId)
+            rolexQuery = rolexQuery.where('referrerRefId', '==', refId); 
+        }
+
+        // 3. Fetch Transaction Data
+        // Filter to only show 'paid' or 'claimed' entries for display, ignoring 'reserved'
+        const rolexSnapshot = await rolexQuery
+            .where('status', 'in', ['paid', 'claimed'])
+            .orderBy('timestamp', 'desc').get();
+            
+        const raffleSnapshot = await raffleQuery
+            .orderBy('timestamp', 'desc').get();
+
+        rolexEntries = rolexSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        raffleEntries = raffleSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        if (isSuperAdminUser) {
+            // Super Admin: Fetch all referrers and all donations
+            const referrerSnapshot = await db.collection('referrers').get();
+            referrers = referrerSnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
+
+            const donationSnapshot = await db.collection('stripe_donation_payment_intents')
+                                            .where('status', '==', 'succeeded')
+                                            .orderBy('createdAt', 'desc').get();
+            donationEntries = donationSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        }
+
+        return {
+            isSuperAdmin: isSuperAdminUser,
+            isReferrer: isReferrerUser,
+            userData: userData,
+            referrers: referrers,
+            rolexEntries: rolexEntries,
+            raffleEntries: raffleEntries,
+            donationEntries: donationEntries 
+        };
+
+    } catch (error) {
+        console.error("Error in getAdminDashboardData:", error);
+        throw new functions.https.HttpsError('internal', 'An internal error occurred while fetching dashboard data.', error.message);
+    }
+});
+
+
 /**
  * Firebase Callable Function to recalculate the global counters.
+ * Requires Super Admin role.
  */
 exports.recalculateRaffleTotals = functions.https.onCall(async (data, context) => {
-    if (!context.auth || !context.auth.token.superAdminReferrer) {
+    // UPDATED: Use isSuperAdmin check
+    if (!isSuperAdmin(context)) {
         throw new functions.https.HttpsError('permission-denied', 'You must be a super admin to run this function.');
     }
 
@@ -399,28 +660,31 @@ exports.recalculateRaffleTotals = functions.https.onCall(async (data, context) =
     let totalAmount = 0;
 
     try {
+        // NOTE: This recalculation uses the old field names ('Tickets', '$'). 
+        // For accurate recalculation based on the new structure, this block needs to be updated.
         const raffleEntriesSnapshot = await db.collection('splitThePotTickets').get();
         if (raffleEntriesSnapshot.empty) {
             console.log("No raffle entries found to recalculate totals.");
         } else {
             raffleEntriesSnapshot.forEach(doc => {
                 const entry = doc.data();
-                if (typeof entry.Tickets === 'number') {
-                    totalTickets += entry.Tickets;
+                // Assuming new structure for recalculation:
+                if (typeof entry.ticketCount === 'number') {
+                    totalTickets += entry.ticketCount;
                 }
-                if (typeof entry.$ === 'number') {
-                    totalAmount += entry.$;
+                // Assuming amount for pot (baseAmount) is stored in a separate field or can be calculated from amountPaid if needed.
+                // For simplicity here, we'll use amountPaid if baseAmount is not explicitly tracked in splitThePotTickets for the pot total.
+                if (typeof entry.amountPaid === 'number') {
+                    totalAmount += entry.amountPaid;
                 }
             });
         }
-
+        
         const raffleTotalsRef = db.collection('counters').doc('raffle_totals');
         await raffleTotalsRef.set({
             totalTickets: totalTickets,
-            totalAmount: totalAmount
+            totalAmount: totalAmount // Note: This should ideally be the amount going to the pot, not necessarily total revenue.
         }, { merge: true });
-
-        console.log(`Recalculated totals: Tickets=${totalTickets}, Amount=$${totalAmount}`);
 
         return {
             success: true,
@@ -434,264 +698,113 @@ exports.recalculateRaffleTotals = functions.https.onCall(async (data, context) =
 });
 
 /**
- * Callable function to get dashboard data for a referrer or super admin.
- * REVERTED to use Promise/corsHandler.
- * Added sourceApp to allRaffleEntries.
- * @type {functions.HttpsFunction}
- */
-exports.getReferrerDashboardData = functions.https.onCall(async (data, context) => {
-    // This function also uses the old pattern. It should be refactored like createStripePaymentIntent.
-    // I am leaving it as is to focus on the original problem.
-    return new Promise((resolve, reject) => {
-        // context.req and context.res are required when using corsHandler
-        corsHandler(context.req, context.res, async () => {
-            if (!context.auth) {
-                return reject(new functions.https.HttpsError('unauthenticated', 'User must be authenticated.'));
-            }
-
-            const db = admin.firestore();
-            const uid = context.auth.uid;
-            const tokenResult = await admin.auth().getUser(uid);
-            const isSuperAdmin = !!tokenResult.customClaims.superAdminReferrer;
-            const isReferrer = !!tokenResult.customClaims.referrer;
-
-            if (!isSuperAdmin && !isReferrer) {
-                return reject(new functions.https.HttpsError('permission-denied', 'User is not a referrer or super admin.'));
-            }
-
-            try {
-                const userDoc = await db.collection('referrers').doc(uid).get();
-                if (!userDoc.exists) {
-                    return reject(new functions.https.HttpsError('not-found', 'Referrer data not found.'));
-                }
-                const userData = userDoc.data();
-
-                if (isSuperAdmin) {
-                    const allReferrersSnapshot = await db.collection('referrers').get();
-                    const allReferrersSummary = [];
-                    for (const doc of allReferrersSnapshot.docs) {
-                        const referrerData = doc.data();
-                        const ticketsSold = referrerData.totalTickets || 0;
-                        const amountRaised = referrerData.totalAmount || 0;
-                        allReferrersSummary.push({
-                            name: referrerData.name,
-                            refId: referrerData.refId,
-                            totalTicketsSold: ticketsSold,
-                            totalAmountRaised: amountRaised,
-                            goal: referrerData.goal || 0
-                        });
-                    }
-
-                    const allRaffleEntriesSnapshot = await db.collection('splitThePotTickets').orderBy('timestamp', 'desc').get();
-                    const allRaffleEntries = allRaffleEntriesSnapshot.docs.map(doc => {
-                        const entry = doc.data();
-                        return {
-                            id: doc.id,
-                            name: entry.Name,
-                            email: entry.Email,
-                            phone: entry.Number,
-                            ticketsBought: entry.Tickets,
-                            referrerName: entry.referrerName || 'N/A',
-                            timestamp: entry.timestamp.toDate().toLocaleString(),
-                            amount: entry.$,
-                            sourceApp: entry.sourceApp || entry.entryType // Added sourceApp tag
-                        };
-                    });
-
-                    resolve({
-                        isSuperAdminReferrer: true,
-                        name: userData.name,
-                        allReferrersSummary,
-                        allRaffleEntries
-                    });
-                } else {
-                    const totalTicketsSold = userData.totalTickets || 0;
-                    const totalAmountRaised = userData.totalAmount || 0;
-                    const referralLink = `https://yderaffle.web.app/?ref=${userData.refId}`;
-
-                    const buyerDetailsSnapshot = await db.collection('splitThePotTickets')
-                        .where('refUid', '==', uid)
-                        .orderBy('timestamp', 'desc')
-                        .get();
-
-                    const buyerDetails = buyerDetailsSnapshot.docs.map(doc => {
-                        const entry = doc.data();
-                        return {
-                            id: doc.id,
-                            name: entry.Name,
-                            ticketsBought: entry.Tickets,
-                            timestamp: entry.timestamp.toDate().toLocaleString()
-                        };
-                    });
-
-                    resolve({
-                        isSuperAdminReferrer: false,
-                        name: userData.name,
-                        totalTicketsSold,
-                        totalAmountRaised,
-                        goal: userData.goal || 0,
-                        referralLink,
-                        buyerDetails
-                    });
-                }
-            } catch (error) {
-                console.error("Error in getReferrerDashboardData:", error);
-                reject(new functions.https.HttpsError('internal', 'An internal error occurred while fetching dashboard data.'));
-            }
-        });
-    });
-});
-
-/**
- * Callable function to create a new referrer.
- * REVERTED to use Promise/corsHandler.
- * @type {functions.HttpsFunction}
- */
-exports.createReferrer = functions.https.onCall(async (data, context) => {
-    // This function also uses the old pattern. It should be refactored like createStripePaymentIntent.
-    // I am leaving it as is to focus on the original problem.
-    return new Promise((resolve, reject) => {
-        // context.req and context.res are required when using corsHandler
-        corsHandler(context.req, context.res, async () => {
-            if (!context.auth || !context.auth.token.superAdminReferrer) {
-                return reject(new functions.https.HttpsError('permission-denied', 'You must be a super admin to create a new referrer.'));
-            }
-            const { email, password, name, goal } = data;
-
-            if (!email || !password || !name) {
-                return reject(new functions.https.HttpsError('invalid-argument', 'Missing required fields.'));
-            }
-
-            try {
-                const userRecord = await admin.auth().createUser({ email, password, displayName: name });
-                const uid = userRecord.uid;
-
-                await admin.auth().setCustomUserClaims(uid, { referrer: true });
-
-                const refId = uid.substring(0, 6);
-
-                await admin.firestore().collection('referrers').doc(uid).set({
-                    name,
-                    email,
-                    refId,
-                    goal: goal || 0,
-                    totalTickets: 0,
-                    totalAmount: 0,
-                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                });
-
-                console.log(`Successfully created new referrer user: ${uid} with refId: ${refId}`);
-                resolve({ success: true, message: `Referrer ${name} created successfully.` });
-            } catch (error) {
-                console.error('Error creating new referrer:', error);
-                reject(new functions.https.HttpsError('internal', 'Failed to create referrer.', error.message));
-            }
-        });
-    });
-});
-
-
-/**
  * Callable function to add a manual raffle entry.
- * REVERTED to use Promise/corsHandler.
- * Added sourceApp tag.
- * @type {functions.HttpsFunction}
+ * UPDATED: Uses new security checks and new data field names.
  */
 exports.addManualSale = functions.https.onCall(async (data, context) => {
-    const SOURCE_APP_TAG = 'YDE Manual Sale'; // Added tag
+    const SOURCE_APP_TAG = 'YDE Manual Sale'; 
 
-    // This function also uses the old pattern. It should be refactored like createStripePaymentIntent.
-    // I am leaving it as is to focus on the original problem.
-    return new Promise((resolve, reject) => {
-        // context.req and context.res are required when using corsHandler
-        corsHandler(context.req, context.res, async () => {
-            if (!context.auth || (!context.auth.token.superAdminReferrer && !context.auth.token.referrer)) {
-                return reject(new functions.https.HttpsError('permission-denied', 'You must be a referrer or super admin to add a manual entry.'));
-            }
+    if (!isAdmin(context)) {
+        throw new functions.https.HttpsError('permission-denied', 'You must be an admin to add a manual entry.');
+    }
 
-            const { name, email, phone, ticketsBought, amount, refId } = data;
-            if (!name || !ticketsBought || !amount) {
-                return reject(new functions.https.HttpsError('invalid-argument', 'Missing required fields.'));
-            }
+    const { name, email, phone, ticketsBought, amount, refId } = data;
+    if (!name || !ticketsBought || !amount) {
+        throw new functions.https.HttpsError('invalid-argument', 'Missing required fields.');
+    }
 
-            const db = admin.firestore();
-            const tickets = parseInt(ticketsBought, 10);
-            const numericAmount = parseFloat(amount);
+    const db = admin.firestore();
+    const ticketCount = parseInt(ticketsBought, 10);
+    const amountPaid = parseFloat(amount);
+    const firstName = name.split(' ')[0] || name;
 
-            let referrerUid = null;
-            let referrerName = "N/A";
-            if (refId) {
-                const referrerQuerySnapshot = await db.collection('referrers')
-                    .where('refId', '==', refId)
-                    .limit(1)
-                    .get();
+    let referrerUid = null;
+    let referrerName = "N/A";
+    let actualRefId = refId;
+    
+    // Logic to determine who the sale is credited to
+    if (actualRefId) {
+        // If refId is provided in the call, find the corresponding referrer
+        const referrerQuerySnapshot = await db.collection('referrers')
+            .where('refId', '==', actualRefId)
+            .limit(1)
+            .get();
 
-                if (!referrerQuerySnapshot.empty) {
-                    referrerUid = referrerQuerySnapshot.docs[0].id;
-                    referrerName = referrerQuerySnapshot.docs[0].data().name;
-                }
-            } else if (context.auth.token.referrer) {
-                referrerUid = context.auth.uid;
-                referrerName = context.auth.token.name;
-            }
+        if (!referrerQuerySnapshot.empty) {
+            referrerUid = referrerQuerySnapshot.docs[0].id;
+            referrerName = referrerQuerySnapshot.docs[0].data().name;
+        }
+    } else if (context.auth.token.referrer) {
+        // If no refId provided, but the caller is a referrer, credit them
+        referrerUid = context.auth.uid;
+        // Need to fetch referrer name/refId from the 'referrers' collection 
+        const callerDoc = await db.collection('referrers').doc(referrerUid).get();
+        if (callerDoc.exists) {
+            referrerName = callerDoc.data().name;
+            actualRefId = callerDoc.data().refId;
+        }
+    }
 
-            const newEntry = {
-                Name: name,
-                Email: email || null,
-                Number: phone || null,
-                Tickets: tickets,
-                $: numericAmount,
-                Method: "Manual",
-                refId: refId || null,
-                refUid: referrerUid || null,
-                referrerName: referrerName,
-                timestamp: admin.firestore.FieldValue.serverTimestamp(),
-                entryType: "manual",
-                sourceApp: SOURCE_APP_TAG // Added tag
-            };
 
-            try {
-                await db.collection('splitThePotTickets').add(newEntry);
-                await db.collection('raffle_entries').add(newEntry);
+    const newEntry = {
+        firstName: firstName, // New field
+        email: email || null,
+        phoneNumber: phone || null, // New field name
+        ticketCount: ticketCount, // New field name
+        amountPaid: amountPaid, // New field name
+        paymentMethod: "Manual",
+        referrerRefId: actualRefId || null,
+        referrerUid: referrerUid || null,
+        referrerName: referrerName,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        entryType: "manual",
+        sourceApp: SOURCE_APP_TAG 
+    };
 
-                const raffleTotalsRef = db.collection('counters').doc('raffle_totals');
-                await raffleTotalsRef.set({
-                    totalTickets: admin.firestore.FieldValue.increment(tickets),
-                    totalAmount: admin.firestore.FieldValue.increment(numericAmount)
-                }, { merge: true });
+    try {
+        await db.collection('splitThePotTickets').add(newEntry);
 
-                if (referrerUid) {
-                    const referrerRef = db.collection('referrers').doc(referrerUid);
-                    await referrerRef.set({
-                        totalTickets: admin.firestore.FieldValue.increment(tickets),
-                        totalAmount: admin.firestore.FieldValue.increment(numericAmount)
-                    }, { merge: true });
-                }
+        // Update overall raffle totals (using new field names)
+        const raffleTotalsRef = db.collection('counters').doc('raffle_totals');
+        await raffleTotalsRef.set({
+            totalTickets: admin.firestore.FieldValue.increment(ticketCount),
+            totalAmount: admin.firestore.FieldValue.increment(amountPaid)
+        }, { merge: true });
 
-                resolve({ success: true, message: "Manual entry added successfully." });
-            } catch (error) {
-                console.error("Error adding manual sale:", error);
-                reject(new functions.https.HttpsError('internal', 'An internal error occurred.', error.message));
-            }
-        });
-    });
+        // Update referrer stats
+        if (referrerUid) {
+            const referrerRef = db.collection('referrers').doc(referrerUid);
+            await referrerRef.set({
+                totalTickets: admin.firestore.FieldValue.increment(ticketCount),
+                totalAmount: admin.firestore.FieldValue.increment(amountPaid)
+            }, { merge: true });
+        }
+
+        return { success: true, message: "Manual entry added successfully." };
+    } catch (error) {
+        console.error("Error adding manual sale:", error);
+        throw new functions.https.HttpsError('internal', 'An internal error occurred.', error.message);
+    }
 });
 
 
 /**
  * Callable function to update a raffle entry.
- * REVERTED to use Promise/corsHandler.
- * @type {functions.HttpsFunction}
+ * Requires Super Admin role.
  */
 exports.updateRaffleEntry = functions.https.onCall(async (data, context) => {
-    // This function also uses the old pattern. It should be refactored like createStripePaymentIntent.
-    // I am leaving it as is to focus on the original problem.
+    // UPDATED: Use isSuperAdmin check
+    if (!isSuperAdmin(context)) {
+        throw new functions.https.HttpsError('permission-denied', 'You must be a super admin to update entries.');
+    }
+    
+    // Implementation uses old security helper, wrapping in corsHandler for compatibility.
     return new Promise((resolve, reject) => {
-        // context.req and context.res are required when using corsHandler
         corsHandler(context.req, context.res, async () => {
-            if (!context.auth || !context.auth.token.superAdminReferrer) {
+            if (!isSuperAdmin(context)) {
                 return reject(new functions.https.HttpsError('permission-denied', 'You must be a super admin to update entries.'));
             }
+            
             const { entryId, updatedData } = data;
             const db = admin.firestore();
 
@@ -702,22 +815,24 @@ exports.updateRaffleEntry = functions.https.onCall(async (data, context) => {
                     return reject(new functions.https.HttpsError('not-found', 'Entry not found.'));
                 }
 
+                // NOTE: This original code uses old field names ('Tickets', '$'). 
+                // Updating to use new field names ('ticketCount', 'amountPaid').
                 const originalData = docSnapshot.data();
-                const originalTickets = originalData.Tickets;
-                const originalAmount = originalData.$;
+                const originalTickets = originalData.ticketCount || 0;
+                const originalAmount = originalData.amountPaid || 0;
 
-                const updatedTickets = updatedData.ticketsBought;
-                const updatedAmount = updatedData.amount;
+                const updatedTickets = updatedData.ticketCount;
+                const updatedAmount = updatedData.amountPaid;
 
                 const ticketDiff = updatedTickets - originalTickets;
                 const amountDiff = updatedAmount - originalAmount;
 
                 await docRef.update({
-                    Name: updatedData.name,
-                    Email: updatedData.email,
-                    Number: updatedData.phone,
-                    Tickets: updatedTickets,
-                    $: updatedAmount,
+                    firstName: updatedData.firstName,
+                    email: updatedData.email,
+                    phoneNumber: updatedData.phoneNumber,
+                    ticketCount: updatedTickets,
+                    amountPaid: updatedAmount,
                 });
 
                 const raffleTotalsRef = db.collection('counters').doc('raffle_totals');
@@ -726,8 +841,8 @@ exports.updateRaffleEntry = functions.https.onCall(async (data, context) => {
                     totalAmount: admin.firestore.FieldValue.increment(amountDiff)
                 }, { merge: true });
 
-                if (originalData.refUid) {
-                    const referrerRef = db.collection('referrers').doc(originalData.refUid);
+                if (originalData.referrerUid) {
+                    const referrerRef = db.collection('referrers').doc(originalData.referrerUid);
                     await referrerRef.set({
                         totalTickets: admin.firestore.FieldValue.increment(ticketDiff),
                         totalAmount: admin.firestore.FieldValue.increment(amountDiff)
@@ -746,18 +861,21 @@ exports.updateRaffleEntry = functions.https.onCall(async (data, context) => {
 
 /**
  * Callable function to delete a raffle entry.
- * REVERTED to use Promise/corsHandler.
- * @type {functions.HttpsFunction}
+ * Requires Super Admin role.
  */
 exports.deleteRaffleEntry = functions.https.onCall(async (data, context) => {
-    // This function also uses the old pattern. It should be refactored like createStripePaymentIntent.
-    // I am leaving it as is to focus on the original problem.
+    // UPDATED: Use isSuperAdmin check
+    if (!isSuperAdmin(context)) {
+        throw new functions.https.HttpsError('permission-denied', 'You must be a super admin to delete entries.');
+    }
+    
+    // Implementation uses old security helper, wrapping in corsHandler for compatibility.
     return new Promise((resolve, reject) => {
-        // context.req and context.res are required when using corsHandler
         corsHandler(context.req, context.res, async () => {
-            if (!context.auth || !context.auth.token.superAdminReferrer) {
+            if (!isSuperAdmin(context)) {
                 return reject(new functions.https.HttpsError('permission-denied', 'You must be a super admin to delete entries.'));
             }
+            
             const { entryId } = data;
             const db = admin.firestore();
 
@@ -768,10 +886,12 @@ exports.deleteRaffleEntry = functions.https.onCall(async (data, context) => {
                     return reject(new functions.https.HttpsError('not-found', 'Entry not found.'));
                 }
 
+                // NOTE: This original code uses old field names ('Tickets', '$'). 
+                // Updating to use new field names ('ticketCount', 'amountPaid').
                 const entryData = docSnapshot.data();
-                const tickets = entryData.Tickets;
-                const amount = entryData.$;
-                const referrerUid = entryData.refUid;
+                const tickets = entryData.ticketCount || 0;
+                const amount = entryData.amountPaid || 0;
+                const referrerUid = entryData.referrerUid;
 
                 await docRef.delete();
 
@@ -800,17 +920,11 @@ exports.deleteRaffleEntry = functions.https.onCall(async (data, context) => {
 
 /**
  * Callable function to claim a free spin-to-win ticket.
- * REVERTED to use Promise/corsHandler.
- * Added sourceApp tag.
- * @type {functions.HttpsFunction}
  */
 exports.claimSpinTicket = functions.https.onCall(async (data, context) => {
-    const SOURCE_APP_TAG = 'YDE Free Spin Claim'; // Added tag
+    const SOURCE_APP_TAG = 'YDE Free Spin Claim'; 
 
-    // This function also uses the old pattern. It should be refactored like createStripePaymentIntent.
-    // I am leaving it as is to focus on the original problem.
     return new Promise((resolve, reject) => {
-        // context.req and context.res are required when using corsHandler
         corsHandler(context.req, context.res, async () => {
             const { name } = data;
             const TOTAL_TICKETS = 650;
@@ -823,7 +937,6 @@ exports.claimSpinTicket = functions.https.onCall(async (data, context) => {
             let ticketNumber;
             let foundUniqueTicket = false;
 
-            // Loop to find a unique ticket number
             for (let i = 0; i < TOTAL_TICKETS * 2; i++) {
                 const randomTicket = Math.floor(Math.random() * TOTAL_TICKETS) + 1;
                 const ticketRef = db.collection('rolex_tickets').doc(randomTicket.toString());
@@ -834,9 +947,9 @@ exports.claimSpinTicket = functions.https.onCall(async (data, context) => {
                         if (!docSnapshot.exists) {
                             transaction.set(ticketRef, {
                                 status: 'claimed',
-                                timestamp: admin.firestore.FieldValue.serverTimestamp(), // Added timestamp for consistency
+                                timestamp: admin.firestore.FieldValue.serverTimestamp(),
                                 name: name,
-                                sourceApp: SOURCE_APP_TAG // Added tag
+                                sourceApp: SOURCE_APP_TAG 
                             });
                             foundUniqueTicket = true;
                             return docSnapshot;

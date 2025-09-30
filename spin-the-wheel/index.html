@@ -101,6 +101,11 @@
         .modal-content.is-active {
             transform: scale(1);
         }
+
+        /* Prize Modal Overrides */
+        #prize-modal {
+            z-index: 110; /* Higher than the spin modal */
+        }
     </style>
 </head>
 <body class="text-white min-h-screen flex flex-col">
@@ -164,21 +169,47 @@
                     You might pay as little as $1 and win a Rolex!
                 </p>
 
-                <!-- Prize Display Section -->
+                <!-- Prize Display Section (Updated) -->
                 <div class="mb-12">
                     <h2 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4">Prizes </h2>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        <div class="bg-slate-700/60 p-6 rounded-xl shadow-lg">
-                            <h3 class="bebas-neue text-2xl font-bold text-white mb-2">Rolex</h3>
-                            <p class="text-gray-300">Prize 1</p>
+                        <!-- Prize Card 1: Rolex Datejust (White Gold Fluted) -->
+                        <div class="prize-card bg-slate-700/60 p-6 rounded-xl shadow-lg transform transition duration-300 hover:scale-[1.02] cursor-pointer"
+                            data-name="Rolex Datejust 41 (White Gold Fluted)"
+                            data-desc="Elegant Rolex Datejust, 41mm, featuring a classic white gold fluted bezel, Jubilee bracelet, and a sleek grey dial. A timeless piece of luxury."
+                            data-img="https://media.rolex.com/image/upload/q_auto:eco/f_auto/t_v7-majesty/c_limit,w_1600/v1/catalogue/2025/upright-c/m126334-0026"
+                            onclick="showPrizeModal(this)">
+                            <h3 class="bebas-neue text-2xl text-yellow-400 mb-4">Rolex Datejust 41</h3>
+                            <img src="https://media.rolex.com/image/upload/q_auto:eco/f_auto/t_v7-majesty/c_limit,w_600/v1/catalogue/2025/upright-c/m126334-0026" 
+                                onerror="this.onerror=null; this.src='https://placehold.co/400x300/1e293b/fde047?text=Rolex+1'"
+                                alt="Rolex Datejust White Gold Fluted" class="w-full h-auto rounded-lg mb-4 object-contain max-h-48">
+                            <p class="text-gray-300 text-sm">Fluted bezel, Jubilee bracelet.</p>
                         </div>
-                        <div class="bg-slate-700/60 p-6 rounded-xl shadow-lg">
-                            <h3 class="bebas-neue text-2xl font-bold text-white mb-2">Rolex</h3>
-                            <p class="text-gray-300">Prize 2</p>
+
+                        <!-- Prize Card 2: Rolex Datejust (Oystersteel) -->
+                        <div class="prize-card bg-slate-700/60 p-6 rounded-xl shadow-lg transform transition duration-300 hover:scale-[1.02] cursor-pointer"
+                            data-name="Rolex Datejust 41 (Oystersteel)"
+                            data-desc="A classic, fully Oystersteel Rolex Datejust 41 with a smooth bezel and an Oyster bracelet. Known for its durability and versatility."
+                            data-img="https://media.rolex.com/image/upload/q_auto:eco/f_auto/t_v7-majesty/c_limit,w_1600/v1/catalogue/2025/upright-c/m126300-0002"
+                            onclick="showPrizeModal(this)">
+                            <h3 class="bebas-neue text-2xl text-yellow-400 mb-4">Rolex Datejust 41</h3>
+                            <img src="https://media.rolex.com/image/upload/q_auto:eco/f_auto/t_v7-majesty/c_limit,w_600/v1/catalogue/2025/upright-c/m126300-0002" 
+                                onerror="this.onerror=null; this.src='https://placehold.co/400x300/1e293b/fde047?text=Rolex+2'"
+                                alt="Rolex Datejust Oystersteel" class="w-full h-auto rounded-lg mb-4 object-contain max-h-48">
+                            <p class="text-gray-300 text-sm">Smooth bezel, Oyster bracelet.</p>
                         </div>
-                        <div class="bg-slate-700/60 p-6 rounded-xl shadow-lg">
-                            <h3 class="bebas-neue text-2xl font-bold text-white mb-2">$15k Cash </h3>
-                            <p class="text-gray-300">Prize 3</p>
+
+                        <!-- Prize Card 3: Breitling Chronomat / $15k Cash -->
+                        <div class="prize-card bg-slate-700/60 p-6 rounded-xl shadow-lg transform transition duration-300 hover:scale-[1.02] cursor-pointer"
+                            data-name="Choice of Breitling Chronomat"
+                            data-desc="Win your choice of the iconic Breitling Chronomat B01 42 (known for its technical excellence)"
+                            data-img="https://www.breitling.com/api/image-proxy/www-breitling.eu.saleor.cloud/media/thumbnails/products/ab0156161c1a1-soldier_31cb0756_thumbnail_1024.webp?imwidth=1920&format=auto"
+                            onclick="showPrizeModal(this)">
+                            <h3 class="bebas-neue text-2xl font-bold text-yellow-400 mb-2">Breitling</h3>
+                            <img src="https://www.breitling.com/api/image-proxy/www-breitling.eu.saleor.cloud/media/thumbnails/products/ab0156161c1a1-soldier_31cb0756_thumbnail_1024.webp?imwidth=600&format=auto" 
+                                onerror="this.onerror=null; this.src='https://placehold.co/400x300/1e293b/fde047?text=Breitling'"
+                                alt="Breitling Chronomat" class="w-full h-auto rounded-lg mb-4 object-contain max-h-48">
+                            <p class="text-gray-300 text-sm">Watch</p>
                         </div>
                     </div>
                 </div>
@@ -248,6 +279,43 @@
 
     </main>
     
+    <!-- Prize Modal Structure (Ported from previous file) -->
+    <div id="prize-modal" class="fixed inset-0 bg-black bg-opacity-75 hidden items-center justify-center z-[110] p-4 transition-opacity duration-300 opacity-0" 
+         onclick="hidePrizeModal(event)">
+        <div class="bg-slate-950 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto transform transition-all duration-300 scale-95" 
+             id="modal-content-container" onclick="event.stopPropagation()">
+            
+            <!-- Modal Header -->
+            <div class="flex justify-between items-center p-6 border-b border-slate-800">
+                <h3 id="modal-title" class="bebas-neue text-3xl text-yellow-400">Prize Details</h3>
+                <button onclick="hidePrizeModal()" class="text-gray-400 hover:text-white transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-8 h-8">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="p-6 md:flex md:space-x-6">
+                <!-- Image Container -->
+                <div class="md:w-1/2 flex items-center justify-center mb-6 md:mb-0">
+                    <img id="modal-image" src="" alt="Prize Image" class="w-full h-auto max-h-96 object-contain rounded-lg shadow-xl">
+                </div>
+                
+                <!-- Description Container -->
+                <div class="md:w-1/2 text-left">
+                    <p id="modal-description" class="text-gray-300 text-lg leading-relaxed mb-6">
+                        Detailed description of the prize will appear here.
+                    </p>
+                    <button onclick="hidePrizeModal();" class="inline-block py-3 px-6 rounded-full bg-yellow-400 text-slate-950 font-bold hover:bg-yellow-500 transition-colors duration-300">
+                        Close & Spin
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- End Prize Modal Structure -->
+    
     <footer class="bg-black/40 py-8 mt-auto shadow-[0_-5px_15px_rgba(0,0,0,0.5)]">
         <div class="container mx-auto px-4 text-center">
             <h3 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4">Contact</h3>
@@ -285,6 +353,55 @@
             const urlParams = new URLSearchParams(window.location.search);
             return urlParams.get(param);
         }
+
+        // --- Modal Functions (PORTED) ---
+        function showPrizeModal(element) {
+            const name = element.getAttribute('data-name');
+            const desc = element.getAttribute('data-desc');
+            const img = element.getAttribute('data-img');
+
+            const modal = document.getElementById('prize-modal');
+            const modalContent = document.getElementById('modal-content-container');
+            
+            document.getElementById('modal-title').textContent = name;
+            document.getElementById('modal-description').textContent = desc;
+            document.getElementById('modal-image').src = img;
+            document.getElementById('modal-image').alt = name;
+
+            // Show modal and apply transition classes
+            modal.classList.remove('hidden');
+            modal.classList.add('flex'); // Use flex to center
+            
+            // Trigger transition effects after a short delay
+            setTimeout(() => {
+                modal.style.opacity = '1';
+                modalContent.classList.remove('scale-95');
+                modalContent.classList.add('scale-100');
+            }, 10); // Small delay for transition
+        }
+
+        function hidePrizeModal(event) {
+            // Only hide if the click was directly on the overlay or the close button
+            if (event && event.currentTarget.id !== 'prize-modal' && event.type === 'click') {
+                return;
+            }
+            
+            const modal = document.getElementById('prize-modal');
+            const modalContent = document.getElementById('modal-content-container');
+            
+            // Apply transition out classes
+            modalContent.classList.remove('scale-100');
+            modalContent.classList.add('scale-95');
+            modal.style.opacity = '0';
+            
+            // Hide modal after transition completes
+            setTimeout(() => {
+                modal.classList.remove('flex');
+                modal.classList.add('hidden');
+            }, 300); // Wait for transition duration (300ms)
+        }
+        // --- End Modal Functions ---
+
 
         document.addEventListener('DOMContentLoaded', () => {
             // --- UI Elements ---
@@ -329,7 +446,7 @@
             }
 
             // --- Stripe & Firebase Initialization ---
-            const stripe = Stripe('pk_test_51RZEPeCMmspEQNuYXLdVBGpSSPewOBaH5d4eSIwrSDBeEsW9pBh7WAyDwFn8IzNyrYIY2SuV3pDXiNTmvJnr7YpC00JPzJh1lP');
+            const stripe = Stripe('pk_live_51JFiZnKhiMP0wjNsMlHMg2o7Eo6xaWczALlQ0eu0GVpnWel1Pgz1AbUVXUJGs2pFaavhaln5jKpHSrRhxrBppBDq00Hijyiu4V');
 
             const firebaseConfig = {
               apiKey: "AIzaSyAT539nr_s2OxHPTAmkxwMpaWt-FiDTgQs",

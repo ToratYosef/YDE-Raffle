@@ -9,9 +9,9 @@ admin.initializeApp({
 });
 
 // --- Configuration for the First SuperAdmin ---
-const SUPER_ADMIN_EMAIL = 'superadmin@ydefund.com';
-const SUPER_ADMIN_PASSWORD = 'YdeSeniorTest'; 
-const SUPER_ADMIN_NAME = 'Super Admin';
+const SUPER_ADMIN_EMAIL = 'saul@ydeseniors.com';
+const SUPER_ADMIN_PASSWORD = 'SaulSetton1708!'; 
+const SUPER_ADMIN_NAME = 'Saul Setton'; // Optional: Name for the Super Admin
 
 /**
  * Creates a new Firebase user and assigns them the 'superAdmin' custom claim.
@@ -35,7 +35,7 @@ async function createSuperAdmin() {
         await admin.auth().setCustomUserClaims(uid, { superAdmin: true, admin: true });
         
         // Optional: Create a referrer entry for the Super Admin as well, using a custom Ref ID
-        const refId = 'ADMIN0';
+        const refId = 'SaulS';
         await admin.firestore().collection('referrers').doc(uid).set({
             name: SUPER_ADMIN_NAME,
             email: SUPER_ADMIN_EMAIL,

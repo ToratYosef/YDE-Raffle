@@ -106,6 +106,43 @@
         #prize-modal {
             z-index: 110; /* Higher than the spin modal */
         }
+
+        /* --- STATIC SCOREBOARD STYLES (NEW) --- */
+        .digit-box {
+            /* The dimensions remain the same for the visual style */
+            width: 60px;
+            height: 90px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+            background-color: #1e293b; /* Slate-800 equivalent */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative; /* Needed for z-index context if we ever add transition */
+        }
+        @media (min-width: 768px) {
+            .digit-box {
+                width: 80px;
+                height: 120px;
+            }
+        }
+        
+        .digit-text {
+            color: #fde047; /* Yellow-400 */
+            font-size: 5rem;
+            line-height: 1; 
+            font-family: 'Bebas Neue', sans-serif;
+            text-align: center;
+            /* Fine-tune vertical alignment for the Bebas Neue font */
+            transform: translateY(10%); 
+        }
+        @media (min-width: 768px) {
+            .digit-text {
+                font-size: 7rem;
+            }
+        }
+        /* --- END STATIC SCOREBOARD STYLES --- */
     </style>
 </head>
 <body class="text-white min-h-screen flex flex-col">
@@ -128,7 +165,7 @@
     <!-- Spinning Wheel Modal -->
     <div id="spinModal" class="modal-overlay hidden">
         <div class="modal-content">
-            <h2 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4">Spinning... </h2>
+            <h2 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4">Spinning... </h2>
             <div class="bg-slate-700/60 w-64 h-64 mx-auto flex items-center justify-center rounded-full shadow-lg border-4 border-yellow-400/20 mb-8">
                 <!-- Class handled in JS now: when spinning, adds 'flashing-text'; when revealing, adds 'result-blink-red' -->
                 <p id="modalFlashingNumber" class="bebas-neue text-8xl font-bold text-white"></p> 
@@ -171,7 +208,7 @@
 
                 <!-- Prize Display Section (Updated) -->
                 <div class="mb-12">
-                    <h2 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4">Prizes </h2>
+                    <h2 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4">Prizes </h2>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                         <!-- Prize Card 1: Rolex Datejust (White Gold Fluted) -->
                         <div class="prize-card bg-slate-700/60 p-6 rounded-xl shadow-lg transform transition duration-300 hover:scale-[1.02] cursor-pointer"
@@ -201,30 +238,37 @@
 
                         <!-- Prize Card 3: Breitling Chronomat / $15k Cash -->
                         <div class="prize-card bg-slate-700/60 p-6 rounded-xl shadow-lg transform transition duration-300 hover:scale-[1.02] cursor-pointer"
-                            data-name="Choice of Breitling Chronomat"
-                            data-desc="Win your choice of the iconic Breitling Chronomat B01 42 (known for its technical excellence)"
+                            data-name="Breitling Chronomat B01 42 or $15,000 Cash"
+                            data-desc="Win your choice of the iconic Breitling Chronomat B01 42 (known for its technical excellence and industrial design) or a **$15,000 cash equivalent prize**."
                             data-img="https://www.breitling.com/api/image-proxy/www-breitling.eu.saleor.cloud/media/thumbnails/products/ab0156161c1a1-soldier_31cb0756_thumbnail_1024.webp?imwidth=1920&format=auto"
                             onclick="showPrizeModal(this)">
-                            <h3 class="bebas-neue text-2xl font-bold text-yellow-400 mb-2">Breitling</h3>
+                            <h3 class="bebas-neue text-2xl font-bold text-yellow-400 mb-2">Breitling or $15K</h3>
                             <img src="https://www.breitling.com/api/image-proxy/www-breitling.eu.saleor.cloud/media/thumbnails/products/ab0156161c1a1-soldier_31cb0756_thumbnail_1024.webp?imwidth=600&format=auto" 
                                 onerror="this.onerror=null; this.src='https://placehold.co/400x300/1e293b/fde047?text=Breitling'"
                                 alt="Breitling Chronomat" class="w-full h-auto rounded-lg mb-4 object-contain max-h-48">
-                            <p class="text-gray-300 text-sm">Watch</p>
+                            <p class="text-gray-300 text-sm">Watch or Cash Option</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Live Counter -->
+                <!-- Live Counter (STATIC SCOREBOARD STRUCTURE) -->
                 <div class="mb-12">
-                    <h2 class="bebas-neue text-3xl font-bold text-yellow-400 mb-2">Tickets Left</h2>
-                    <div class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold bebas-neue text-white">
-                        <span id="ticketsLeftCounter">0</span>
+                    <h2 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4">Tickets Left</h2>
+                    <!-- Scoreboard Container -->
+                    <div id="ticketsLeftDisplay" class="flex justify-center space-x-2 md:space-x-3 lg:space-x-4">
+                        <!-- Digit 1 (Hundreds) -->
+                        <div id="digit-hundreds" class="digit-box"></div>
+                        <!-- Digit 2 (Tens) -->
+                        <div id="digit-tens" class="digit-box"></div>
+                        <!-- Digit 3 (Ones) -->
+                        <div id="digit-ones" class="digit-box"></div>
                     </div>
                 </div>
+                <!-- End Live Counter -->
 
                 <!-- How it Works Section -->
                 <div class="mb-12">
-                    <h2 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4">How It Works </h2>
+                    <h2 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4">How It Works </h2>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                         <div class="bg-slate-700/60 p-6 rounded-xl shadow-lg">
                             <p class="bebas-neue text-4xl text-yellow-400 mb-2">1</p>
@@ -257,7 +301,7 @@
                         <div>
                             <input type="tel" id="spin-phone" name="phone" placeholder="Phone Number" class="w-full py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300" required>
                         </div>
-                     
+                    
                         <button id="spin-proceed-to-payment" class="w-full py-3 rounded-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold transition-colors duration-300 relative overflow-hidden">
                             <span class="button-text">Proceed to Payment</span>
                             <div class="button-spinner absolute inset-0 m-auto w-8 h-8 border-4 border-t-4 border-black border-opacity-20 rounded-full hidden"></div>
@@ -413,7 +457,11 @@
             const spinPhoneInput = document.getElementById('spin-phone');
             const spinStripePaymentElement = document.getElementById('spin-stripe-payment-element');
             const spinPaymentElementContainer = document.getElementById('spin-payment-element-container');
-            const ticketsLeftCounter = document.getElementById('ticketsLeftCounter');
+            
+            // Flip Clock Digit IDs (reused for static display)
+            const digitHundredsId = 'digit-hundreds';
+            const digitTensId = 'digit-tens';
+            const digitOnesId = 'digit-ones';
 
             // Common UI Elements
             const globalLoadingOverlay = document.getElementById('globalLoadingOverlay');
@@ -482,6 +530,35 @@
             function hideGlobalLoadingOverlay() {
                 globalLoadingOverlay.classList.add('hidden');
             }
+
+            // --- NEW STATIC SCOREBOARD LOGIC ---
+
+            // Function to set the static digits
+            function updateScoreboardDisplay(newCount) {
+                // Ensure the count is always three digits (000 to 650)
+                const normalizedCount = Math.max(0, Math.min(TOTAL_ROLEX_TICKETS, newCount));
+                const countString = normalizedCount.toString().padStart(3, '0');
+                const digits = countString.split('');
+
+                // Update the text content of the three digit boxes
+                document.getElementById(digitHundredsId).textContent = digits[0];
+                document.getElementById(digitTensId).textContent = digits[1];
+                document.getElementById(digitOnesId).textContent = digits[2];
+            }
+            
+            // Function to initialize the scoreboard look and initial count
+            function initializeScoreboard() {
+                const digitIds = [digitHundredsId, digitTensId, digitOnesId];
+                digitIds.forEach(id => {
+                    const unit = document.getElementById(id);
+                    // Add the text styling to the unit itself
+                    unit.classList.add('digit-text');
+                });
+                // Set initial count to 650
+                updateScoreboardDisplay(TOTAL_ROLEX_TICKETS);
+            }
+            // --- END NEW STATIC SCOREBOARD LOGIC ---
+
             
             // --- Spin to Win Logic ---
 
@@ -554,6 +631,9 @@
                 mainMenu.classList.toggle('hidden'); 
                 document.body.classList.toggle('overflow-hidden');
             });
+
+            // Initialize the scoreboard
+            initializeScoreboard();
             
             spinProceedToPaymentButton.addEventListener('click', async () => {
                 // Perform robust client-side validation
@@ -647,11 +727,22 @@
             auth.onAuthStateChanged(async (user) => {
                 if (user) {
                     console.log('User signed in with UID:', user.uid);
-                    // Ensure to use the correct collection path based on your security rules.
+                    
                     db.collection('rolex_tickets').onSnapshot((querySnapshot) => { 
-                        const ticketsSold = querySnapshot.size;
-                        const ticketsLeft = TOTAL_ROLEX_TICKETS - ticketsSold;
-                        ticketsLeftCounter.textContent = ticketsLeft;
+                        let paidOrClaimedCount = 0;
+                        querySnapshot.forEach(doc => {
+                            const ticket = doc.data();
+                            // Only count paid or claimed tickets
+                            if (ticket.status === 'paid' || ticket.status === 'claimed') {
+                                paidOrClaimedCount++;
+                            }
+                        });
+
+                        const ticketsLeft = TOTAL_ROLEX_TICKETS - paidOrClaimedCount;
+                        
+                        // Update the visual display using the simple scoreboard function
+                        updateScoreboardDisplay(ticketsLeft);
+
                     }, (error) => { console.error("Error listening to tickets:", error); });
                 } else {
                     try {

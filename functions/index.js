@@ -15,6 +15,47 @@ const corsHandler = cors({
   ],
 });
 
+/**
+ * NEW: Scheduled function to remove reserved Rolex tickets older than 10 minutes.
+ * Runs every 5 minutes to clean up stale reservations.
+ */
+exports.cleanupReservedTickets = functions.pubsub.schedule('every 5 minutes').onRun(async (context) => {
+    const db = admin.firestore();
+    // 10 minutes in milliseconds
+    const tenMinutesInMs = 10 * 60 * 1000; 
+    const tenMinutesAgo = new Date(Date.now() - tenMinutesInMs); 
+
+    console.log(`Starting cleanup of reserved tickets older than: ${tenMinutesAgo.toISOString()}`);
+
+    try {
+        // Find tickets that are 'reserved' AND were reserved before 10 minutes ago
+        const reservedTicketsSnapshot = await db.collection('rolex_tickets')
+            .where('status', '==', 'reserved')
+            // Firestore must be queried by the timestamp field, which is set as serverTimestamp()
+            .where('timestamp', '<', tenMinutesAgo) 
+            .get();
+
+        if (reservedTicketsSnapshot.empty) {
+            console.log('No expired reserved tickets found.');
+            return null;
+        }
+
+        const batch = db.batch();
+        reservedTicketsSnapshot.forEach(doc => {
+            console.log(`Deleting expired reserved ticket: ${doc.id}`);
+            batch.delete(doc.ref);
+        });
+
+        await batch.commit();
+        console.log(`Successfully deleted ${reservedTicketsSnapshot.size} expired reserved tickets.`);
+        return null;
+
+    } catch (error) {
+        console.error('Error during reserved ticket cleanup:', error);
+        return null;
+    }
+});
+
 
 /**
  * Firebase Callable Function to create a Stripe PaymentIntent for the Spin to Win game (Rolex).
@@ -48,7 +89,8 @@ exports.createSpinPaymentIntent = functions.https.onCall(async (data, context) =
                     if (!docSnapshot.exists) {
                         transaction.set(ticketRef, {
                             status: 'reserved',
-                            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                            // The serverTimestamp is crucial for the cleanup function to work
+                            timestamp: admin.firestore.FieldValue.serverTimestamp(), 
                             name: name,
                             email: email,
                             phone: phone,
@@ -98,6 +140,7 @@ exports.createSpinPaymentIntent = functions.https.onCall(async (data, context) =
         // Clean up the reserved ticket if payment intent creation fails
         if (ticketNumber) {
             try {
+                // If payment creation fails, remove the reserved ticket immediately
                 await admin.firestore().collection('rolex_tickets').doc(ticketNumber.toString()).delete();
             } catch (cleanupError) {
                 console.error('Failed to clean up reserved ticket:', cleanupError);
@@ -252,7 +295,9 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
         // Handle different entry types based on metadata
         if (entryType === 'rolex') {
             const rolexTicketRef = db.collection('rolex_tickets').doc(ticketNumber);
-            await rolexTicketRef.update({
+            // It is safe to use set or update here. If the ticket was cleaned up by the cron job 
+            // before the payment succeeded, this will re-create it with the 'paid' status.
+            await rolexTicketRef.set({ 
                 status: 'paid',
                 paymentIntentId: paymentIntent.id,
                 name,
@@ -262,7 +307,7 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
                 timestamp: admin.firestore.FieldValue.serverTimestamp(),
                 sourceApp: sourceApp || 'YDE Spin The Wheel (Webhook)',
                 referrerRefId: referrerRefId || null // ENSURING REFERRAL IS SAVED ON PAYMENT SUCCESS
-            });
+            }, { merge: true }); 
             console.log(`Successfully processed Rolex Ticket ${ticketNumber}.`);
         } else if (entryType === 'raffle') {
             const tickets = parseInt(ticketsBought);
@@ -375,7 +420,7 @@ exports.recalculateRaffleTotals = functions.https.onCall(async (data, context) =
             totalAmount: totalAmount
         }, { merge: true });
 
-        console.log(`Recalculated totals: Tickets=${totalTickets}, Amount=${totalAmount}`);
+        console.log(`Recalculated totals: Tickets=${totalTickets}, Amount=$${totalAmount}`);
 
         return {
             success: true,
@@ -789,7 +834,7 @@ exports.claimSpinTicket = functions.https.onCall(async (data, context) => {
                         if (!docSnapshot.exists) {
                             transaction.set(ticketRef, {
                                 status: 'claimed',
-                                timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                                timestamp: admin.firestore.FieldValue.serverTimestamp(), // Added timestamp for consistency
                                 name: name,
                                 sourceApp: SOURCE_APP_TAG // Added tag
                             });

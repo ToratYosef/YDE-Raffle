@@ -214,7 +214,7 @@
             return urlParams.get(param);
         }
 
-        // --- NEW: Function to call the Cloud Function ---
+        // --- Function to call the Cloud Function ---
         const trackRefClick = async (refId) => {
             try {
                 const trackRefLinkClickCallable = httpsCallable(functions, 'trackRefLinkClick');
@@ -256,12 +256,21 @@
             const referrerRefId = getQueryParam('ref');
             
             if (referrerRefId) {
+                const sessionKey = `REF_CLICK_TRACKED_${referrerRefId}`;
+
                 console.log('Referrer ID found on index page:', referrerRefId);
                 
-                // 1. Track the click immediately and silently
-                trackRefClick(referrerRefId); 
+                // --- Check sessionStorage to prevent duplicate tracking ---
+                if (sessionStorage.getItem(sessionKey) === 'true') {
+                    console.log(`[Referral Tracking] Click already tracked for this session (${referrerRefId}). Skipping call.`);
+                } else {
+                    // 1. Track the click immediately and silently
+                    trackRefClick(referrerRefId); 
 
-                // 2. Update all outgoing links with the refId
+                    // 2. Set session storage flag to prevent re-tracking on reload/navigation
+                    sessionStorage.setItem(sessionKey, 'true');
+                }
+                // 3. Update all outgoing links with the refId
                 updateNavLinks(referrerRefId); 
             }
 

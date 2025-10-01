@@ -34,6 +34,53 @@ function isAdmin(context) {
     );
 }
 
+// --- NEW CLICK TRACKING FUNCTION ---
+
+/**
+ * Callable function to track a click on a referral link.
+ * NOTE: This function allows unauthenticated calls to track public clicks.
+ */
+exports.trackRefLinkClick = functions.https.onCall(async (data, context) => {
+    const { refId } = data;
+
+    if (!refId) {
+        // Return success but log a warning if refId is missing
+        return { success: true, message: "Click not tracked: Missing refId." };
+    }
+
+    const db = admin.firestore();
+    
+    try {
+        // Find the referrer by refId in the 'referrers' collection
+        // CRITICAL: This query requires a composite index on ['refId']
+        const referrerQuerySnapshot = await db.collection('referrers')
+            .where('refId', '==', refId)
+            .limit(1)
+            .get();
+
+        if (referrerQuerySnapshot.empty) {
+            console.warn(`Click tracked for unknown refId: ${refId}`);
+            return { success: true, message: "Click recorded (Ref ID not found in database)." };
+        }
+
+        const referrerDocRef = referrerQuerySnapshot.docs[0].ref;
+        
+        // Atomically increment the clickCount field
+        await referrerDocRef.set({
+            clickCount: admin.firestore.FieldValue.increment(1),
+            lastClickTimestamp: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+
+        return { success: true, message: `Click tracked for referrer: ${refId}` };
+
+    } catch (error) {
+        console.error(`Error tracking click for ${refId}:`, error);
+        // Do not throw HttpsError for tracking, just return a benign message
+        return { success: false, message: "Failed to track click due to server error." };
+    }
+});
+
+
 // --- TICKET CLEANUP FUNCTIONS ---
 
 /**
@@ -972,6 +1019,7 @@ exports.createReferrer = functions.https.onCall(async (data, context) => {
             goal: goal || 0, // Goal tracking
             totalTickets: 0,
             totalAmount: 0,
+            clickCount: 0, // NEW: Initialize click count
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 

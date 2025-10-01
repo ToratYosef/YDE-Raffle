@@ -188,13 +188,44 @@
         </div>
     </footer>
 
-    <!-- JavaScript for page navigation -->
-    <script>
-        // --- Referrer Helper Functions (NEW) ---
+    <!-- JavaScript for page navigation and Firebase Click Tracking -->
+    <script type="module">
+        // --- Firebase Imports for Click Tracking ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+        import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-functions.js";
+
+        // Firebase Configuration (Replace with your actual configuration)
+        const firebaseConfig = {
+            apiKey: "AIzaSyAT539nr_s2OxHPTAmkxwMpaWt-FiDTgQs",
+            authDomain: "yderaffle.firebaseapp.com",
+            projectId: "yderaffle",
+            storageBucket: "yderaffle.firebasestorage.app",
+            messagingSenderId: "967768309102",
+            appId: "1:967768309102:web:c89d61a747e8cb941f557f"
+        };
+        
+        // Initialize Firebase services
+        const app = initializeApp(firebaseConfig);
+        const functions = getFunctions(app);
+
+        // --- Referrer Helper Functions ---
         function getQueryParam(param) {
             const urlParams = new URLSearchParams(window.location.search);
             return urlParams.get(param);
         }
+
+        // --- NEW: Function to call the Cloud Function ---
+        const trackRefClick = async (refId) => {
+            try {
+                const trackRefLinkClickCallable = httpsCallable(functions, 'trackRefLinkClick');
+                // Call the function without waiting for a result
+                await trackRefLinkClickCallable({ refId }); 
+                console.log(`[Referral Tracking] Click tracked successfully for refId: ${refId}`);
+            } catch (error) {
+                // Log errors silently, as this is a background task and shouldn't interrupt the user
+                console.error(`[Referral Tracking] Failed to track click for ${refId}:`, error);
+            }
+        };
 
         function updateNavLinks(refId) {
             if (!refId) return;
@@ -222,13 +253,17 @@
         // --- END Referrer Helper Functions ---
 
         document.addEventListener('DOMContentLoaded', () => {
-            // --- Referral Logic Initialization (NEW) ---
             const referrerRefId = getQueryParam('ref');
+            
             if (referrerRefId) {
                 console.log('Referrer ID found on index page:', referrerRefId);
-                updateNavLinks(referrerRefId); // Update all navigation links and the main button
+                
+                // 1. Track the click immediately and silently
+                trackRefClick(referrerRefId); 
+
+                // 2. Update all outgoing links with the refId
+                updateNavLinks(referrerRefId); 
             }
-            // --- END Referral Logic Initialization ---
 
             function showPage(pageId) {
                 // Hide all pages
@@ -242,6 +277,18 @@
                     activePage.classList.add('active');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 }
+            }
+            
+            // Basic URL routing for SPA functionality
+            const path = window.location.pathname.toLowerCase();
+            if (path.includes('/split-the-pot/')) {
+                showPage('split');
+            } else if (path.includes('/spin-the-wheel/')) {
+                showPage('spin');
+            } else if (path.includes('/donate/')) {
+                showPage('donate');
+            } else {
+                showPage('home');
             }
         });
     </script>

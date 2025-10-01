@@ -119,7 +119,13 @@
             </div>
             
             <h2 class="text-2xl font-bold text-gray-800 mb-4">Your Performance</h2>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                <!-- NEW: Total Clicks Card -->
+                <div class="p-4 bg-purple-50 border-l-4 border-purple-500 rounded-lg">
+                    <p class="text-sm font-medium text-gray-500">Total Clicks</p>
+                    <p id="overviewTotalClicks" class="text-xl font-bold text-gray-900 mt-1">0</p>
+                </div>
+                
                 <div class="p-4 bg-yellow-50 border-l-4 border-yellow-500 rounded-lg">
                     <p class="text-sm font-medium text-gray-500">Ref ID</p>
                     <p id="overviewRefId" class="text-xl font-bold text-gray-900 mt-1">Loading...</p>
@@ -161,10 +167,11 @@
                                 <th class="text-right">Spin Wheel Tickets</th>
                                 <th class="text-right">Total Amount</th>
                                 <th class="text-right">Goal</th>
+                                <th class="text-right">Clicks</th> <!-- NEW COLUMN -->
                             </tr>
                         </thead>
                         <tbody id="referrersTableBody">
-                            <tr><td colspan="7" class="text-center py-4 text-gray-500">Loading referrer data...</td></tr>
+                            <tr><td colspan="8" class="text-center py-4 text-gray-500">Loading referrer data...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -400,21 +407,41 @@
             });
         };
         
+        // --- NEW: Function to get Ref ID from URL ---
+        const getRefIdFromUrl = () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            // Assuming the parameter is always named 'ref'
+            return urlParams.get('ref');
+        };
+
+        // --- NEW: Function to track a click using a Firebase Function ---
+        const trackRefClick = async (refId) => {
+            try {
+                const trackRefLinkClickCallable = httpsCallable(functions, 'trackRefLinkClick');
+                // Call the function without waiting for a result or showing a loading spinner
+                await trackRefLinkClickCallable({ refId }); 
+                console.log(`Click tracked for refId: ${refId}`);
+            } catch (error) {
+                // Log errors silently, as this is a background task
+                console.error(`Failed to track click for ${refId}:`, error);
+            }
+        };
+
+        
         // --- Client-Side Calculation for Referrer Metrics (Tickets & Combined Amount) ---
         const calculateReferrerMetrics = (data) => {
             const referrerMap = new Map();
             let currentUserRefId = data.userData.refId;
 
             // 1. Initialize map with existing referrer data (Split Pot data from Firestore /referrers collection)
-            // This data should contain the totalTickets and totalAmount calculated by the webhook/manual sale functions.
             data.referrers.forEach(r => {
                 referrerMap.set(r.refId, {
                     ...r,
-                    // Use totalTickets and totalAmount from Firestore for Split Pot base metrics
                     raffleTickets: r.totalTickets || 0, 
                     rolexTickets: 0,
                     combinedTotalAmount: r.totalAmount || 0, 
-                    totalTickets: r.totalTickets || 0 
+                    totalTickets: r.totalTickets || 0,
+                    clickCount: r.clickCount || 0 // NEW: Initialize click count
                 });
             });
 
@@ -423,11 +450,9 @@
                 const refId = entry.referrerRefId;
                 const amountPaid = entry.amountPaid || 0;
 
-                // Check if the entry has a referrer ID that exists in our map
                 if (refId && referrerMap.has(refId)) {
                     const referrer = referrerMap.get(refId);
                     
-                    // Update tickets and combined amount for the referrer in the map
                     referrer.rolexTickets += 1; // Each Rolex entry is 1 ticket
                     referrer.totalTickets += 1;
                     referrer.combinedTotalAmount += amountPaid; // Aggregate amount
@@ -435,8 +460,6 @@
                 
                 // If this entry belongs to the currently logged-in user, update their overview data too
                 if (refId === currentUserRefId) {
-                     // Note: The backend's userData should already include the current Split Pot totals from the /referrers doc. 
-                     // We only need to manually add the Rolex entry here for the overview card's total.
                      data.userData.totalAmount = (data.userData.totalAmount || 0) + amountPaid;
                      data.userData.totalTickets = (data.userData.totalTickets || 0) + 1;
                 }
@@ -486,7 +509,6 @@
                 isLoggedInAdmin = dashboardData.isSuperAdmin || dashboardData.isReferrer || (auth.currentUser && auth.currentUser.customClaims.admin);
 
                 // Calculate referrer metrics (tickets and combined amount)
-                // This step is crucial for aggregating Rolex sales into the Firestore totals.
                 dashboardData = calculateReferrerMetrics(dashboardData); 
 
                 // Update UI based on role
@@ -548,7 +570,11 @@
                 if (isReferrer || isSuperAdmin) {
                     const refId = dashboardData.userData.refId || 'N/A';
                     document.getElementById('overviewRefId').textContent = refId;
-                    // The overview card is updated in calculateReferrerMetrics now
+                    
+                    // Update Clicks
+                    document.getElementById('overviewTotalClicks').textContent = (dashboardData.userData.clickCount || 0).toLocaleString(); // NEW
+                    
+                    // Update Tickets and Amount
                     document.getElementById('overviewTotalTickets').textContent = (dashboardData.userData.totalTickets || 0).toLocaleString();
                     document.getElementById('overviewTotalAmount').textContent = formatCurrency(dashboardData.userData.totalAmount || 0);
 
@@ -593,8 +619,9 @@
         const renderReferrersTable = (referrers) => {
             const tbody = document.getElementById('referrersTableBody');
             tbody.innerHTML = '';
+            // NOTE: The colspan is 8 now due to the new Clicks column
             if (referrers.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-500">No referrers found.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-gray-500">No referrers found.</td></tr>';
                 return;
             }
             referrers.forEach(r => {
@@ -607,6 +634,7 @@
                     <td class="text-right">${(r.rolexTickets || 0).toLocaleString()}</td>
                     <td class="text-right font-semibold">${formatCurrency(r.combinedTotalAmount || 0)}</td>
                     <td class="text-right">${formatCurrency(r.goal || 0)}</td>
+                    <td class="text-right font-bold text-purple-700">${(r.clickCount || 0).toLocaleString()}</td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -930,6 +958,14 @@
                 console.error("Firebase Init Error:", error);
                 return;
             }
+
+            // --- NEW: Handle Click Tracking if 'ref' is in URL ---
+            const refId = getRefIdFromUrl();
+            if (refId) {
+                // Track the click immediately and silently
+                await trackRefClick(refId); 
+            }
+            // --- END NEW LOGIC ---
 
             setupAuthListeners();
             document.getElementById('loginForm').addEventListener('submit', handleLogin);

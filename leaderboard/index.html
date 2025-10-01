@@ -95,6 +95,12 @@
 
         /* Mobile-first adjustment for header navigation */
         @media (max-width: 767px) {
+            #main-menu {
+                /* When menu is active, ensure it takes full width below the logo/toggle */
+                flex-direction: column;
+                align-items: center;
+                width: 100%;
+            }
             #main-menu li {
                 width: 100%; /* Make list items take full width on mobile */
             }
@@ -129,15 +135,13 @@
         </div>
     </div>
 
-    <!-- Updated Header (from user snippet) -->
+    <!-- Updated Header with Image Logo -->
     <header class="bg-black/40 py-4 px-4 md:px-12 w-full top-0 z-50 shadow-2xl backdrop-blur-sm">
         <nav class="container mx-auto flex justify-between items-center flex-wrap md:flex-nowrap">
             <div class="flex items-center justify-between w-full md:w-auto">
                 <a href="/" class="flex items-center space-x-2">
-                    <!-- Note: Using a text-based title since the image URL is external and may fail -->
-                    <h1 class="bebas-neue text-4xl md:text-5xl font-bold text-accent-yellow drop-shadow-lg">
-                        <span class="text-white">YDE</span> Fund
-                    </h1>
+                    <!-- Image Logo added here -->
+                    <img src="https://raw.githubusercontent.com/ToratYosef/ToratYosef..github.io/refs/heads/main/assets/logos.jpeg" alt="YDE Logo" class="h-14 sm:h-16 md:h-20 w-auto rounded-full ring-2 ring-yellow-400 p-1">
                 </a>
                 <button id="menu-toggle" class="md:hidden text-white focus:outline-none" aria-label="Toggle menu">
                     <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
@@ -373,7 +377,7 @@
             // 2. Spin Wheel Tickets: /rolex_tickets/ (Filtering by status == 'paid')
             const qSpin = query(
                 collection(dbInstance, 'rolex_tickets'),
-                where('status', '==', 'paid') // FIX: Filtered by 'status' field as per doc format
+                where('status', '==', 'paid') // Filtered by 'status' field as per doc format
             );
             onSnapshot(qSpin, (snapshot) => {
                 let sum = 0;
@@ -744,6 +748,7 @@
             
             if (menuToggle && mainMenu) {
                 menuToggle.addEventListener('click', () => { 
+                    // Toggles 'hidden' class based on current state
                     mainMenu.classList.toggle('hidden'); 
                 });
             }

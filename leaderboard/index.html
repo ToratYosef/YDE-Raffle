@@ -120,17 +120,20 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, doc, getDoc, setDoc, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, doc, Timestamp, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // Functions are not needed for the public leaderboard view, but we initialize them for consistency
+        import { getFunctions } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
+
 
         // Global Firebase instances
-        let app, db, auth;
+        let app, db, auth, functions;
         let userId = null;
         let isAuthReady = false;
+        let rankUpdateTimeout = null; // Used to debounce database writes
 
         // --- Core Application State & Logic ---
         let leaderboardData = [];
-        let previousRanks = {}; // Store previous position by referrer UID for placement calculation
         let searchFilter = '';
 
         // Hardcoded Firebase configuration provided by the user
@@ -146,49 +149,9 @@
         // Safely retrieve environment variables
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
+        
         // Set log level to Debug
         setLogLevel('Debug');
-
-        /**
-         * Loads the previous rank data from Firestore's private user storage.
-         */
-        async function loadPreviousRanksFromDB(dbInstance, currentUserId) {
-            if (!currentUserId || !dbInstance) return;
-            
-            // Path: /artifacts/{appId}/users/{userId}/previous_ranks/current_view
-            const docRef = doc(dbInstance, 'artifacts', appId, 'users', currentUserId, 'previous_ranks', 'current_view');
-            try {
-                const docSnap = await getDoc(docRef);
-                if (docSnap.exists()) {
-                    previousRanks = docSnap.data().ranks || {};
-                    console.log("Previous ranks loaded from Firestore.");
-                } else {
-                    previousRanks = {};
-                }
-            } catch (e) {
-                console.error("Error loading previous ranks from Firestore:", e);
-            }
-        }
-
-        /**
-         * Saves the current rank data to Firestore's private user storage.
-         * @param {Object} currentRanks A map of UID to current rank (number).
-         */
-        async function saveCurrentRanksToDB(dbInstance, currentUserId, currentRanks) {
-            if (!currentUserId || !dbInstance) return;
-
-            // Path: /artifacts/{appId}/users/{userId}/previous_ranks/current_view
-            const docRef = doc(dbInstance, 'artifacts', appId, 'users', currentUserId, 'previous_ranks', 'current_view');
-            try {
-                // Use setDoc with merge to create the document if it doesn't exist or update it if it does
-                await setDoc(docRef, { ranks: currentRanks, timestamp: Timestamp.now() }, { merge: true });
-                console.log("Current ranks saved to Firestore.");
-            } catch (e) {
-                console.error("Error saving current ranks to Firestore:", e);
-            }
-        }
-
 
         /**
          * Initializes Firebase and authenticates anonymously.
@@ -204,28 +167,25 @@
                 app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
+                functions = getFunctions(app); // Initialized but not used for public view
                 
                 // --- Authentication Listener ---
                 onAuthStateChanged(auth, async (user) => {
                     if (user) {
                         userId = user.uid;
                     } else {
-                        // Sign in anonymously to get a stable userId for persistence
+                        // Sign in anonymously to get a stable userId and authentication token
                         try {
                             const result = await signInAnonymously(auth);
                             userId = result.user.uid;
                         } catch(e) {
                             console.error("Anonymous sign-in failed:", e);
-                            // Fallback to a random ID if auth completely fails (for persistence key)
                             userId = crypto.randomUUID(); 
                         }
                     }
                     isAuthReady = true;
 
-                    // 1. Load previous ranks from DB now that we have a stable userId
-                    await loadPreviousRanksFromDB(db, userId); 
-
-                    // 2. Setup the real-time data listener
+                    // Setup the real-time data listener immediately after auth is ready
                     setupRealtimeListener(db);
                 });
 
@@ -234,6 +194,36 @@
                 renderLeaderboard(mockData());
             }
         }
+
+        /**
+         * Executes a batch write to update the current and previous ranks for all referrers.
+         * Note: This function requires write access to the /referrers collection for authenticated users.
+         * @param {Firestore} dbInstance 
+         * @param {Array<Object>} ranksToWrite Array of { uid, newRank, oldRank }
+         */
+        async function updateRanksInDB(dbInstance, ranksToWrite) {
+            if (!dbInstance || ranksToWrite.length === 0) return;
+
+            const batch = writeBatch(dbInstance);
+
+            ranksToWrite.forEach(item => {
+                const referrerRef = doc(dbInstance, 'referrers', item.uid);
+                
+                batch.update(referrerRef, {
+                    previousRank: item.oldRank,
+                    rank: item.newRank,
+                    rankUpdatedTimestamp: Timestamp.now()
+                });
+            });
+
+            try {
+                await batch.commit();
+                console.log(`Successfully batch updated ${ranksToWrite.length} referrer ranks in /referrers/ collection.`);
+            } catch (e) {
+                console.error("Error committing rank batch update. Check security rules for /referrers/!", e);
+            }
+        }
+
 
         /**
          * Sets up the real-time Firestore listener for the public leaderboard data
@@ -252,11 +242,15 @@
                         name: data.name || 'Unknown Referrer',
                         refId: data.refId || 'N/A', 
                         totalAmount: parseFloat(data.totalAmount) || 0,
+                        // totalTickets is Split The Pot tickets
                         splitTickets: parseInt(data.totalTickets) || 0,
-                        // Assuming totalSpinTickets exists in the referrer document
-                        spinTickets: parseInt(data.totalSpinTickets) || 0, 
+                        // rolexTicketsTotal is Spin The Wheel tickets
+                        spinTickets: parseInt(data.rolexTicketsTotal) || 0, 
                         clickCount: parseInt(data.clickCount) || 0,
-                        lastSaleTimestamp: data.lastSaleTimestamp ? data.lastSaleTimestamp.toDate() : null, 
+                        // Read the ranks stored from the previous cycle
+                        rank: parseInt(data.rank) || null,
+                        previousRank: parseInt(data.previousRank) || null,
+                        lastSaleTimestamp: data.lastSaleTimestamp instanceof Timestamp ? data.lastSaleTimestamp.toDate() : (data.lastSaleTimestamp || null), 
                     });
                 });
                 
@@ -264,7 +258,7 @@
                 if (isAuthReady) {
                     processAndRender(newLeaderboardData);
                 } else {
-                    // Render initial data if not authenticated yet, but don't save ranks
+                    // Render initial data if not authenticated yet, but don't try to write ranks
                     processAndRender(newLeaderboardData, false);
                 }
 
@@ -279,47 +273,73 @@
         }
 
         /**
-         * Sorts, ranks, and updates the leaderboard state.
+         * Sorts, ranks, and updates the leaderboard state, and queues the database write.
          * @param {Array<Object>} newRawData The new array of referrer data.
-         * @param {boolean} saveRanks Whether to save the new rank data to DB (default: true).
+         * @param {boolean} queueSave Whether to queue the rank update to DB (default: true).
          */
-        function processAndRender(newRawData, saveRanks = true) {
+        function processAndRender(newRawData, queueSave = true) {
             
             // 1. Sort by totalAmount (descending)
             const sortedData = newRawData.sort((a, b) => b.totalAmount - a.totalAmount);
             
             // 2. Calculate Rank and Placement Change
-            const currentRanks = {};
-            
+            const ranksToWrite = [];
+            let ranksChanged = false; 
+
             leaderboardData = sortedData.map((item, index) => {
-                const rank = index + 1;
-                currentRanks[item.uid] = rank;
+                const newRank = index + 1;
+                
+                // The rank from the last update cycle is stored in item.rank (the previous state).
+                const oldRankInDB = item.rank || newRank; 
                 
                 let placementChange = 0; // 0: same, 1: up, -1: down
                 
-                if (previousRanks[item.uid] !== undefined) {
-                    const oldRank = previousRanks[item.uid];
-                    if (rank < oldRank) {
+                // Only calculate placement change if we have a valid old rank
+                if (item.rank !== null) {
+                    if (newRank < oldRankInDB) {
                         placementChange = 1; // Went up
-                    } else if (rank > oldRank) {
+                        ranksChanged = true;
+                    } else if (newRank > oldRankInDB) {
                         placementChange = -1; // Went down
+                        ranksChanged = true;
                     }
                 }
 
+                // Collect data for the eventual database write if the rank changed since last update
+                // or if it's a first run and rank is null
+                if (newRank !== oldRankInDB || item.rank === null) {
+                    ranksToWrite.push({
+                        uid: item.uid,
+                        newRank: newRank,
+                        oldRank: oldRankInDB
+                    });
+                }
+                
                 return {
                     ...item,
-                    rank,
+                    rank: newRank,
+                    previousRank: item.rank, // For display purposes, the old rank in the DB
                     placementChange
                 };
             });
 
-            // 3. Update previousRanks state and save for persistence (only if requested and authenticated)
-            if (saveRanks && userId && db) {
-                previousRanks = currentRanks;
-                saveCurrentRanksToDB(db, userId, currentRanks);
+            // 3. Queue Database Write (Debounced)
+            if (queueSave && db && ranksToWrite.length > 0) {
+                // Check if the current render changed the ranks in a significant way compared to the last *saved* state
+                if (ranksChanged || ranksToWrite.some(item => item.oldRank === null)) {
+                    if (rankUpdateTimeout) {
+                        clearTimeout(rankUpdateTimeout);
+                    }
+                    
+                    // Debounce the write by 3 seconds to avoid spamming the database on rapid changes
+                    rankUpdateTimeout = setTimeout(() => {
+                        updateRanksInDB(db, ranksToWrite);
+                        rankUpdateTimeout = null;
+                    }, 3000); 
+                }
             }
 
-            // 4. Apply search filter and render
+            // 4. Apply search filter and render immediately
             applySearchFilter();
         }
 
@@ -473,12 +493,12 @@
             console.log("Using mock data as Firebase environment is not ready or failed.");
             const now = Date.now();
             const mock = [
-                { uid: 'userA123', name: 'Alex Johnson', refId: 'alexj', totalAmount: 7500, splitTickets: 150, spinTickets: 25, clickCount: 155, lastSaleTimestamp: new Date(now - 3600000) },
-                { uid: 'userB456', name: 'Brenda Smith', refId: 'brendas', totalAmount: 12000, splitTickets: 240, spinTickets: 40, clickCount: 300, lastSaleTimestamp: new Date(now) },
-                { uid: 'userC789', name: 'Chris Lee', refId: 'chrisl', totalAmount: 9000, splitTickets: 180, spinTickets: 30, clickCount: 220, lastSaleTimestamp: new Date(now - 7200000) },
-                { uid: 'userD012', name: 'Diana Clark', refId: 'dianac', totalAmount: 5000, splitTickets: 100, spinTickets: 15, clickCount: 80, lastSaleTimestamp: new Date(now - 10800000) },
-                { uid: 'userE345', name: 'Ethan Miller', refId: 'ethanm', totalAmount: 15000, splitTickets: 300, spinTickets: 50, clickCount: 450, lastSaleTimestamp: new Date(now - 1800000) },
-                { uid: 'userF678', name: 'Fiona White', refId: 'fionaw', totalAmount: 3500, splitTickets: 70, spinTickets: 10, clickCount: 50, lastSaleTimestamp: new Date(now - 2400000) },
+                { uid: 'userE345', name: 'Ethan Miller', refId: 'ethanm', totalAmount: 15000, splitTickets: 300, spinTickets: 50, clickCount: 450, rank: 0, previousRank: 0, lastSaleTimestamp: new Date(now - 1800000) },
+                { uid: 'userB456', name: 'Brenda Smith', refId: 'brendas', totalAmount: 12000, splitTickets: 240, spinTickets: 40, clickCount: 300, rank: 1, previousRank: 1, lastSaleTimestamp: new Date(now) },
+                { uid: 'userC789', name: 'Chris Lee', refId: 'chrisl', totalAmount: 9000, splitTickets: 180, spinTickets: 30, clickCount: 220, rank: 3, previousRank: 2, lastSaleTimestamp: new Date(now - 7200000) },
+                { uid: 'userA123', name: 'Alex Johnson', refId: 'alexj', totalAmount: 7500, splitTickets: 150, spinTickets: 25, clickCount: 155, rank: 2, previousRank: 3, lastSaleTimestamp: new Date(now - 3600000) },
+                { uid: 'userD012', name: 'Diana Clark', refId: 'dianac', totalAmount: 5000, splitTickets: 100, spinTickets: 15, clickCount: 80, rank: 4, previousRank: 4, lastSaleTimestamp: new Date(now - 10800000) },
+                { uid: 'userF678', name: 'Fiona White', refId: 'fionaw', totalAmount: 3500, splitTickets: 70, spinTickets: 10, clickCount: 50, rank: 6, previousRank: 5, lastSaleTimestamp: new Date(now - 2400000) },
             ];
             // Process mock data to set initial ranks for the comparison logic
             processAndRender(mock, false); // Don't save mock data ranks

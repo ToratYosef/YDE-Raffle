@@ -28,6 +28,7 @@
             color: #6b7280;
             background-color: #f3f4f6;
             border-bottom: 2px solid #e5e7eb;
+            cursor: pointer; /* Ensure sortable headers are clickable */
         }
         .data-table td {
             padding: 0.75rem 1rem;
@@ -41,6 +42,10 @@
         /* Custom scrollbar for better appearance on table containers */
         .overflow-x-auto::-webkit-scrollbar { height: 8px; }
         .overflow-x-auto::-webkit-scrollbar-thumb { background-color: #d1d5db; border-radius: 4px; }
+        .overflow-x-auto::-webkit-scrollbar-track { background-color: #f3f4f6; }
+        .referrer-sort-header { user-select: none; }
+        .sort-icon { display: none; }
+        .sort-header.active .sort-icon { display: inline-block; }
     </style>
 </head>
 <body class="min-h-screen">
@@ -90,10 +95,10 @@
         </div>
     </div>
     
-    <!-- UPDATED: Apply Tickets Modal (Super Admin Only) - Now handles transfers -->
+    <!-- Apply Raffle Tickets Modal (Split the Pot) - Super Admin Only -->
     <div id="applyTicketsModalOverlay" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4 hidden">
         <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <h2 class="text-2xl font-bold text-gray-800 mb-2">Assign/Transfer Tickets to: <span id="targetReferrerName" class="text-yellow-600"></span></h2>
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">Assign/Transfer Split The Pot Tickets to: <span id="targetReferrerName" class="text-blue-600"></span></h2>
             <p class="text-sm text-gray-500 mb-4">Select sales below to assign (if unassigned) or transfer (if already assigned) them to this referrer's ID (<span id="targetReferrerId"></span>).</p>
 
             <!-- Search and Action Bar -->
@@ -134,6 +139,105 @@
             </div>
         </div>
     </div>
+    
+    <!-- Apply Rolex Tickets Modal (Spin the Wheel) - Super Admin Only -->
+    <div id="applyRolexTicketsModalOverlay" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4 hidden">
+        <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">Assign/Transfer Spin The Wheel Tickets to: <span id="targetRolexReferrerName" class="text-purple-600"></span></h2>
+            <p class="text-sm text-gray-500 mb-4">Select tickets below to assign or transfer them to this referrer's ID (<span id="targetRolexReferrerId"></span>). Tickets must be Paid or Claimed.</p>
+
+            <!-- Search and Action Bar -->
+            <div class="flex flex-col md:flex-row gap-3 md:items-center mb-4">
+                <input type="text" id="rolexSearchInput" placeholder="Search customer, email, or current referrer ID..." class="w-full md:w-1/2 p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500">
+                <div class="flex-grow"></div>
+                <span id="selectedRolexCountDisplay" class="text-sm font-medium text-gray-600">0 tickets selected</span>
+                <button id="applyRolexReferrerButton" class="px-4 py-2 bg-purple-500 text-white font-semibold rounded-lg shadow-md hover:bg-purple-600 transition-colors disabled:opacity-50" disabled>
+                    Apply Referrer to Selected
+                </button>
+            </div>
+
+            <!-- Rolex Sales Table -->
+            <div class="overflow-x-auto dashboard-card max-h-[50vh]">
+                <table class="data-table w-full whitespace-nowrap">
+                    <thead>
+                        <tr>
+                            <th class="w-12 text-center">
+                                <input type="checkbox" id="selectAllRolex" class="rounded text-purple-600 focus:ring-purple-500">
+                            </th>
+                            <th>Ticket #</th>
+                            <th>Date</th>
+                            <th>Full Name</th>
+                            <th>Email/Phone</th>
+                            <th class="text-right">Amount Paid</th>
+                            <th>Current Referrer</th> 
+                        </tr>
+                    </thead>
+                    <tbody id="rolexAssignmentTableBody">
+                        <tr><td colspan="7" class="text-center py-4 text-gray-500">Loading Spin The Wheel data...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pt-6 flex justify-end">
+                <button type="button" id="closeApplyRolexTicketsModal" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors">Close</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- NEW: Edit Raffle Sale Modal (Super Admin Only) -->
+    <div id="editSaleModalOverlay" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4 hidden">
+        <div class="bg-white p-6 rounded-lg shadow-2xl max-w-md w-full">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Edit Raffle Sale Entry</h2>
+            <form id="editSaleForm" class="space-y-4">
+                <input type="hidden" id="edit-sale-id">
+                <div>
+                    <label for="edit-name" class="block text-sm font-medium text-gray-700">Customer Full Name</label>
+                    <input type="text" id="edit-name" placeholder="Full Name" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500" required>
+                </div>
+                <div>
+                    <label for="edit-email" class="block text-sm font-medium text-gray-700">Email</label>
+                    <input type="email" id="edit-email" placeholder="Email (Optional)" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500">
+                </div>
+                <div>
+                    <label for="edit-phone" class="block text-sm font-medium text-gray-700">Phone</label>
+                    <input type="tel" id="edit-phone" placeholder="Phone (Optional)" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500">
+                </div>
+                <div class="flex space-x-4">
+                    <div class="w-1/2">
+                        <label for="edit-tickets" class="block text-sm font-medium text-gray-700">Tickets Bought</label>
+                        <input type="number" id="edit-tickets" placeholder="Tickets Bought" min="1" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500" required>
+                    </div>
+                    <div class="w-1/2">
+                        <label for="edit-amount" class="block text-sm font-medium text-gray-700">Amount Paid ($)</label>
+                        <input type="number" id="edit-amount" placeholder="Amount Paid ($)" step="0.01" min="0.01" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500" required>
+                    </div>
+                </div>
+                <div class="pt-4 flex justify-end space-x-3">
+                    <button type="button" id="closeEditSaleModal" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors">Cancel</button>
+                    <button type="submit" id="submitEditSale" class="px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- NEW: Upgrade Admin Confirmation Modal (Super Admin Only) -->
+    <div id="upgradeAdminModalOverlay" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4 hidden">
+        <div class="bg-white p-6 rounded-lg shadow-2xl max-w-sm w-full">
+            <h2 class="text-2xl font-bold text-red-600 mb-4">Confirm Role Change</h2>
+            <p class="text-gray-700 mb-6">
+                Are you sure you want to promote <span id="upgrade-referrer-name" class="font-bold text-gray-900"></span> 
+                (<span id="upgrade-referrer-refid" class="font-mono text-xs bg-gray-100 p-1 rounded"></span>) 
+                to a **Super Admin**?
+            </p>
+            <p class="text-sm text-red-500 mb-4">This action grants full system access and requires them to re-login.</p>
+            <input type="hidden" id="upgrade-referrer-uid">
+            
+            <div class="pt-4 flex justify-end space-x-3">
+                <button type="button" id="closeUpgradeAdminModal" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors">Cancel</button>
+                <button type="button" id="confirmUpgradeAdmin" class="px-4 py-2 text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors">Confirm Promote</button>
+            </div>
+        </div>
+    </div>
 
 
     <!-- Main Dashboard Container -->
@@ -145,6 +249,11 @@
                 <span id="userRoleDisplay" class="text-base font-normal text-yellow-600"></span>
             </h1>
             <div class="flex items-center space-x-3">
+                <!-- NEW REFRESH BUTTON -->
+                <button id="refreshDataButton" class="flex items-center px-4 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg shadow-md hover:bg-gray-300 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.76 2.82"></path><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.76-2.82"></path><path d="M3 3v4h4M21 21v-4h-4"></path></svg>
+                    Refresh Data
+                </button>
                 <button id="addManualSaleButton" class="flex items-center px-4 py-2 bg-green-500 text-white font-semibold rounded-lg shadow-md hover:bg-green-600 transition-colors hidden">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
                     Add Manual Sale
@@ -161,7 +270,7 @@
                 <div class="flex items-center bg-gray-100 p-2 rounded-lg border border-gray-200">
                     <span id="referralLink" class="text-base font-mono text-blue-600 truncate mr-3 select-all"></span>
                     <button id="copyLinkButton" class="ml-auto p-1 text-gray-400 hover:text-blue-500 transition-colors" title="Copy Link">
-                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M7.75 3.75a.75.75 0 0 1 1.5 0v3.5h3.5a.75.75 0 0 1 0 1.5h-3.5v3.5a.75.75 0 0 1-1.5 0v-3.5h-3.5a.75.75 0 0 1 0-1.5h3.5v-3.5Z" clip-rule="evenodd" /></svg>
+                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M7.75 3.75a.75.75 0 0 1 1.5 0v3.5h3.5a.75.75 0 0 1 0 1.5h-3.5v3.5a.75.75 0 0 1-1.5 0v-3.5h-3.5a.75.75 0 0 1 0-1.5h3.5v-3.5Z" clip-rule="evenodd" /></svg>
                     </button>
                 </div>
             </div>
@@ -179,7 +288,7 @@
                     <p id="overviewRefId" class="text-xl font-bold text-gray-900 mt-1">Loading...</p>
                 </div>
                 <div class="p-4 bg-blue-50 border-l-4 border-blue-500 rounded-lg">
-                    <p class="text-sm font-medium text-gray-500">Total Tickets</p>
+                    <p class="text-sm font-medium text-gray-500">Total Tickets (Split + Spin)</p>
                     <p id="overviewTotalTickets" class="text-xl font-bold text-gray-900 mt-1">0</p>
                 </div>
                 <div class="p-4 bg-green-50 border-l-4 border-green-500 rounded-lg">
@@ -251,10 +360,11 @@
                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 ml-1 hidden text-yellow-500"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
                                         </div>
                                     </th>
+                                    <th class="text-center">Action</th> <!-- NEW ACTION COLUMN -->
                                 </tr>
                             </thead>
                             <tbody id="referrersTableBody">
-                                <tr><td colspan="8" class="text-center py-4 text-gray-500">Loading referrer data...</td></tr>
+                                <tr><td colspan="9" class="text-center py-4 text-gray-500">Loading referrer data...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -264,17 +374,31 @@
             <!-- Split The Pot Sales Tab Content -->
             <div id="tab-raffle" class="tab-pane hidden">
                 <div class="dashboard-card p-4 overflow-x-auto">
-                    <h3 class="text-xl font-semibold mb-3 text-gray-800" id="raffleSalesHeader">Split The Pot Sales</h3>
+                    <!-- Filter and Header Controls -->
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-xl font-semibold text-gray-800" id="raffleSalesHeader">Split The Pot Sales</h3>
+                        <!-- NEW FILTER DROPDOWN -->
+                        <div class="flex items-center space-x-2">
+                            <label for="raffleFilter" class="text-sm font-medium text-gray-600">Filter:</label>
+                            <select id="raffleFilter" class="p-2 border border-gray-300 rounded-lg text-sm focus:ring-yellow-500 focus:border-yellow-500">
+                                <option value="all">All Sales</option>
+                                <option value="assigned">Assigned</option>
+                                <option value="unassigned">Unassigned</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <table class="data-table w-full whitespace-nowrap">
                         <thead>
                             <tr>
-                                <th>Date</th>
-                                <th>Full Name</th>
-                                <th>Phone</th>
-                                <th>Tickets</th>
-                                <th class="text-right">Amount Paid</th>
-                                <th>Referrer</th>
+                                <th class="sort-header" data-table="raffle" data-sort-key="timestamp">Date <span class="sort-icon ml-1"></span></th>
+                                <th class="sort-header" data-table="raffle" data-sort-key="fullName">Full Name <span class="sort-icon ml-1"></span></th>
+                                <th>Phone/Email</th>
+                                <th class="sort-header" data-table="raffle" data-sort-key="ticketCount">Tickets <span class="sort-icon ml-1"></span></th>
+                                <th class="sort-header text-right" data-table="raffle" data-sort-key="amountPaid">Amount Paid <span class="sort-icon ml-1"></span></th>
+                                <th class="sort-header" data-table="raffle" data-sort-key="referrerRefId">Referrer <span class="sort-icon ml-1"></span></th>
                                 <th>Source</th>
+                                <th id="raffleSalesActionHeader" class="hidden">Action</th> <!-- Added for Edit button -->
                             </tr>
                         </thead>
                         <tbody id="raffleTableBody">
@@ -287,17 +411,30 @@
             <!-- Spin The Wheel Sales Tab Content (Super Admin Only) -->
             <div id="tab-rolex" class="tab-pane hidden">
                 <div class="dashboard-card p-4 overflow-x-auto">
-                    <h3 class="text-xl font-semibold mb-3 text-gray-800">Spin The Wheel Sales (SA Only)</h3>
+                    <!-- Filter and Header Controls -->
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-xl font-semibold text-gray-800" id="rolexSalesHeader">Spin The Wheel Sales (SA Only)</h3>
+                        <!-- NEW FILTER DROPDOWN -->
+                        <div class="flex items-center space-x-2">
+                            <label for="rolexFilter" class="text-sm font-medium text-gray-600">Filter:</label>
+                            <select id="rolexFilter" class="p-2 border border-gray-300 rounded-lg text-sm focus:ring-purple-500 focus:border-purple-500">
+                                <option value="all">All Tickets</option>
+                                <option value="assigned">Assigned</option>
+                                <option value="unassigned">Unassigned</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <table class="data-table w-full whitespace-nowrap">
                         <thead>
                             <tr>
-                                <th>Date</th>
-                                <th>Ticket #</th>
-                                <th>Full Name</th>
+                                <th class="sort-header" data-table="rolex" data-sort-key="timestamp">Date <span class="sort-icon ml-1"></span></th>
+                                <th class="sort-header" data-table="rolex" data-sort-key="id">Ticket # <span class="sort-icon ml-1"></span></th>
+                                <th class="sort-header" data-table="rolex" data-sort-key="name">Full Name <span class="sort-icon ml-1"></span></th>
                                 <th>Email</th>
                                 <th>Status</th>
-                                <th class="text-right">Amount Paid</th>
-                                <th>Referrer</th>
+                                <th class="sort-header text-right" data-table="rolex" data-sort-key="amountPaid">Amount Paid <span class="sort-icon ml-1"></span></th>
+                                <th class="sort-header" data-table="rolex" data-sort-key="referrerRefId">Referrer <span class="sort-icon ml-1"></span></th>
                             </tr>
                         </thead>
                         <tbody id="rolexTableBody">
@@ -343,13 +480,26 @@
                         </button>
                     </div>
 
-                    <!-- Recalculate Totals (Super Admin Only) -->
-                    <div id="recalculateTotalsCard" class="border p-4 rounded-lg bg-indigo-50 border-indigo-200">
-                        <h4 class="font-semibold text-lg text-indigo-700 mb-2">Recalculate Raffle Totals</h4>
-                        <p class="text-sm text-gray-600 mb-3">Use this to reset the global ticket/amount counters by summing all Split the Pot entries.</p>
-                        <button id="recalculateTotalsButton" class="px-4 py-2 bg-indigo-500 text-white font-semibold rounded-lg hover:bg-indigo-600 transition-colors disabled:opacity-50">
-                            Recalculate Now
-                        </button>
+                    <!-- Recalculate Totals -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        
+                        <!-- Recalculate Split The Pot Totals (Original) -->
+                        <div id="recalculateRaffleTotalsCard" class="border p-4 rounded-lg bg-indigo-50 border-indigo-200">
+                            <h4 class="font-semibold text-lg text-indigo-700 mb-2">Recalculate Split The Pot Totals</h4>
+                            <p class="text-sm text-gray-600 mb-3">Resets and sums all Split the Pot entries to update <code>totalTickets</code> (Split Count) and <code>totalAmount</code> (Split $).</p>
+                            <button id="recalculateTotalsButton" class="px-4 py-2 bg-indigo-500 text-white font-semibold rounded-lg hover:bg-indigo-600 transition-colors disabled:opacity-50">
+                                Recalculate Split Pot
+                            </button>
+                        </div>
+                        
+                        <!-- Recalculate Spin The Wheel Totals (NEW) -->
+                        <div id="recalculateRolexTotalsCard" class="border p-4 rounded-lg bg-purple-50 border-purple-200">
+                            <h4 class="font-semibold text-lg text-purple-700 mb-2">Recalculate Spin The Wheel Totals</h4>
+                            <p class="text-sm text-gray-600 mb-3">Resets and sums all Spin tickets to update <code>rolexTicketsTotal</code> (Spin Count) and the combined <code>totalAmount</code> ($).</p>
+                            <button id="recalculateRolexTotalsButton" class="px-4 py-2 bg-purple-500 text-white font-semibold rounded-lg hover:bg-purple-600 transition-colors disabled:opacity-50">
+                                Recalculate Spin Wheel
+                            </button>
+                        </div>
                     </div>
 
                 </div>
@@ -406,25 +556,37 @@
         let isReferrer = false;
         let isLoggedInAdmin = false; 
 
-        // --- GLOBAL STATE FOR TICKET ASSIGNMENT (UPDATED) ---
-        // Changed purpose from 'unassigned' to hold ALL relevant sales for filtering/transferring
+        // --- GLOBAL STATE ---
         let allAssignmentRaffleSales = []; 
-        let filteredUnassignedSales = []; 
-        let selectedSaleIds = new Set(); 
-        let targetRefId = null; 
-        let targetRefName = null; 
+        let filteredRaffleSales = []; 
+        let selectedRaffleSaleIds = new Set(); 
+        let targetRaffleRefId = null; 
+        let targetRaffleRefName = null;
+        
+        let allAssignmentRolexSales = [];
+        let filteredRolexSales = [];
+        let selectedRolexSaleIds = new Set();
+        let targetRolexRefId = null;
+        let targetRolexRefName = null;
+        
+        // State for filtering the Raffle Sales tab for a specific referrer
+        let raffleFilterRefId = null;
+        let raffleFilterRefName = null;
 
-        // --- Global State for Sorting and Searching ---
-        let sortConfig = {
-            key: 'combinedTotalAmount', // Default sort: Most money/Total Amount
-            direction: 'desc'
-        };
+        // State for sorting and filtering the sales tables
+        let raffleSortConfig = { key: 'timestamp', direction: 'desc' };
+        let raffleFilter = 'all'; // 'all', 'assigned', 'unassigned'
+
+        let rolexSortConfig = { key: 'timestamp', direction: 'desc' };
+        let rolexFilter = 'all'; // 'all', 'assigned', 'unassigned'
+        
+        // State for sorting the Referrers table
+        let referrerSortConfig = { key: 'combinedTotalAmount', direction: 'desc' };
         let searchTerm = '';
         // ---------------------------------------------
 
         // Configuration and App ID (MUST be present in Canvas environment)
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        // Using the user-provided API key and configuration:
         const firebaseConfig = {
             apiKey: "AIzaSyAT539nr_s2OxHPTAmkxwMpaWt-FiDTgQs",
             authDomain: "yderaffle.firebaseapp.com",
@@ -438,30 +600,21 @@
         // --- Utility Functions ---
 
         const formatCurrency = (amount) => {
-            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(amount);
         };
         const formatDate = (timestamp) => {
             if (!timestamp) return 'N/A';
             
             let date;
             
-            // 1. Check for the official Firestore Timestamp object (via SDK)
-            if (timestamp.toDate && typeof timestamp.toDate === 'function') {
-                date = timestamp.toDate();
-            } 
-            // 2. Check for the raw object serialized by Callable Functions (e.g., { seconds: 123456... })
-            else if (typeof timestamp === 'object' && timestamp.seconds) {
-                // Firestore timestamps store time in seconds, convert to milliseconds
-                date = new Date(timestamp.seconds * 1000);
+            if (typeof timestamp === 'object' && (timestamp.toDate || timestamp.seconds)) {
+                 date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp.seconds * 1000);
             }
-            // 3. Treat as a standard JavaScript Date object, milliseconds, or parsable date string
             else {
                 date = new Date(timestamp);
             }
 
-            // Final check for validity
             if (isNaN(date.getTime())) {
-                // Return original input if parsing failed for debugging, or 'Invalid Date'
                 return 'Invalid Date';
             }
 
@@ -476,32 +629,30 @@
         };
         
         // Redefine to avoid native confirm() and alert()
+        const hideCustomPopup = () => {
+            document.getElementById('customPopup').classList.remove('scale-100');
+            setTimeout(() => { document.getElementById('customPopupOverlay').classList.add('hidden'); }, 300);
+        };
+
         const showCustomPopup = (title, message, isConfirm = false) => {
             document.getElementById('popupTitle').textContent = title;
             document.getElementById('popupMessage').textContent = message;
             const closeBtn = document.getElementById('popupCloseButton');
             
-            // Re-use OK button, no confirmation needed in this simplified canvas environment
             closeBtn.textContent = 'OK'; 
             closeBtn.onclick = hideCustomPopup;
 
             document.getElementById('customPopupOverlay').classList.remove('hidden');
             setTimeout(() => { document.getElementById('customPopup').classList.add('scale-100'); }, 10);
         };
-        const hideCustomPopup = () => {
-            document.getElementById('customPopup').classList.remove('scale-100');
-            setTimeout(() => { document.getElementById('customPopupOverlay').classList.add('hidden'); }, 300);
-        };
         window.showCustomPopup = showCustomPopup; // Make available globally for handlers
         
         // Copy to clipboard function
         const copyToClipboard = (text, message = 'Link copied!') => {
-            // Using navigator.clipboard.writeText is more reliable
             navigator.clipboard.writeText(text).then(() => {
                 showCustomPopup('Success', message);
             }, (err) => {
                 console.error('Could not copy text: ', err);
-                // Fallback for iFrame restrictions
                 try {
                     const tempInput = document.createElement('input');
                     tempInput.value = text;
@@ -516,49 +667,44 @@
             });
         };
         
-        // --- NEW: Function to get Ref ID from URL ---
         const getRefIdFromUrl = () => {
             const urlParams = new URLSearchParams(window.location.search);
             return urlParams.get('ref');
         };
 
-        // --- NEW: Function to track a click using a Firebase Function ---
         const trackRefClick = async (refId) => {
             try {
                 const trackRefLinkClickCallable = httpsCallable(functions, 'trackRefLinkClick');
                 await trackRefLinkClickCallable({ refId }); 
-                console.log(`Click tracked for refId: ${refId}`);
             } catch (error) {
                 console.error(`Failed to track click for ${refId}:`, error);
             }
         };
 
         
-        // --- Client-Side Filtering and Sorting Logic ---
+        // --- Client-Side Sorting and Filtering Logic ---
         
-        const filterAndSortReferrers = (data) => {
-            // 1. Filter
-            let filtered = data.filter(r => {
-                const searchLower = searchTerm.toLowerCase();
-                return r.name.toLowerCase().includes(searchLower) ||
-                       (r.refId || '').toLowerCase().includes(searchLower) ||
-                       (r.email || '').toLowerCase().includes(searchLower);
-            });
-
-            // 2. Sort
-            if (sortConfig.key) {
-                filtered.sort((a, b) => {
+        const sortEntries = (data, sortConfig) => {
+             // 1. Sort
+             if (sortConfig.key) {
+                data.sort((a, b) => {
                     let aVal = a[sortConfig.key] || 0;
                     let bVal = b[sortConfig.key] || 0;
                     
-                    if (sortConfig.key === 'name' || sortConfig.key === 'refId' || sortConfig.key === 'email') {
+                    if (sortConfig.key === 'name' || sortConfig.key === 'fullName' || sortConfig.key === 'referrerRefId') {
                         // String comparison
                         aVal = String(aVal).toLowerCase();
                         bVal = String(bVal).toLowerCase();
                         if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
                         if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
                         return 0;
-                    } else {
+                    } else if (sortConfig.key === 'timestamp') {
+                        // Date comparison
+                         const aTime = aVal ? (aVal.seconds ? aVal.seconds * 1000 : aVal.getTime()) : 0;
+                         const bTime = bVal ? (bVal.seconds ? bVal.seconds * 1000 : bVal.getTime()) : 0;
+                         return sortConfig.direction === 'asc' ? aTime - bTime : bTime - aTime;
+                    } 
+                    else {
                         // Numeric comparison
                         if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
                         if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
@@ -566,49 +712,57 @@
                     }
                 });
             }
-            return filtered;
+            return data;
         };
 
+        const filterReferrers = (data) => {
+            let filtered = data.filter(r => {
+                const searchLower = searchTerm.toLowerCase();
+                return r.name.toLowerCase().includes(searchLower) ||
+                       (r.refId || '').toLowerCase().includes(searchLower) ||
+                       (r.email || '').toLowerCase().includes(searchLower);
+            });
+             return sortEntries(filtered, referrerSortConfig);
+        };
+        
+        const filterSalesEntries = (data, filterType) => {
+            let filtered = [...data];
+            
+            if (filterType === 'assigned') {
+                 filtered = filtered.filter(e => e.referrerRefId && e.referrerRefId !== null);
+            } else if (filterType === 'unassigned') {
+                 filtered = filtered.filter(e => !e.referrerRefId || e.referrerRefId === null);
+            }
+            return filtered;
+        }
 
-        // --- Client-Side Calculation for Referrer Metrics (Tickets & Combined Amount) ---
+
         const calculateReferrerMetrics = (data) => {
             const referrerMap = new Map();
             let currentUserRefId = data.userData.refId;
 
-            // 1. Initialize map with existing referrer data (Split Pot data from Firestore /referrers collection)
             data.referrers.forEach(r => {
+                const raffleTickets = r.totalTickets || 0; 
+                const rolexTickets = r.rolexTicketsTotal || 0; 
+                const combinedTotalAmount = r.totalAmount || 0; 
+                const totalTickets = raffleTickets + rolexTickets;
+
                 referrerMap.set(r.refId, {
                     ...r,
-                    raffleTickets: r.totalTickets || 0, 
-                    rolexTickets: 0,
-                    combinedTotalAmount: r.totalAmount || 0, 
-                    totalTickets: r.totalTickets || 0,
+                    raffleTickets: raffleTickets,
+                    rolexTickets: rolexTickets,
+                    combinedTotalAmount: combinedTotalAmount,
+                    totalTickets: totalTickets,
                     clickCount: r.clickCount || 0 
                 });
             });
 
-            // 2. Calculate Rolex (Spin The Wheel) totals and aggregate amount
-            data.rolexEntries.forEach(entry => {
-                const refId = entry.referrerRefId;
-                const amountPaid = entry.amountPaid || 0;
-
-                if (refId && referrerMap.has(refId)) {
-                    const referrer = referrerMap.get(refId);
-                    
-                    referrer.rolexTickets += 1; 
-                    referrer.totalTickets += 1;
-                    referrer.combinedTotalAmount += amountPaid; 
-                }
-                
-                // If this entry belongs to the currently logged-in user, update their overview data too
-                if (refId === currentUserRefId) {
-                     data.userData.totalAmount = (data.userData.totalAmount || 0) + amountPaid;
-                     data.userData.totalTickets = (data.userData.totalTickets || 0) + 1;
-                }
-            });
-            
-            // 3. Update the global data structure
             data.referrers = Array.from(referrerMap.values());
+            
+            if (currentUserRefId && referrerMap.has(currentUserRefId)) {
+                data.userData = referrerMap.get(currentUserRefId);
+            }
+            
             return data;
         };
 
@@ -627,15 +781,13 @@
         const renderTables = () => {
             if (isSuperAdmin) {
                 renderReferrersTable(dashboardData.referrers);
-                renderRolexTable(dashboardData.rolexEntries); // SA sees all Rolex entries
+                renderRolexTable(dashboardData.rolexEntries); 
                 renderDonationsTable(dashboardData.donationEntries);
             }
-            // All roles see their filtered raffle data
             renderRaffleTable(dashboardData.raffleEntries);
             
-            // Render Rolex for regular referrer if needed (Backend should filter to only their entries)
             if (isReferrer && !isSuperAdmin) {
-                 renderRolexTable(dashboardData.rolexEntries); // Referrer sees only their Rolex entries if the backend returns them
+                 renderRolexTable(dashboardData.rolexEntries);
             }
         };
 
@@ -650,10 +802,8 @@
                 isReferrer = dashboardData.isReferrer;
                 isLoggedInAdmin = dashboardData.isSuperAdmin || dashboardData.isReferrer || (auth.currentUser && auth.currentUser.customClaims.admin);
 
-                // Calculate referrer metrics (tickets and combined amount)
                 dashboardData = calculateReferrerMetrics(dashboardData); 
 
-                // Update UI based on role
                 let roleText = 'Admin';
                 if (isSuperAdmin) roleText = 'Super Admin';
                 else if (isReferrer) roleText = 'Referrer';
@@ -668,7 +818,6 @@
 
                 // --- Access Control Logic ---
                 
-                // Hide everything first
                 referrerTab.classList.add('hidden');
                 donationTab.classList.add('hidden');
                 toolsTab.classList.add('hidden');
@@ -677,34 +826,28 @@
                 overviewCard.classList.add('hidden');
                 
                 if (isSuperAdmin) {
-                    // Super Admin sees all tabs and tools/buttons
                     referrerTab.classList.remove('hidden');
                     donationTab.classList.remove('hidden');
                     toolsTab.classList.remove('hidden');
                     rolexTab.classList.remove('hidden'); 
                     addManualSaleButton.classList.remove('hidden');
-                    document.getElementById('manual-referrer-container').classList.remove('hidden'); // SA can attribute to anyone
-                    document.getElementById('recalculateTotalsCard').classList.remove('hidden');
+                    document.getElementById('manual-referrer-container').classList.remove('hidden'); 
+                    document.getElementById('recalculateRaffleTotalsCard').classList.remove('hidden');
+                    document.getElementById('recalculateRolexTotalsCard').classList.remove('hidden');
                     overviewCard.classList.remove('hidden');
                     
-                    // Always default to Referrers tab for SA
                     currentTab = currentTab || 'referrers';
 
                 } else if (isReferrer) {
-                    // Referrer sees only overview, raffle, and rolex tabs (if data is returned)
                     overviewCard.classList.remove('hidden');
                     document.querySelector('[data-tab="raffle"]').classList.remove('hidden');
-                    // Per user request, hide the Rolex tab from regular referrers
                     rolexTab.classList.add('hidden'); 
-                    document.getElementById('manual-referrer-container').classList.add('hidden'); // Ref IDs are handled automatically
+                    document.getElementById('manual-referrer-container').classList.add('hidden'); 
 
-                    // Always default to Raffle tab for Referrer
                     currentTab = currentTab || 'raffle';
                     
                 } else if (isLoggedInAdmin) { 
-                    // General Admin sees only raffle sales (all sales for Split Pot)
                     document.querySelector('[data-tab="raffle"]').classList.remove('hidden');
-                    // Default to Raffle tab for Admin
                     currentTab = currentTab || 'raffle';
                 }
 
@@ -713,14 +856,11 @@
                     const refId = dashboardData.userData.refId || 'N/A';
                     document.getElementById('overviewRefId').textContent = refId;
                     
-                    // Update Clicks
                     document.getElementById('overviewTotalClicks').textContent = (dashboardData.userData.clickCount || 0).toLocaleString(); 
                     
-                    // Update Tickets and Amount
                     document.getElementById('overviewTotalTickets').textContent = (dashboardData.userData.totalTickets || 0).toLocaleString();
-                    document.getElementById('overviewTotalAmount').textContent = formatCurrency(dashboardData.userData.totalAmount || 0);
+                    document.getElementById('overviewTotalAmount').textContent = formatCurrency(dashboardData.userData.combinedTotalAmount || 0); 
 
-                    // Setup Referral Link
                     const referralLinkElement = document.getElementById('referralLink');
                     const link = `ydeseniors.com/?ref=${refId}`;
                     referralLinkElement.textContent = link;
@@ -733,25 +873,22 @@
                     document.getElementById('referrerLinkContainer').classList.add('hidden');
                 }
                 
-                // --- End Access Control Logic ---
-
-
                 renderTables();
-                updateSortIndicators();
-                // Admin Tools data fetch (only if SA or Admin to save bandwidth, but only SA sees it)
+                updateSortIndicators('referrer', referrerSortConfig); // Update referrer indicators
+                
                 if (isSuperAdmin || isLoggedInAdmin) {
-                     await updateReservedTicketCounts();
+                    await updateReservedTicketCounts();
                 }
                 
                 hideGlobalLoading();
-                switchTab(currentTab || 'raffle'); // Ensure a tab is always active
+                switchTab(currentTab || 'raffle'); 
 
             } catch (error) {
                 console.error("Error fetching dashboard data:", error);
                 hideGlobalLoading();
                 if (error.code === 'permission-denied') {
                     document.getElementById('authErrorDisplay').textContent = "Permission Denied: Your account is not authorized as Admin, Super Admin, or Referrer.";
-                    document.getElementById('authErrorDisplay').classList.add('hidden');
+                    document.getElementById('authErrorDisplay').classList.remove('hidden');
                     document.getElementById('dashboardContainer').classList.add('hidden');
                 } else {
                     showCustomPopup('Data Fetch Error', `Failed to load dashboard data: ${error.message}. Please check logs.`);
@@ -760,56 +897,73 @@
         };
         
         // --- Sorting Indicator Logic ---
-        const updateSortIndicators = () => {
-             document.querySelectorAll('.referrer-sort-header').forEach(header => {
-                header.classList.remove('text-yellow-700', 'font-semibold');
-                const icon = header.querySelector('svg');
-                if (icon) icon.classList.add('hidden');
+        const updateSortIndicators = (table, config) => {
+             document.querySelectorAll(`[data-table="${table}"]`).forEach(header => {
+                 header.classList.remove('active', 'text-yellow-700', 'text-purple-700', 'font-semibold');
+                 const icon = header.querySelector('.sort-icon');
+                 if (icon) icon.classList.add('hidden');
              });
-
-             const activeHeader = document.querySelector(`[data-sort-key="${sortConfig.key}"]`);
+             
+             const activeHeader = document.querySelector(`[data-table="${table}"][data-sort-key="${config.key}"]`);
              if (activeHeader) {
-                 activeHeader.classList.add('text-yellow-700', 'font-semibold');
-                 const icon = activeHeader.querySelector('svg');
+                 activeHeader.classList.add('active', 'font-semibold', (table === 'rolex' ? 'text-purple-700' : 'text-yellow-700'));
+                 const icon = activeHeader.querySelector('.sort-icon');
                  if (icon) {
                      icon.classList.remove('hidden');
-                     // Update path for up/down arrow icons
-                     if (sortConfig.direction === 'asc') {
-                         icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />'; // Up arrow
-                     } else {
-                         icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />'; // Down arrow
-                     }
+                     icon.innerHTML = config.direction === 'asc' ? '&#9650;' : '&#9660;'; // Up or Down Triangle
                  }
              }
         };
 
+        // --- Render Functions ---
 
         const renderReferrersTable = (referrers) => {
             const tbody = document.getElementById('referrersTableBody');
             tbody.innerHTML = '';
             
-            // Apply filtering and sorting
-            const sortedReferrers = filterAndSortReferrers(referrers);
+            const sortedReferrers = filterReferrers(referrers);
 
-            // NOTE: The colspan is 8 now due to the new Clicks column
             if (sortedReferrers.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-gray-500">No referrers found matching search criteria.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-gray-500">No referrers found matching search criteria.</td></tr>';
                 return;
             }
             sortedReferrers.forEach(r => {
                 const tr = document.createElement('tr');
                 
-                // --- RESTORE CLICKABLE NAME LOGIC ---
                 let nameCellContent = r.name;
+                let actionCellContent = 'N/A';
+                let upgradeButton = '';
+
                 if (isSuperAdmin) {
                     nameCellContent = `<span 
-                                        class="text-blue-600 font-semibold cursor-pointer hover:underline" 
-                                        data-action="assign-tickets" 
-                                        data-refid="${r.refId}" 
-                                        data-refname="${r.name}"
-                                      >${r.name}</span>`;
+                                            class="text-gray-800 font-semibold cursor-pointer hover:underline" 
+                                            data-action="view-referrer-sales" 
+                                            data-refid="${r.refId}" 
+                                            data-refname="${r.name}"
+                                           >${r.name}</span>`;
+                    
+                    if (r.uid !== auth.currentUser?.uid) {
+                        upgradeButton = `
+                            <button class="px-2 py-1 text-xs bg-red-500 text-white font-semibold rounded-lg shadow-md hover:bg-red-600 transition-colors mb-1"
+                                    data-action="promote-sa"
+                                    data-uid="${r.uid}"
+                                    data-refid="${r.refId}"
+                                    data-refname="${r.name}">Promote to SA</button>
+                        `;
+                    }
+                    
+                    actionCellContent = `
+                        ${upgradeButton}
+                        <button class="px-2 py-1 text-xs bg-purple-500 text-white font-semibold rounded-lg shadow-md hover:bg-purple-600 transition-colors mb-1"
+                                data-action="assign-rolex-tickets"
+                                data-refid="${r.refId}"
+                                data-refname="${r.name}">Assign Spin</button>
+                        <button class="px-2 py-1 text-xs bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 transition-colors"
+                                data-action="assign-raffle-tickets"
+                                data-refid="${r.refId}"
+                                data-refname="${r.name}">Assign Raffle</button>
+                    `;
                 }
-                // -------------------------------------
 
                 tr.innerHTML = `
                     <td>${nameCellContent}</td>
@@ -820,55 +974,92 @@
                     <td class="text-right font-semibold">${formatCurrency(r.combinedTotalAmount || 0)}</td>
                     <td class="text-right">${formatCurrency(r.goal || 0)}</td>
                     <td class="text-right font-bold text-purple-700">${(r.clickCount || 0).toLocaleString()}</td>
+                    <td class="text-center flex flex-col items-center justify-center space-y-1">${actionCellContent}</td>
                 `;
                 tbody.appendChild(tr);
             });
-            // Update sort indicators visually after rendering
-            updateSortIndicators();
+            updateSortIndicators('referrer', referrerSortConfig);
         };
 
         const renderRaffleTable = (entries) => {
             const tbody = document.getElementById('raffleTableBody');
             const header = document.getElementById('raffleSalesHeader');
+            const actionHeader = document.getElementById('raffleSalesActionHeader');
             tbody.innerHTML = '';
             
-            if (isReferrer && !isSuperAdmin) {
+            // 1. Filter based on current filter state ('all', 'assigned', 'unassigned') and referrer filter
+            let displayEntries = filterSalesEntries(entries, raffleFilter);
+
+            // Apply direct referrer filter (if active, overrides 'all' filter but works on 'assigned'/'unassigned')
+            if (raffleFilterRefId) {
+                header.textContent = `Split The Pot Sales for ${raffleFilterRefName}`;
+                displayEntries = displayEntries.filter(e => e.referrerRefId === raffleFilterRefId);
+                header.innerHTML += ` <button id="clearRaffleFilter" class="ml-4 px-2 py-1 text-sm text-white bg-red-500 rounded-lg hover:bg-red-600">Clear Filter</button>`;
+            } else if (isReferrer && !isSuperAdmin) {
                  header.textContent = "Your Split The Pot Sales";
             } else {
                  header.textContent = "All Split The Pot Sales";
             }
 
-            if (entries.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-500">No Split The Pot sales found.</td></tr>';
+            // 2. Sort the display entries
+            displayEntries = sortEntries(displayEntries, raffleSortConfig);
+
+            // 3. Show/Hide action column header for SA
+            if (isSuperAdmin) {
+                actionHeader.classList.remove('hidden');
+            } else {
+                actionHeader.classList.add('hidden');
+            }
+
+            // 4. Render rows
+            if (displayEntries.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="${isSuperAdmin ? 8 : 7}" class="text-center py-4 text-gray-500">No Split The Pot sales found matching current criteria.</td></tr>`;
                 return;
             }
-            entries.forEach(e => {
+            displayEntries.forEach(e => {
                 const referrerInfo = e.referrerName ? `${e.referrerName} (${e.referrerRefId})` : '<span class="text-red-500 font-medium">None</span>';
-                // Use robust name lookup for Split The Pot (fullName is preferred, then name, then firstName)
                 const customerName = e.fullName || e.name || e.firstName || 'N/A';
                 
+                let actionCell = '';
+                if (isSuperAdmin) {
+                    actionCell = `
+                        <button class="px-2 py-1 text-xs bg-yellow-500 text-white font-semibold rounded-lg hover:bg-yellow-600 transition-colors"
+                            data-action="edit-sale"
+                            data-entry-id="${e.id}">Edit</button>
+                    `;
+                }
+
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${formatDate(e.timestamp)}</td>
                     <td>${customerName}</td>
-                    <td>${e.phoneNumber || 'N/A'}</td>
+                    <td>${e.phoneNumber || e.email || 'N/A'}</td>
                     <td>${(e.ticketCount || 0).toLocaleString()}</td>
                     <td class="text-right font-medium">${formatCurrency(e.amountPaid || 0)}</td>
                     <td>${referrerInfo}</td>
                     <td>${e.sourceApp || 'N/A'}</td>
+                    ${isSuperAdmin ? `<td>${actionCell}</td>` : ''}
                 `;
                 tbody.appendChild(tr);
             });
+            updateSortIndicators('raffle', raffleSortConfig);
         };
 
         const renderRolexTable = (entries) => {
             const tbody = document.getElementById('rolexTableBody');
             tbody.innerHTML = '';
-            if (entries.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-500">No Spin The Wheel sales found.</td></tr>';
+            
+            // 1. Filter based on current filter state
+            let displayEntries = filterSalesEntries(entries, rolexFilter);
+            
+            // 2. Sort the display entries
+            displayEntries = sortEntries(displayEntries, rolexSortConfig);
+
+            if (displayEntries.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-500">No Spin The Wheel sales found matching current criteria.</td></tr>';
                 return;
             }
-            entries.forEach(e => {
+            displayEntries.forEach(e => {
                 const referrerInfo = e.referrerRefId ? `${e.referrerRefId}` : 'None';
                 const statusClass = e.status === 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
                 
@@ -886,6 +1077,7 @@
                 `;
                 tbody.appendChild(tr);
             });
+            updateSortIndicators('rolex', rolexSortConfig);
         };
         
         const renderDonationsTable = (entries) => {
@@ -896,7 +1088,6 @@
                 return;
             }
             entries.forEach(e => {
-                // Use robust name lookup for Donations
                 const customerName = e.fullName || e.name || 'N/A';
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -922,10 +1113,146 @@
             if (activePane) activePane.classList.remove('hidden');
         };
 
+        // --- NEW: Refresh Feature ---
+        const handleRefreshClick = async () => {
+            if (raffleFilterRefId) {
+                clearRaffleFilter(); 
+            }
+            await fetchDashboardData();
+        };
+
+        // --- Referrer Sales View Feature Functions ---
+        
+        const openReferrerSalesModal = (refId, refName) => {
+            if (!isSuperAdmin) {
+                showCustomPopup('Permission Denied', 'Only Super Admins can view filtered referrer sales.');
+                return;
+            }
+            
+            raffleFilterRefId = refId;
+            raffleFilterRefName = refName;
+            raffleFilter = 'all'; // Default to show all sales for that referrer
+            document.getElementById('raffleFilter').value = 'all';
+            renderRaffleTable(dashboardData.raffleEntries); 
+            switchTab('raffle'); 
+        };
+        
+        const clearRaffleFilter = () => {
+            raffleFilterRefId = null;
+            raffleFilterRefName = null;
+            renderRaffleTable(dashboardData.raffleEntries); 
+        };
+        
+        // --- Edit Order Feature Functions ---
+        
+        const openEditSaleModal = (entryId) => {
+            const sale = dashboardData.raffleEntries.find(e => e.id === entryId);
+            if (!sale) {
+                showCustomPopup('Error', 'Sale entry not found.');
+                return;
+            }
+
+            document.getElementById('edit-sale-id').value = entryId;
+            document.getElementById('edit-name').value = sale.fullName || sale.name || sale.firstName || '';
+            document.getElementById('edit-email').value = sale.email || '';
+            document.getElementById('edit-phone').value = sale.phoneNumber || '';
+            document.getElementById('edit-tickets').value = sale.ticketCount || 0;
+            document.getElementById('edit-amount').value = sale.amountPaid || 0;
+
+            document.getElementById('editSaleModalOverlay').classList.remove('hidden');
+        };
+
+        const closeEditSaleModal = () => {
+            document.getElementById('editSaleModalOverlay').classList.add('hidden');
+        };
+
+        const handleEditSaleSubmit = async (e) => {
+            e.preventDefault();
+            
+            const entryId = document.getElementById('edit-sale-id').value;
+            const updatedData = {
+                fullName: document.getElementById('edit-name').value.trim(),
+                email: document.getElementById('edit-email').value.trim(),
+                phoneNumber: document.getElementById('edit-phone').value.trim(),
+                ticketCount: parseInt(document.getElementById('edit-tickets').value.trim(), 10),
+                amountPaid: parseFloat(document.getElementById('edit-amount').value.trim()),
+            };
+
+            closeEditSaleModal();
+            showGlobalLoading(`Updating sale ${entryId}...`);
+
+            try {
+                const updateRaffleEntryCallable = httpsCallable(functions, 'updateRaffleEntry');
+                const response = await updateRaffleEntryCallable({ entryId, updatedData });
+
+                showCustomPopup('Success', response.data.message);
+                await fetchDashboardData(); 
+
+            } catch (error) {
+                console.error("Error updating sale:", error);
+                showCustomPopup('Update Failed', `Error: ${error.message}`);
+            } finally {
+                hideGlobalLoading();
+            }
+        };
+
+        // --- Promote to Super Admin Logic ---
+
+        const upgradeToSuperAdmin = async (uid) => {
+            try {
+                // IMPORTANT: This function must be implemented in your backend index.js
+                // It should verify the caller is SA, then use admin.auth().setCustomUserClaims(uid, { superAdmin: true });
+                const setSuperAdminClaimCallable = httpsCallable(functions, 'setSuperAdminClaim'); 
+                const response = await setSuperAdminClaimCallable({ uid });
+                return response.data;
+            } catch (error) {
+                console.error("Error calling upgradeToSuperAdmin:", error);
+                throw error;
+            }
+        }
+
+        const openUpgradeAdminModal = (uid, name, refId) => {
+            if (!isSuperAdmin) {
+                showCustomPopup('Permission Denied', 'Only Super Admins can promote other users.');
+                return;
+            }
+            
+            document.getElementById('upgrade-referrer-uid').value = uid;
+            document.getElementById('upgrade-referrer-name').textContent = name;
+            document.getElementById('upgrade-referrer-refid').textContent = refId;
+
+            document.getElementById('upgradeAdminModalOverlay').classList.remove('hidden');
+        }
+
+        const closeUpgradeAdminModal = () => {
+            document.getElementById('upgradeAdminModalOverlay').classList.add('hidden');
+        }
+
+        const handleUpgradeAdmin = async () => {
+            const uid = document.getElementById('upgrade-referrer-uid').value;
+            const name = document.getElementById('upgrade-referrer-name').textContent;
+            
+            closeUpgradeAdminModal();
+            showGlobalLoading(`Promoting ${name} to Super Admin...`);
+
+            try {
+                await upgradeToSuperAdmin(uid);
+                
+                showCustomPopup('Success', `${name} has been promoted to Super Admin. They must sign out and sign back in to see their new permissions.`);
+                
+                await fetchDashboardData();
+                
+            } catch (error) {
+                console.error("Promotion Failed:", error);
+                showCustomPopup('Promotion Failed', `Failed to promote ${name}. Error: ${error.message}. Ensure your backend function 'setSuperAdminClaim' is implemented.`);
+            } finally {
+                hideGlobalLoading();
+            }
+        }
+        
         // --- Admin Tools Logic (SA Only) ---
         
         const updateReservedTicketCounts = async () => {
-            // Check if user is authorized to see this data
             if (!isSuperAdmin && !isLoggedInAdmin) return;
             
             const infoDiv = document.getElementById('reservedTicketInfo');
@@ -963,52 +1290,39 @@
             }
         };
         
-        const handleRecalculateTotals = async () => {
-             if (!isSuperAdmin) return;
-             // Note: using custom modal/popup instead of native confirm()
-             showCustomPopup('Confirm Recalculation', 'Are you sure you want to recalculate global raffle totals? This action is usually only required if counters are corrupted. This process runs in the background.', true); 
-             
-             // Simple state to confirm action (since confirm() is discouraged)
-             const runRecalculation = true; // In a real app, this would be tied to a modal button click event
-
-             if (!runRecalculation) return; 
-
-             showGlobalLoading("Recalculating global totals...");
-             try {
-                 const recalculateRaffleTotalsCallable = httpsCallable(functions, 'recalculateRaffleTotals');
-                 const response = await recalculateRaffleTotalsCallable({});
-                 showCustomPopup('Recalculation Complete', response.data.message);
-             } catch (error) {
-                 console.error("Error recalculating totals:", error);
-                 showCustomPopup('Recalculation Failed', `Error: ${error.message}`);
-             } finally {
-                 hideGlobalLoading();
-             }
-        };
-
-        // Custom Show Popup function (modified to handle potential confirmation)
-        const originalShowCustomPopup = (title, message) => {
-            document.getElementById('popupTitle').textContent = title;
-            document.getElementById('popupMessage').textContent = message;
-            document.getElementById('customPopupOverlay').classList.remove('hidden');
-            setTimeout(() => { document.getElementById('customPopup').classList.add('scale-100'); }, 10);
-        };
-
-        // Redefine to avoid native confirm() and alert()
-        const showCustomPopupReplacement = (title, message, isConfirm = false) => {
-            document.getElementById('popupTitle').textContent = title;
-            document.getElementById('popupMessage').textContent = message;
-            const closeBtn = document.getElementById('popupCloseButton');
+        const handleRecalculateRaffleTotals = async () => {
+            if (!isSuperAdmin) return;
             
-            // Re-use OK button, no confirmation needed in this simplified canvas environment
-            closeBtn.textContent = 'OK'; 
-            closeBtn.onclick = hideCustomPopup;
-
-            document.getElementById('customPopupOverlay').classList.remove('hidden');
-            setTimeout(() => { document.getElementById('customPopup').classList.add('scale-100'); }, 10);
+            showGlobalLoading("Recalculating Split The Pot totals...");
+            try {
+                const recalculateRaffleTotalsCallable = httpsCallable(functions, 'recalculateRaffleTotals');
+                const response = await recalculateRaffleTotalsCallable({});
+                showCustomPopup('Recalculation Complete', response.data.message);
+                await fetchDashboardData(); 
+            } catch (error) {
+                console.error("Error recalculating raffle totals:", error);
+                showCustomPopup('Recalculation Failed', `Error: ${error.message}`);
+            } finally {
+                hideGlobalLoading();
+            }
         };
-        window.showCustomPopup = showCustomPopupReplacement;
 
+        const handleRecalculateRolexTotals = async () => {
+            if (!isSuperAdmin) return;
+            
+            showGlobalLoading("Recalculating Spin The Wheel totals...");
+            try {
+                const recalculateRolexTotalsCallable = httpsCallable(functions, 'recalculateRolexTotals');
+                const response = await recalculateRolexTotalsCallable({});
+                showCustomPopup('Recalculation Complete', response.data.message);
+                await fetchDashboardData(); 
+            } catch (error) {
+                console.error("Error recalculating Rolex totals:", error);
+                showCustomPopup('Recalculation Failed', `Error: ${error.message}`);
+            } finally {
+                hideGlobalLoading();
+            }
+        };
 
         // --- Manual Sale Logic (Super Admin Only) ---
 
@@ -1060,23 +1374,19 @@
             }
         };
 
-        // --- NEW: Apply Tickets Logic (Super Admin Only) ---
+        // --- Split the Pot Assignment Logic ---
 
-        // RENAMED/REPURPOSED to fetch all sales relevant for assignment/transfer
         const fetchAssignmentRaffleSales = async () => {
-            showGlobalLoading("Fetching all sales for assignment...");
+            showGlobalLoading("Fetching all Split the Pot sales...");
             try {
-                // For Super Admin, raffleEntries should already contain all sales.
-                // We map this local array to the assignment state.
                 allAssignmentRaffleSales = dashboardData.raffleEntries.map((sale, index) => ({
-                    // Ensure each item has an ID for selection tracking
                     id: sale.id || `sale-${index}`, 
                     ...sale
                 }));
                 
-                filteredUnassignedSales = [...allAssignmentRaffleSales];
-                selectedSaleIds.clear();
-                updateApplyTicketsUI();
+                filteredRaffleSales = [...allAssignmentRaffleSales];
+                selectedRaffleSaleIds.clear();
+                updateApplyRaffleTicketsUI();
 
             } catch (error) {
                 console.error("Error fetching assignment sales:", error);
@@ -1086,36 +1396,34 @@
             }
         };
         
-        const openApplyTicketsModal = async (refId, refName) => {
+        const openApplyRaffleTicketsModal = async (refId, refName) => {
             if (!isSuperAdmin) {
-                showCustomPopup('Permission Denied', 'Only Super Admins can assign tickets.');
+                showCustomPopup('Permission Denied', 'Only Super Admins can assign Split the Pot tickets.');
                 return;
             }
             
-            targetRefId = refId;
-            targetRefName = refName;
+            targetRaffleRefId = refId;
+            targetRaffleRefName = refName;
 
             document.getElementById('targetReferrerName').textContent = refName;
             document.getElementById('targetReferrerId').textContent = refId;
             document.getElementById('unassignedSearchInput').value = '';
             
-            // Call the repurposed fetch function to load all relevant sales
             await fetchAssignmentRaffleSales();
             
             document.getElementById('applyTicketsModalOverlay').classList.remove('hidden');
         };
 
-        const closeApplyTicketsModal = () => {
+        const closeApplyRaffleTicketsModal = () => {
             document.getElementById('applyTicketsModalOverlay').classList.add('hidden');
-            // Reset state
-            targetRefId = null;
-            targetRefName = null;
+            targetRaffleRefId = null;
+            targetRaffleRefName = null;
             allAssignmentRaffleSales = [];
-            filteredUnassignedSales = [];
-            selectedSaleIds.clear();
+            filteredRaffleSales = [];
+            selectedRaffleSaleIds.clear();
         };
 
-        const updateApplyTicketsUI = () => {
+        const updateApplyRaffleTicketsUI = () => {
             const tbody = document.getElementById('unassignedSalesTableBody');
             tbody.innerHTML = '';
             const selectAllCheckbox = document.getElementById('selectAllUnassigned');
@@ -1124,20 +1432,18 @@
             
             selectAllCheckbox.checked = false;
             
-            // Updated colspan count to 7 (6 data columns + 1 checkbox)
-            if (filteredUnassignedSales.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-500">No sales found matching the criteria.</td></tr>';
+            if (filteredRaffleSales.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-500">No Split the Pot sales found matching the criteria.</td></tr>';
                 applyButton.disabled = true;
                 selectedCountDisplay.textContent = '0 sales selected';
                 return;
             }
 
-            filteredUnassignedSales.forEach(sale => {
-                const isSelected = selectedSaleIds.has(sale.id);
+            filteredRaffleSales.forEach(sale => {
+                const isSelected = selectedRaffleSaleIds.has(sale.id);
                 const customerName = sale.fullName || sale.name || sale.firstName || 'N/A';
                 const contact = sale.email || sale.phoneNumber || 'N/A';
 
-                // Display current referrer details
                 const currentReferrerContent = sale.referrerRefId 
                     ? `<span class="font-mono text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded">${sale.referrerRefId}</span>`
                     : '<span class="text-red-500">None</span>';
@@ -1146,7 +1452,7 @@
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td class="text-center">
-                        <input type="checkbox" data-sale-id="${sale.id}" class="sale-checkbox rounded text-blue-600 focus:ring-blue-500" ${isSelected ? 'checked' : ''}>
+                        <input type="checkbox" data-sale-id="${sale.id}" class="raffle-sale-checkbox rounded text-blue-600 focus:ring-blue-500" ${isSelected ? 'checked' : ''}>
                     </td>
                     <td>${formatDate(sale.timestamp)}</td>
                     <td>${customerName}</td>
@@ -1158,91 +1464,262 @@
                 tbody.appendChild(tr);
             });
             
-            selectedCountDisplay.textContent = `${selectedSaleIds.size} sales selected`;
-            applyButton.disabled = selectedSaleIds.size === 0;
+            selectedCountDisplay.textContent = `${selectedRaffleSaleIds.size} sales selected`;
+            applyButton.disabled = selectedRaffleSaleIds.size === 0;
 
-            // Update select all state
-            if (filteredUnassignedSales.length > 0 && selectedSaleIds.size === filteredUnassignedSales.length) {
+            if (filteredRaffleSales.length > 0 && selectedRaffleSaleIds.size === filteredRaffleSales.length) {
                 selectAllCheckbox.checked = true;
             }
         };
 
-        const handleSearchChange = () => {
+        const handleRaffleSearchChange = () => {
             const searchLower = document.getElementById('unassignedSearchInput').value.toLowerCase().trim();
             if (searchLower === '') {
-                filteredUnassignedSales = [...allAssignmentRaffleSales];
+                filteredRaffleSales = [...allAssignmentRaffleSales];
             } else {
-                filteredUnassignedSales = allAssignmentRaffleSales.filter(sale => {
+                filteredRaffleSales = allAssignmentRaffleSales.filter(sale => {
                     const name = (sale.fullName || sale.name || sale.firstName || '').toLowerCase();
                     const email = (sale.email || '').toLowerCase();
                     const phone = (sale.phoneNumber || '').toLowerCase();
                     const currentRef = (sale.referrerRefId || '').toLowerCase(); 
-                    // Search includes current referrer for easy identification
                     return name.includes(searchLower) || email.includes(searchLower) || phone.includes(searchLower) || currentRef.includes(searchLower);
                 });
             }
-            updateApplyTicketsUI();
+            updateApplyRaffleTicketsUI();
         };
 
-        const handleCheckboxChange = (e) => {
+        const handleRaffleCheckboxChange = (e) => {
             const saleId = e.target.dataset.saleId;
             if (e.target.checked) {
-                selectedSaleIds.add(saleId);
+                selectedRaffleSaleIds.add(saleId);
             } else {
-                selectedSaleIds.delete(saleId);
+                selectedRaffleSaleIds.delete(saleId);
             }
             
-            // Check/uncheck select all if applicable
             const selectAllCheckbox = document.getElementById('selectAllUnassigned');
-            if (selectedSaleIds.size === filteredUnassignedSales.length && filteredUnassignedSales.length > 0) {
+            if (selectedRaffleSaleIds.size === filteredRaffleSales.length && filteredRaffleSales.length > 0) {
                 selectAllCheckbox.checked = true;
             } else {
                 selectAllCheckbox.checked = false;
             }
 
-            document.getElementById('selectedCountDisplay').textContent = `${selectedSaleIds.size} sales selected`;
-            document.getElementById('applyReferrerButton').disabled = selectedSaleIds.size === 0;
+            document.getElementById('selectedCountDisplay').textContent = `${selectedRaffleSaleIds.size} sales selected`;
+            document.getElementById('applyReferrerButton').disabled = selectedRaffleSaleIds.size === 0;
         };
 
-        const handleSelectAllChange = (e) => {
-            selectedSaleIds.clear();
+        const handleRaffleSelectAllChange = (e) => {
+            selectedRaffleSaleIds.clear();
             const isChecked = e.target.checked;
 
-            document.querySelectorAll('.sale-checkbox').forEach(checkbox => {
+            document.querySelectorAll('.raffle-sale-checkbox').forEach(checkbox => {
                 checkbox.checked = isChecked;
                 const saleId = checkbox.dataset.saleId;
                 if (isChecked) {
-                    selectedSaleIds.add(saleId);
+                    selectedRaffleSaleIds.add(saleId);
                 }
             });
 
-            document.getElementById('selectedCountDisplay').textContent = `${selectedSaleIds.size} sales selected`;
-            document.getElementById('applyReferrerButton').disabled = selectedSaleIds.size === 0;
+            document.getElementById('selectedCountDisplay').textContent = `${selectedRaffleSaleIds.size} sales selected`;
+            document.getElementById('applyReferrerButton').disabled = selectedRaffleSaleIds.size === 0;
         };
 
-        const applyReferrerToSales = async () => {
-            if (!targetRefId || selectedSaleIds.size === 0) {
+        const applyReferrerToRaffleSales = async () => {
+            if (!targetRaffleRefId || selectedRaffleSaleIds.size === 0) {
                 showCustomPopup('Error', 'No referrer or sales selected.');
                 return;
             }
             
-            const salesToUpdate = Array.from(selectedSaleIds);
-            const refId = targetRefId;
+            const salesToUpdate = Array.from(selectedRaffleSaleIds);
+            const refId = targetRaffleRefId;
             
-            closeApplyTicketsModal();
-            showGlobalLoading(`Processing transfer/assignment of ${salesToUpdate.length} sales to ${refId}...`);
+            closeApplyRaffleTicketsModal();
+            showGlobalLoading(`Processing transfer/assignment of ${salesToUpdate.length} Split the Pot sales to ${refId}...`);
 
             try {
-                // This calls the NEW backend function which handles decrement/increment logic
                 const assignReferrerToSalesCallable = httpsCallable(functions, 'assignReferrerToSales');
                 const response = await assignReferrerToSalesCallable({ saleIds: salesToUpdate, refId: refId });
 
                 showCustomPopup('Success', response.data.message || `Successfully processed ${salesToUpdate.length} sales for ${refId}.`);
                 
-                await fetchDashboardData(); // Refresh the main dashboard data
+                await fetchDashboardData(); 
 
             } catch (error) {
-                console.error("Error assigning referrer:", error);
+                console.error("Error assigning referrer (Raffle):", error);
+                showCustomPopup('Assignment/Transfer Failed', `Error: ${error.message}`);
+            } finally {
+                hideGlobalLoading();
+            }
+        };
+        
+        // --- Spin the Wheel (Rolex) Assignment Logic ---
+        
+        const fetchAssignmentRolexSales = async () => {
+            showGlobalLoading("Fetching all Spin The Wheel tickets...");
+            try {
+                allAssignmentRolexSales = dashboardData.rolexEntries.map((ticket) => ({
+                    id: ticket.id, // Ticket number is the ID
+                    ...ticket
+                }));
+                
+                filteredRolexSales = [...allAssignmentRolexSales];
+                selectedRolexSaleIds.clear();
+                updateApplyRolexTicketsUI();
+
+            } catch (error) {
+                console.error("Error fetching Rolex sales:", error);
+                showCustomPopup('Error', `Failed to load Rolex tickets: ${error.message}`);
+            } finally {
+                hideGlobalLoading();
+            }
+        };
+
+        const openApplyRolexTicketsModal = async (refId, refName) => {
+            if (!isSuperAdmin) {
+                showCustomPopup('Permission Denied', 'Only Super Admins can assign Spin The Wheel tickets.');
+                return;
+            }
+            
+            targetRolexRefId = refId;
+            targetRolexRefName = refName;
+
+            document.getElementById('targetRolexReferrerName').textContent = refName;
+            document.getElementById('targetRolexReferrerId').textContent = refId;
+            document.getElementById('rolexSearchInput').value = '';
+            
+            await fetchAssignmentRolexSales();
+            
+            document.getElementById('applyRolexTicketsModalOverlay').classList.remove('hidden');
+        };
+        
+        const closeApplyRolexTicketsModal = () => {
+            document.getElementById('applyRolexTicketsModalOverlay').classList.add('hidden');
+            targetRolexRefId = null;
+            targetRolexRefName = null;
+            allAssignmentRolexSales = [];
+            filteredRolexSales = [];
+            selectedRolexSaleIds.clear();
+        };
+        
+        const updateApplyRolexTicketsUI = () => {
+            const tbody = document.getElementById('rolexAssignmentTableBody');
+            tbody.innerHTML = '';
+            const selectAllCheckbox = document.getElementById('selectAllRolex');
+            const selectedCountDisplay = document.getElementById('selectedRolexCountDisplay');
+            const applyButton = document.getElementById('applyRolexReferrerButton');
+            
+            selectAllCheckbox.checked = false;
+
+            if (filteredRolexSales.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-500">No Paid or Claimed Spin The Wheel tickets found matching the criteria.</td></tr>';
+                applyButton.disabled = true;
+                selectedCountDisplay.textContent = '0 tickets selected';
+                return;
+            }
+
+            filteredRolexSales.forEach(ticket => {
+                const isSelected = selectedRolexSaleIds.has(ticket.id);
+                const customerName = ticket.fullName || ticket.name || ticket.firstName || 'N/A';
+                const contact = ticket.email || ticket.phoneNumber || 'N/A';
+                const currentReferrerContent = ticket.referrerRefId 
+                    ? `<span class="font-mono text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded">${ticket.referrerRefId}</span>`
+                    : '<span class="text-red-500">None</span>';
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="text-center">
+                        <input type="checkbox" data-ticket-id="${ticket.id}" class="rolex-ticket-checkbox rounded text-purple-600 focus:ring-purple-500" ${isSelected ? 'checked' : ''}>
+                    </td>
+                    <td class="font-bold">${ticket.id}</td>
+                    <td>${formatDate(ticket.timestamp)}</td>
+                    <td>${customerName}</td>
+                    <td>${contact}</td>
+                    <td class="text-right font-medium">${formatCurrency(ticket.amountPaid || 0)}</td>
+                    <td>${currentReferrerContent}</td> 
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            selectedCountDisplay.textContent = `${selectedRolexSaleIds.size} tickets selected`;
+            applyButton.disabled = selectedRolexSaleIds.size === 0;
+
+            if (filteredRolexSales.length > 0 && selectedRolexSaleIds.size === filteredRolexSales.length) {
+                selectAllCheckbox.checked = true;
+            }
+        };
+
+        const handleRolexSearchChange = () => {
+            const searchLower = document.getElementById('rolexSearchInput').value.toLowerCase().trim();
+            if (searchLower === '') {
+                filteredRolexSales = [...allAssignmentRolexSales];
+            } else {
+                filteredRolexSales = allAssignmentRolexSales.filter(ticket => {
+                    const name = (ticket.fullName || ticket.name || ticket.firstName || '').toLowerCase();
+                    const email = (ticket.email || '').toLowerCase();
+                    const currentRef = (ticket.referrerRefId || '').toLowerCase(); 
+                    const id = String(ticket.id).toLowerCase();
+                    return name.includes(searchLower) || email.includes(searchLower) || currentRef.includes(searchLower) || id.includes(searchLower);
+                });
+            }
+            updateApplyRolexTicketsUI();
+        };
+
+        const handleRolexCheckboxChange = (e) => {
+            const ticketId = e.target.dataset.ticketId;
+            if (e.target.checked) {
+                selectedRolexSaleIds.add(ticketId);
+            } else {
+                selectedRolexSaleIds.delete(ticketId);
+            }
+            
+            const selectAllCheckbox = document.getElementById('selectAllRolex');
+            if (selectedRolexSaleIds.size === filteredRolexSales.length && filteredRolexSales.length > 0) {
+                selectAllCheckbox.checked = true;
+            } else {
+                selectAllCheckbox.checked = false;
+            }
+
+            document.getElementById('selectedRolexCountDisplay').textContent = `${selectedRolexSaleIds.size} tickets selected`;
+            document.getElementById('applyRolexReferrerButton').disabled = selectedRolexSaleIds.size === 0;
+        };
+
+        const handleRolexSelectAllChange = (e) => {
+            selectedRolexSaleIds.clear();
+            const isChecked = e.target.checked;
+
+            document.querySelectorAll('.rolex-ticket-checkbox').forEach(checkbox => {
+                checkbox.checked = isChecked;
+                const ticketId = checkbox.dataset.ticketId;
+                if (isChecked) {
+                    selectedRolexSaleIds.add(ticketId);
+                }
+            });
+
+            document.getElementById('selectedRolexCountDisplay').textContent = `${selectedRolexSaleIds.size} tickets selected`;
+            document.getElementById('applyRolexReferrerButton').disabled = selectedRolexSaleIds.size === 0;
+        };
+
+        const applyReferrerToRolexTickets = async () => {
+            if (!targetRolexRefId || selectedRolexSaleIds.size === 0) {
+                showCustomPopup('Error', 'No referrer or tickets selected.');
+                return;
+            }
+            
+            const ticketIds = Array.from(selectedRolexSaleIds);
+            const refId = targetRolexRefId;
+            
+            closeApplyRolexTicketsModal();
+            showGlobalLoading(`Processing transfer/assignment of ${ticketIds.length} Spin The Wheel tickets to ${refId}...`);
+
+            try {
+                const assignReferrerToRolexTicketsCallable = httpsCallable(functions, 'assignReferrerToRolexTickets');
+                const response = await assignReferrerToRolexTicketsCallable({ ticketIds: ticketIds, refId: refId });
+
+                showCustomPopup('Success', response.data.message || `Successfully processed ${ticketIds.length} tickets for ${refId}.`);
+                
+                await fetchDashboardData(); 
+
+            } catch (error) {
+                console.error("Error assigning referrer (Rolex):", error);
                 showCustomPopup('Assignment/Transfer Failed', `Error: ${error.message}`);
             } finally {
                 hideGlobalLoading();
@@ -1317,7 +1794,7 @@
         
         // --- Event Listeners for Search and Sort Controls ---
         const attachSortAndSearchListeners = () => {
-            // Search Input Listener
+            // Referrer Table Search
             const searchInput = document.getElementById('referrerSearchInput');
             if (searchInput) {
                 searchInput.addEventListener('input', (e) => {
@@ -1326,19 +1803,50 @@
                 });
             }
 
-            // Table Header Sort Listener
+            // Referrer Table Sort
             document.querySelectorAll('.referrer-sort-header').forEach(header => {
                 header.addEventListener('click', (e) => {
                     const key = e.currentTarget.dataset.sortKey;
-                    if (sortConfig.key === key) {
-                        sortConfig.direction = sortConfig.direction === 'asc' ? 'desc' : 'asc';
+                    if (referrerSortConfig.key === key) {
+                        referrerSortConfig.direction = referrerSortConfig.direction === 'asc' ? 'desc' : 'asc';
                     } else {
-                        sortConfig.key = key;
-                        // Default to descending for numeric values (tickets, amount, clicks)
-                        sortConfig.direction = (key === 'name' || key === 'refId' || key === 'email') ? 'asc' : 'desc';
+                        referrerSortConfig.key = key;
+                        referrerSortConfig.direction = (key === 'name' || key === 'refId' || key === 'email') ? 'asc' : 'desc';
                     }
                     renderReferrersTable(dashboardData.referrers);
                 });
+            });
+            
+            // Sales Table Sorting (Raffle and Rolex)
+            document.querySelectorAll('.sort-header').forEach(header => {
+                header.addEventListener('click', (e) => {
+                    const table = e.currentTarget.dataset.table;
+                    const key = e.currentTarget.dataset.sortKey;
+                    
+                    let config = table === 'raffle' ? raffleSortConfig : rolexSortConfig;
+                    let renderFunc = table === 'raffle' ? renderRaffleTable : renderRolexTable;
+                    
+                    if (config.key === key) {
+                        config.direction = config.direction === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        config.key = key;
+                        // Default to ascending for strings, descending for numbers/dates
+                        config.direction = (key === 'fullName' || key === 'referrerRefId' || key === 'name') ? 'asc' : 'desc';
+                    }
+                    renderFunc(table === 'raffle' ? dashboardData.raffleEntries : dashboardData.rolexEntries);
+                });
+            });
+            
+            // Sales Table Filtering (Raffle)
+            document.getElementById('raffleFilter').addEventListener('change', (e) => {
+                raffleFilter = e.target.value;
+                clearRaffleFilter(); // Clears direct referrer filter, then re-renders
+            });
+            
+            // Sales Table Filtering (Rolex)
+            document.getElementById('rolexFilter').addEventListener('change', (e) => {
+                rolexFilter = e.target.value;
+                renderRolexTable(dashboardData.rolexEntries);
             });
         };
 
@@ -1354,7 +1862,6 @@
                 
                 setLogLevel('debug');
 
-                // --- Handle Click Tracking if 'ref' is in URL ---
                 const refId = getRefIdFromUrl();
                 if (refId) {
                     await trackRefClick(refId); 
@@ -1367,6 +1874,9 @@
                 document.getElementById('logoutButton').addEventListener('click', handleLogout);
                 document.getElementById('popupCloseButton').addEventListener('click', hideCustomPopup);
                 
+                // NEW: Refresh Data Button
+                document.getElementById('refreshDataButton').addEventListener('click', handleRefreshClick);
+
                 // Tab navigation
                 document.querySelectorAll('.tab-button').forEach(button => {
                     button.addEventListener('click', (e) => switchTab(e.target.dataset.tab));
@@ -1380,35 +1890,78 @@
                 document.getElementById('closeManualSaleModal').addEventListener('click', closeManualSaleModal);
                 document.getElementById('manualSaleForm').addEventListener('submit', handleManualSaleSubmit);
                 
+                // Edit Sale Modal listeners
+                document.getElementById('closeEditSaleModal').addEventListener('click', closeEditSaleModal);
+                document.getElementById('editSaleForm').addEventListener('submit', handleEditSaleSubmit);
+                
                 // Admin Tools listeners
                 document.getElementById('deleteExpiredTicketsButton').addEventListener('click', handleCleanupClick);
-                document.getElementById('recalculateTotalsButton').addEventListener('click', handleRecalculateTotals);
+                document.getElementById('recalculateTotalsButton').addEventListener('click', handleRecalculateRaffleTotals);
+                document.getElementById('recalculateRolexTotalsButton').addEventListener('click', handleRecalculateRolexTotals); 
 
-                // --- NEW: Apply Tickets Modal listeners ---
-                document.getElementById('closeApplyTicketsModal').addEventListener('click', closeApplyTicketsModal);
-                document.getElementById('applyReferrerButton').addEventListener('click', applyReferrerToSales);
-                document.getElementById('unassignedSearchInput').addEventListener('input', handleSearchChange);
-                document.getElementById('selectAllUnassigned').addEventListener('change', handleSelectAllChange);
+                // --- Split the Pot Assignment Modal listeners ---
+                document.getElementById('closeApplyTicketsModal').addEventListener('click', closeApplyRaffleTicketsModal);
+                document.getElementById('applyReferrerButton').addEventListener('click', applyReferrerToRaffleSales);
+                document.getElementById('unassignedSearchInput').addEventListener('input', handleRaffleSearchChange);
+                document.getElementById('selectAllUnassigned').addEventListener('change', handleRaffleSelectAllChange);
                 
-                // Event delegation for Referrers Table clicks (Needed for newly rendered rows)
+                document.getElementById('unassignedSalesTableBody').addEventListener('change', (e) => {
+                    if (e.target.classList.contains('raffle-sale-checkbox')) {
+                        handleRaffleCheckboxChange(e);
+                    }
+                });
+
+                // --- Spin the Wheel (Rolex) Assignment Modal listeners ---
+                document.getElementById('closeApplyRolexTicketsModal').addEventListener('click', closeApplyRolexTicketsModal);
+                document.getElementById('applyRolexReferrerButton').addEventListener('click', applyReferrerToRolexTickets);
+                document.getElementById('rolexSearchInput').addEventListener('input', handleRolexSearchChange);
+                document.getElementById('selectAllRolex').addEventListener('change', handleRolexSelectAllChange);
+                
+                document.getElementById('rolexAssignmentTableBody').addEventListener('change', (e) => {
+                    if (e.target.classList.contains('rolex-ticket-checkbox')) {
+                        handleRolexCheckboxChange(e);
+                    }
+                });
+
+                // Upgrade Admin Modal listeners
+                document.getElementById('closeUpgradeAdminModal').addEventListener('click', closeUpgradeAdminModal);
+                document.getElementById('confirmUpgradeAdmin').addEventListener('click', handleUpgradeAdmin);
+
+
+                // Event delegation for Referrers Table clicks (Handles View Sales, Assign Raffle/Rolex, and Promote to SA)
                 document.getElementById('referrersTableBody').addEventListener('click', (e) => {
                     const target = e.target;
-                    // Check if the clicked element is the span with the assign-tickets action
-                    if (target.dataset.action === 'assign-tickets' && isSuperAdmin) {
+                    const action = target.dataset.action;
+                    
+                    if (isSuperAdmin) {
                         const refId = target.dataset.refid;
                         const refName = target.dataset.refname;
-                        openApplyTicketsModal(refId, refName);
+                        const uid = target.dataset.uid;
+                        
+                        if (action === 'assign-raffle-tickets') {
+                            openApplyRaffleTicketsModal(refId, refName);
+                        } else if (action === 'assign-rolex-tickets') {
+                            openApplyRolexTicketsModal(refId, refName);
+                        } else if (action === 'view-referrer-sales') { 
+                            openReferrerSalesModal(refId, refName);
+                        } else if (action === 'promote-sa') {
+                             openUpgradeAdminModal(uid, refName, refId);
+                        }
                     }
                 });
 
-                // Event delegation for checkboxes inside the unassigned sales table
-                document.getElementById('unassignedSalesTableBody').addEventListener('change', (e) => {
-                    if (e.target.classList.contains('sale-checkbox')) {
-                        handleCheckboxChange(e);
+                // Event delegation for Raffle Sales Table clicks (for Edit button and Clear Filter button)
+                document.getElementById('raffleTableBody').addEventListener('click', (e) => {
+                    const target = e.target;
+                    if (target.dataset.action === 'edit-sale' && isSuperAdmin) {
+                        openEditSaleModal(target.dataset.entryId);
+                    } else if (target.id === 'clearRaffleFilter') {
+                        clearRaffleFilter();
                     }
                 });
+
+
             } catch (error) {
-                // Catches any critical error during setup (Firebase config, listener creation, etc.)
                 document.getElementById('globalSpinnerText').textContent = 'A critical error occurred during setup. Check the console for details.';
                 console.error("Critical Application Error:", error);
                 hideGlobalLoading();

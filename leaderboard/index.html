@@ -36,10 +36,11 @@
         }
     </script>
     <style>
-        /* General styling and font */
+        /* Base Styling */
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #111827; /* Dark gray background (gray-900) */
+            background-color: #0d1222;
+            background-image: linear-gradient(135deg, #0d1222 0%, #151a2d 100%);
             color: #ffffff;
         }
         .bebas-neue {
@@ -65,39 +66,94 @@
         .rank-glow-2 { text-shadow: 0 0 8px #9ca3af; }
         .rank-glow-3 { text-shadow: 0 0 8px #b45309; }
 
-        /* Podium specific styles (now unused, but keeping stage and card styles removed for simplicity) */
-        .podium-stage {
-            transition: height 0.3s ease-in-out;
+        /* Modal specific styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
             width: 100%;
-            max-width: 150px;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.75);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
         }
-        .podium-card {
-            transition: transform 0.3s ease-in-out;
-            z-index: 30;
-            margin-bottom: -10px; /* Overlap slightly with the stage */
-            width: 100%;
-            max-width: 200px; /* Increased size to hold more stats */
+        .modal-content {
+            background-color: #1f2937;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            max-width: 90%;
+            width: 400px;
+            transform: scale(0.95);
+            transition: transform 0.2s ease-out;
         }
-        /* Translate the card up relative to the stage to visually float */
-        .podium-card-lift {
-            transform: translateY(-20px); 
+        .modal-content.open {
+            transform: scale(1);
+        }
+
+        /* Mobile-first adjustment for header navigation */
+        @media (max-width: 767px) {
+            #main-menu li {
+                width: 100%; /* Make list items take full width on mobile */
+            }
+            #main-menu li a {
+                display: block; /* Make links fill the list item */
+                text-align: center;
+                padding: 0.75rem 1rem; /* Add padding for touch targets */
+            }
+            /* Style the 'Donate Now' button to look like a full-width block link on mobile */
+            #main-menu li:last-child a {
+                margin-top: 0.5rem; /* Separator from other links */
+            }
         }
 
     </style>
 </head>
-<body class="min-h-screen">
+<body class="text-white min-h-screen flex flex-col">
 
-    <!-- Header (Matching the provided template style) -->
-    <header id="leaderboard-header-fixed" class="bg-primary-dark py-4 px-6 md:px-12 fixed w-full top-0 z-50">
-        <nav class="container mx-auto flex justify-center items-center">
-            <h1 class="bebas-neue text-4xl md:text-5xl font-bold text-accent-yellow drop-shadow-lg">
-                <span class="text-white">YDE</span> Leaderboard
-            </h1>
+    <!-- Message Box Modal (for breakdown) -->
+    <div id="message-modal" class="modal-overlay">
+        <div id="modal-content" class="modal-content">
+            <h3 id="modal-title" class="text-xl font-bold mb-4 text-white"></h3>
+            <div id="modal-body" class="text-gray-300 mb-6"></div>
+            <div class="flex justify-end">
+                <button 
+                    onclick="document.getElementById('message-modal').style.display = 'none';"
+                    class="px-4 py-2 bg-accent-yellow text-primary-dark font-semibold rounded-lg hover:bg-yellow-500 transition duration-150 shadow-md"
+                >
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Updated Header (from user snippet) -->
+    <header class="bg-black/40 py-4 px-4 md:px-12 w-full top-0 z-50 shadow-2xl backdrop-blur-sm">
+        <nav class="container mx-auto flex justify-between items-center flex-wrap md:flex-nowrap">
+            <div class="flex items-center justify-between w-full md:w-auto">
+                <a href="/" class="flex items-center space-x-2">
+                    <!-- Note: Using a text-based title since the image URL is external and may fail -->
+                    <h1 class="bebas-neue text-4xl md:text-5xl font-bold text-accent-yellow drop-shadow-lg">
+                        <span class="text-white">YDE</span> Fund
+                    </h1>
+                </a>
+                <button id="menu-toggle" class="md:hidden text-white focus:outline-none" aria-label="Toggle menu">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                </button>
+            </div>
+            <ul id="main-menu" class="hidden md:flex flex-col md:flex-row items-center space-y-2 md:space-y-0 md:space-x-8 text-base font-semibold w-full md:w-auto mt-4 md:mt-0">
+                <li><a href="/split-the-pot/" class="text-white hover:text-yellow-400 transition-colors duration-300">Split the Pot</a></li>
+                <li><a href="/spin-the-wheel/" class="text-white hover:text-yellow-400 transition-colors duration-300">Spin the Wheel</a></li>
+                <li><a href="/donate/" class="py-2 px-4 rounded-full bg-yellow-400 text-black hover:bg-yellow-500 transition-colors duration-300 font-bold block">Donate Now</a></li>
+            </ul>
         </nav>
     </header>
+    <!-- End Updated Header -->
 
     <!-- Main Content Container -->
-    <main class="flex-grow pt-[80px]">
+    <main class="flex-grow pt-[100px]"> <!-- Adjusted pt to accommodate larger header -->
         <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
             
             <!-- Sub-Header and Search Section -->
@@ -105,6 +161,30 @@
                 <p class="text-center text-gray-400 mb-6 text-lg">
                     See who's leading the charge for the Senior Fund! Data updates in real-time.
                 </p>
+
+                <!-- Global Metrics Card Container -->
+                <div id="global-metrics-container" class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto mb-8">
+                    
+                    <!-- Total Senior Fund Contribution Card -->
+                    <div 
+                        id="total-fund-card"
+                        onclick="showRevenueBreakdown();"
+                        class="bg-card-dark p-6 rounded-xl shadow-2xl border-t-4 border-accent-yellow/50 text-center cursor-pointer hover:bg-gray-700 transition duration-150"
+                        title="Click to see the detailed calculation"
+                    >
+                        <i data-lucide="piggy-bank" class="w-8 h-8 text-accent-yellow mx-auto mb-2"></i>
+                        <p class="text-sm text-gray-400 uppercase font-medium">Total Senior Fund Contribution</p>
+                        <p id="total-senior-fund" class="bebas-neue text-4xl text-secondary-green font-bold">---</p>
+                        <p class="text-xs text-gray-500 mt-1">(Click for Breakdown)</p>
+                    </div>
+
+                    <!-- Total Referrers Card -->
+                    <div class="bg-card-dark p-6 rounded-xl shadow-2xl border-t-4 border-secondary-green/50 text-center">
+                        <i data-lucide="users" class="w-8 h-8 text-secondary-green mx-auto mb-2"></i>
+                        <p class="text-sm text-gray-400 uppercase font-medium">Total Referrers</p>
+                        <p id="total-referrers" class="bebas-neue text-4xl text-white font-bold">--</p>
+                    </div>
+                </div>
 
                 <!-- Search Bar -->
                 <div class="relative max-w-lg mx-auto">
@@ -118,8 +198,6 @@
                 </div>
             </div>
             
-            <!-- Podium Visualization Container (REMOVED) -->
-
             <!-- Leaderboard List -->
             <div id="leaderboard-list" class="space-y-4">
                 <!-- Loading State -->
@@ -132,9 +210,9 @@
     </main>
 
     <!-- Footer (Matching the provided template style) -->
-    <footer class="bg-primary-dark py-8 mt-auto">
+    <footer class="bg-black/40 py-8 mt-auto shadow-[0_-5px_15px_rgba(0,0,0,0.5)]">
         <div class="container mx-auto px-4 text-center">
-            <p class="text-sm text-gray-500 mt-4">
+             <p class="text-sm text-gray-500 mt-4">
                 Ranking is based on total money raised.
             </p>
         </div>
@@ -144,7 +222,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, doc, Timestamp, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, doc, Timestamp, writeBatch, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getFunctions } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
@@ -158,6 +236,14 @@
         // --- Core Application State & Logic ---
         let leaderboardData = []; // Holds all ranked data
         let searchFilter = '';
+
+        // Global variables for total fund calculation (Updated by dedicated listeners)
+        let totalSeniorFund = 0;
+        let totalSplitRevenue = 0;
+        let totalSpinRevenue = 0;
+        let totalDonationRevenue = 0;
+        let totalRevenue = 0;
+        let totalReferrers = 0; // Updated by the referrer listener
 
         // Hardcoded Firebase configuration provided by the user
         const firebaseConfig = {
@@ -190,7 +276,7 @@
                 app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
-                functions = getFunctions(app); // Initialized but not used for public view
+                functions = getFunctions(app); 
                 
                 // --- Authentication Listener ---
                 onAuthStateChanged(auth, async (user) => {
@@ -208,8 +294,12 @@
                     }
                     isAuthReady = true;
 
-                    // Setup the real-time data listener immediately after auth is ready
-                    setupRealtimeListener(db);
+                    // Setup all real-time data listeners immediately after auth is ready
+                    setupRealtimeLeaderboardListener(db);
+                    setupRealtimeRevenueListeners(db);
+
+                    // Initial render of metrics (will be updated when data arrives)
+                    calculateAndRenderRevenue();
                 });
 
             } catch (error) {
@@ -217,6 +307,98 @@
                 renderLeaderboard(mockData());
             }
         }
+
+        /**
+         * Helper function to format currency.
+         * @param {number} amount
+         * @returns {string} Formatted currency string.
+         */
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0,
+            }).format(amount);
+        }
+
+        /**
+         * Calculates the total senior fund contribution and updates the global metrics UI.
+         */
+        function calculateAndRenderRevenue() {
+            const totalSeniorFundEl = document.getElementById('total-senior-fund');
+            const totalReferrersEl = document.getElementById('total-referrers');
+            
+            if (!totalSeniorFundEl || !totalReferrersEl) return;
+
+            // 1. Calculate Total Revenue (Used for context in the modal)
+            totalRevenue = totalSplitRevenue + totalSpinRevenue + totalDonationRevenue;
+
+            // 2. Calculate Senior Fund Contribution based on requested rules:
+            const splitFund = totalSplitRevenue * 0.5;   // 50% of Split Pot Revenue
+            const spinFund = totalSpinRevenue * 1.0;     // 100% of Spin Wheel Revenue
+            const donationFund = totalDonationRevenue * 1.0; // 100% of Direct Donations
+            totalSeniorFund = splitFund + spinFund + donationFund;
+
+            // Update DOM
+            totalSeniorFundEl.textContent = formatCurrency(totalSeniorFund);
+            totalReferrersEl.textContent = totalReferrers;
+
+            // Re-render Lucide icons, which may have been added/updated
+            lucide.createIcons();
+        }
+
+
+        /**
+         * Sets up real-time Firestore listeners for the three revenue streams.
+         */
+        function setupRealtimeRevenueListeners(dbInstance) {
+            
+            // 1. Donations: /stripe_donation_payment_intents/ (status = 'succeeded')
+            const qDonations = query(
+                collection(dbInstance, 'stripe_donation_payment_intents'),
+                where('status', '==', 'succeeded')
+            );
+            onSnapshot(qDonations, (snapshot) => {
+                let sum = 0;
+                snapshot.forEach(doc => {
+                    // Assuming 'amount' is stored as a number or string representing the donation amount.
+                    sum += parseFloat(doc.data().amount) || 0; 
+                });
+                totalDonationRevenue = sum;
+                calculateAndRenderRevenue();
+            }, (error) => { console.error("Donations Snapshot Error:", error); });
+
+
+            // 2. Spin Wheel Tickets: /rolex_tickets/ (Filtering by status == 'paid')
+            const qSpin = query(
+                collection(dbInstance, 'rolex_tickets'),
+                where('status', '==', 'paid') // FIX: Filtered by 'status' field as per doc format
+            );
+            onSnapshot(qSpin, (snapshot) => {
+                let sum = 0;
+                snapshot.forEach(doc => {
+                    // amountPaid is stored as a string (e.g., "324"), parseFloat handles conversion.
+                    sum += parseFloat(doc.data().amountPaid) || 0; 
+                });
+                totalSpinRevenue = sum;
+                calculateAndRenderRevenue();
+            }, (error) => { console.error("Spin Tickets Snapshot Error:", error); });
+
+
+            // 3. Split Pot Tickets: /splitThePotTickets/
+            const qSplit = collection(dbInstance, 'splitThePotTickets');
+            onSnapshot(qSplit, (snapshot) => {
+                let sum = 0;
+                snapshot.forEach(doc => {
+                    // amountPaid is stored as a string (e.g., "324"), parseFloat handles conversion.
+                    sum += parseFloat(doc.data().amountPaid) || 0; 
+                });
+                totalSplitRevenue = sum;
+                calculateAndRenderRevenue();
+            }, (error) => { console.error("Split Pot Tickets Snapshot Error:", error); });
+        }
+
 
         /**
          * Executes a batch write to update the current and previous ranks for all referrers.
@@ -251,7 +433,7 @@
          * Sets up the real-time Firestore listener for the public leaderboard data
          * from the /referrers collection.
          */
-        function setupRealtimeListener(dbInstance) {
+        function setupRealtimeLeaderboardListener(dbInstance) {
             const leaderboardPath = 'referrers'; 
             const q = collection(dbInstance, leaderboardPath);
 
@@ -283,6 +465,10 @@
                     // Render initial data if not authenticated yet, but don't try to write ranks
                     processAndRender(newLeaderboardData, false);
                 }
+                
+                // Update referrer count metric
+                totalReferrers = newLeaderboardData.length;
+                calculateAndRenderRevenue(); // Also updates the referrer count display
 
             }, (error) => {
                 console.error("Firestore Leaderboard Snapshot Error:", error);
@@ -293,6 +479,65 @@
                 `;
             });
         }
+
+        /**
+         * Displays the detailed revenue breakdown in a modal.
+         */
+        window.showRevenueBreakdown = function() {
+            // Calculate fund components for display
+            const splitFund = totalSplitRevenue * 0.5;
+            const spinFund = totalSpinRevenue * 1.0;
+            const donationFund = totalDonationRevenue * 1.0;
+
+            // Format components for display
+            const formattedTotalFund = formatCurrency(totalSeniorFund);
+            const formattedSplitRevenue = formatCurrency(totalSplitRevenue);
+            const formattedSpinRevenue = formatCurrency(totalSpinRevenue);
+            const formattedDonationRevenue = formatCurrency(totalDonationRevenue);
+            const formattedTotalRevenue = formatCurrency(totalRevenue);
+            
+            const modalTitle = `Senior Fund Calculation: ${formattedTotalFund}`;
+            
+            const modalBody = `
+                <p class="text-xs text-gray-500 mb-3">
+                    Total Revenue Collected: <span class="text-white font-mono">${formattedTotalRevenue}</span>
+                </p>
+                <div class="space-y-3">
+                    <p class="font-bold text-lg text-white">Calculation Breakdown:</p>
+                    <div class="p-3 rounded-lg bg-gray-800 border border-gray-700">
+                        <p class="font-semibold text-gray-300">Split The Pot Revenue: ${formattedSplitRevenue}</p>
+                        <p>
+                            <span class="text-secondary-green font-mono font-bold">${formatCurrency(splitFund)}</span>
+                            &nbsp;($50\%$ contribution)
+                        </p>
+                    </div>
+                    <div class="p-3 rounded-lg bg-gray-800 border border-gray-700">
+                        <p class="font-semibold text-gray-300">Spin The Wheel Revenue: ${formattedSpinRevenue}</p>
+                        <p>
+                            <span class="text-secondary-green font-mono font-bold">${formatCurrency(spinFund)}</span>
+                            &nbsp;($100\%$ contribution)
+                        </p>
+                    </div>
+                    <div class="p-3 rounded-lg bg-gray-800 border border-gray-700">
+                        <p class="font-semibold text-gray-300">Direct Donation Revenue: ${formattedDonationRevenue}</p>
+                        <p>
+                            <span class="text-secondary-green font-mono font-bold">${formatCurrency(donationFund)}</span>
+                            &nbsp;($100\%$ contribution)
+                        </p>
+                    </div>
+                    
+                    <div class="pt-4 border-t border-accent-yellow font-bold text-xl flex justify-between">
+                        <span>TOTAL SENIOR FUND:</span>
+                        <span class="text-accent-yellow">${formattedTotalFund}</span>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('modal-title').textContent = modalTitle;
+            document.getElementById('modal-body').innerHTML = modalBody;
+            document.getElementById('message-modal').style.display = 'flex';
+        }
+
 
         /**
          * Sorts, ranks, and updates the leaderboard state, and queues the database write.
@@ -363,6 +608,8 @@
 
             // 4. Apply search filter and render immediately
             applySearchFilter();
+            
+            // 5. Global metrics update is now handled by the separate listeners calling calculateAndRenderRevenue()
         }
 
         /**
@@ -377,8 +624,6 @@
             // Render all filtered data directly to the list
             renderLeaderboard(filteredAllData);
         }
-
-        // Removed generatePodiumElement and renderPodium functions.
 
         /**
          * Renders the filtered data list to the DOM (All Ranks).
@@ -427,12 +672,7 @@
                 }
 
                 // Format currency
-                const formattedAmount = new Intl.NumberFormat('en-US', {
-                    style: 'currency',
-                    currency: 'USD',
-                    minimumFractionDigits: 0,
-                    maximumFractionDigits: 0,
-                }).format(item.totalAmount);
+                const formattedAmount = formatCurrency(item.totalAmount);
                 
                 // Leaderboard item HTML
                 return `
@@ -496,10 +736,23 @@
             searchFilter = event.target.value.trim();
             applySearchFilter();
         }
+        
+        // --- Mobile Menu Toggle Logic ---
+        function setupMenuToggle() {
+            const menuToggle = document.getElementById('menu-toggle');
+            const mainMenu = document.getElementById('main-menu');
+            
+            if (menuToggle && mainMenu) {
+                menuToggle.addEventListener('click', () => { 
+                    mainMenu.classList.toggle('hidden'); 
+                });
+            }
+        }
 
-        // Attach the search handler on page load
+        // Attach the search handler and menu toggle on page load
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('search-input').addEventListener('input', handleSearch);
+            setupMenuToggle();
             // Start the application
             initializeFirebase();
         });
@@ -508,17 +761,26 @@
         // --- MOCK DATA FALLBACK (For testing in environments without live data) ---
         function mockData() {
             console.log("Using mock data as Firebase environment is not ready or failed.");
-            const now = Date.now();
-            const mock = [
-                { uid: 'userE345', name: 'Ethan Miller', refId: 'ethanm', totalAmount: 15000, splitTickets: 300, spinTickets: 50, clickCount: 450, rank: 0, previousRank: 0, lastSaleTimestamp: new Date(now - 1800000) },
-                { uid: 'userB456', name: 'Brenda Smith', refId: 'brendas', totalAmount: 12000, splitTickets: 240, spinTickets: 40, clickCount: 300, rank: 1, previousRank: 1, lastSaleTimestamp: new Date(now) },
-                { uid: 'userC789', name: 'Chris Lee', refId: 'chrisl', totalAmount: 9000, splitTickets: 180, spinTickets: 30, clickCount: 220, rank: 3, previousRank: 2, lastSaleTimestamp: new Date(now - 7200000) },
-                { uid: 'userA123', name: 'Alex Johnson', refId: 'alexj', totalAmount: 7500, splitTickets: 150, spinTickets: 25, clickCount: 155, rank: 2, previousRank: 3, lastSaleTimestamp: new Date(now - 3600000) },
-                { uid: 'userD012', name: 'Diana Clark', refId: 'dianac', totalAmount: 5000, splitTickets: 100, spinTickets: 15, clickCount: 80, rank: 4, previousRank: 4, lastSaleTimestamp: new Date(now - 10800000) },
-                { uid: 'userF678', name: 'Fiona White', refId: 'fionaw', totalAmount: 3500, splitTickets: 70, spinTickets: 10, clickCount: 50, rank: 6, previousRank: 5, lastSaleTimestamp: new Date(now - 2400000) },
+            // Set mock revenue totals for the global metric card based on mock referrer data
+            const mockReferrers = [
+                { uid: 'userE345', name: 'Ethan Miller', refId: 'ethanm', totalAmount: 15000, splitTickets: 300, spinTickets: 50, clickCount: 450, rank: 0, previousRank: 0, lastSaleTimestamp: new Date(Date.now() - 1800000) },
+                { uid: 'userB456', name: 'Brenda Smith', refId: 'brendas', totalAmount: 12000, splitTickets: 240, spinTickets: 40, clickCount: 300, rank: 1, previousRank: 1, lastSaleTimestamp: new Date(Date.now()) },
+                { uid: 'userC789', name: 'Chris Lee', refId: 'chrisl', totalAmount: 9000, splitTickets: 180, spinTickets: 30, clickCount: 220, rank: 3, previousRank: 2, lastSaleTimestamp: new Date(Date.now() - 7200000) },
+                { uid: 'userA123', name: 'Alex Johnson', refId: 'alexj', totalAmount: 7500, splitTickets: 150, spinTickets: 25, clickCount: 155, rank: 2, previousRank: 3, lastSaleTimestamp: new Date(Date.now() - 3600000) },
+                { uid: 'userD012', name: 'Diana Clark', refId: 'dianac', totalAmount: 5000, splitTickets: 100, spinTickets: 15, clickCount: 80, rank: 4, previousRank: 4, lastSaleTimestamp: new Date(Date.now() - 10800000) },
+                { uid: 'userF678', name: 'Fiona White', refId: 'fionaw', totalAmount: 3500, splitTickets: 70, spinTickets: 10, clickCount: 50, rank: 6, previousRank: 5, lastSaleTimestamp: new Date(Date.now() - 2400000) },
             ];
+            
+            // Set mock global revenue stats (for metric card display)
+            totalSplitRevenue = 20000;
+            totalSpinRevenue = 15000;
+            totalDonationRevenue = 10000;
+            totalReferrers = mockReferrers.length;
+
             // Process mock data to set initial ranks for the comparison logic
-            processAndRender(mock, false); // Don't save mock data ranks
+            processAndRender(mockReferrers, false); // Don't save mock data ranks
+            calculateAndRenderRevenue();
+
             return leaderboardData;
         }
 

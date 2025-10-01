@@ -11,35 +11,58 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
+        /* Apply background gradient from the preferred styling */
         body {
             font-family: 'Inter', sans-serif;
+            background-color: #0d1222;
+            background-image: linear-gradient(135deg, #0d1222 0%, #151a2d 100%);
         }
         .bebas-neue {
             font-family: 'Bebas Neue', sans-serif;
         }
+        /* SPA content switching: Only 'home' is expected to be visible in this mode */
         .page-content {
             display: none;
         }
         .page-content.active {
             display: block;
         }
+        /* Mobile-first adjustment for header navigation for full-width links */
+        @media (max-width: 767px) {
+            #main-menu li {
+                width: 100%; /* Make list items take full width on mobile */
+            }
+            #main-menu li a {
+                text-align: center;
+                padding: 0.75rem 1rem; /* Add padding for touch targets */
+            }
+        }
     </style>
 </head>
-<body class="bg-gray-900 text-white min-h-screen flex flex-col">
+<body class="text-white min-h-screen flex flex-col">
 
-    <!-- Header -->
-    <header class="bg-slate-950 py-4 px-6 md:px-12 fixed w-full top-0 z-50 shadow-lg">
-        <nav class="container mx-auto flex justify-between items-center">
-            <!-- Logo -->
-            <a href="/" class="flex items-center space-x-2">
-                <img src="https://raw.githubusercontent.com/ToratYosef/ToratYosef..github.io/refs/heads/main/assets/logos.jpeg" alt="YDE Logo" class="h-16 md:h-20 w-auto rounded-full">
-            </a>
+    <!-- Header (Updated with mobile toggle and glass effect) -->
+    <header class="bg-black/40 py-4 px-4 md:px-12 fixed w-full top-0 z-50 shadow-2xl backdrop-blur-sm">
+        <nav class="container mx-auto flex justify-between items-center flex-wrap md:flex-nowrap">
+            <div class="flex items-center justify-between w-full md:w-auto">
+                <!-- Logo: Increased touch target and added ring for visual pop -->
+                <a href="/" class="flex items-center space-x-2">
+                    <img src="https://raw.githubusercontent.com/ToratYosef/ToratYosef..github.io/refs/heads/main/assets/logos.jpeg" alt="YDE Logo" class="h-14 sm:h-16 md:h-20 w-auto rounded-full ring-2 ring-yellow-400 p-1">
+                </a>
+                <!-- Mobile Menu Toggle Button -->
+                <button id="menu-toggle" class="md:hidden text-white focus:outline-none" aria-label="Toggle menu">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                </button>
+            </div>
 
-            <!-- Navigation Links -->
-            <ul class="flex items-center space-x-4 md:space-x-8 text-sm md:text-base font-semibold">
-                <li><a href="/split-the-pot/" class="text-white hover:text-yellow-400 transition-colors duration-300">Split the Pot</a></li>
-                <li><a href="/spin-the-wheel/" class="text-white hover:text-yellow-400 transition-colors duration-300">Spin the Wheel</a></li>
-                <li><a href="/donate/" class="py-2 px-4 rounded-full bg-yellow-400 text-slate-950 hover:bg-yellow-500 transition-colors duration-300 font-bold">Donate Now</a></li>
+            <!-- Navigation Links (Toggable on mobile, always visible on desktop) -->
+            <ul id="main-menu" class="hidden md:flex flex-col md:flex-row items-center space-y-2 md:space-y-0 md:space-x-8 text-base font-semibold w-full md:w-auto mt-4 md:mt-0">
+                <li><a href="/split-the-pot/" class="text-white hover:text-yellow-400 transition-colors duration-300 block">Split the Pot</a></li>
+                <li><a href="/spin-the-wheel/" class="text-white hover:text-yellow-400 transition-colors duration-300 block">Spin the Wheel</a></li>
+                <!-- NEW Leaderboard Link -->
+                <li><a href="/leaderboard/" class="text-white hover:text-yellow-400 transition-colors duration-300 block">Leaderboard</a></li>
+                <!-- Donate button styling updated for block display on mobile -->
+                <li><a href="/donate/" class="py-2 px-4 rounded-full bg-yellow-400 text-black hover:bg-yellow-500 transition-colors duration-300 font-bold block">Donate Now</a></li>
             </ul>
         </nav>
     </header>
@@ -47,34 +70,34 @@
     <!-- Main Content Container -->
     <main class="flex-grow pt-24">
         
-        <!-- Home Page -->
+        <!-- Home Page (Only this page is active on the root URL) -->
         <section id="home" class="page-content active">
             <div class="relative bg-cover bg-center h-screen" style="background-image: url('https://raw.githubusercontent.com/ToratYosef/ToratYosef..github.io/refs/heads/main/assets/kotel.jpg');">
                 <!-- Overlay to darken image for text visibility -->
                 <div class="absolute inset-0 bg-slate-950 opacity-60"></div>
                 
                 <div class="relative z-10 flex flex-col items-center justify-center h-full text-center p-4">
-                    <h1 class="bebas-neue text-4xl md:text-6xl lg:text-8xl font-bold text-white mb-4 drop-shadow-lg">
+                    <h1 class="bebas-neue text-4xl sm:text-5xl md:text-6xl lg:text-8xl font-bold text-white mb-4 drop-shadow-lg">
                         Support the YDE Senior Fund
                     </h1>
                     <p class="text-lg md:text-2xl text-white mb-8 max-w-2xl">
                         Join us in building a bright future for the Class of 2026. Your generous contribution makes a world of difference.
                     </p>
                     <a id="main-action-button" href="/spin-the-wheel/" class="py-4 px-8 md:text-lg lg:text-xl rounded-full bg-yellow-400 text-slate-950 font-bold shadow-lg transform transition-transform duration-300 hover:scale-105 hover:shadow-xl">
-                        Support Senior Fund- Spin The Wheel Now!!!
+                        Support Senior Fund - Spin The Wheel Now!!!
                     </a>
                 </div>
             </div>
 
-            <!-- New section for reasons to support -->
-            <div class="bg-gray-900 py-16 px-4">
+            <!-- Reasons to Support section is already responsive with grid-cols-1 md:grid-cols-3 -->
+            <div class="bg-transparent py-16 px-4">
                 <div class="container mx-auto text-center">
                     <h2 class="bebas-neue text-4xl md:text-5xl font-bold text-white mb-12">
                         Why Your Support Matters
                     </h2>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
                         <!-- Reason 1: Israel Trip -->
-                        <div class="bg-slate-800 p-8 rounded-xl shadow-lg transform transition-transform duration-300 hover:scale-105">
+                        <div class="bg-slate-800 p-8 rounded-xl shadow-lg transform transition-transform duration-300 hover:scale-105 border-b-4 border-yellow-400">
                             <div class="flex justify-center mb-4">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-12 h-12 text-yellow-400">
                                     <path fill-rule="evenodd" d="M12.963 2.293a.75.75 0 0 0-.966 0l-5.7 5.7a.75.75 0 0 0 .966 1.132L12 4.47v9.886c0 .414.336.75.75.75h.75a.75.75 0 0 0 .75-.75V4.47l4.733 4.455a.75.75 0 0 0 .966-1.132l-5.7-5.7Z" clip-rule="evenodd" />
@@ -85,7 +108,7 @@
                             <p class="text-gray-200">Your contribution will directly fund the senior trip to Israel, making this once-in-a-lifetime journey possible for every student.</p>
                         </div>
                         <!-- Reason 2: Ma'aser Money -->
-                        <div class="bg-slate-800 p-8 rounded-xl shadow-lg transform transition-transform duration-300 hover:scale-105">
+                        <div class="bg-slate-800 p-8 rounded-xl shadow-lg transform transition-transform duration-300 hover:scale-105 border-b-4 border-yellow-400">
                             <div class="flex justify-center mb-4">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-12 h-12 text-yellow-400">
                                   <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 6a.75.75 0 0 0-1.5 0v6a.75.75 0 0 0 .75.75h4.5a.75.75 0 0 0 0-1.5h-3.75V6Z" clip-rule="evenodd" />
@@ -95,7 +118,7 @@
                             <p class="text-gray-200">Your donation can be made using Ma'aser funds. This is a great way to fulfill the mitzvah of charity while supporting a meaningful cause.</p>
                         </div>
                         <!-- Reason 3: Unforgettable Moments -->
-                        <div class="bg-slate-800 p-8 rounded-xl shadow-lg transform transition-transform duration-300 hover:scale-105">
+                        <div class="bg-slate-800 p-8 rounded-xl shadow-lg transform transition-transform duration-300 hover:scale-105 border-b-4 border-yellow-400">
                             <div class="flex justify-center mb-4">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-12 h-12 text-yellow-400">
                                     <path fill-rule="evenodd" d="M19.5 7.5a3 3 0 0 1-3 3H12a3 3 0 0 1-3-3V1.5a.75.75 0 0 0-1.5 0V7.5a4.5 4.5 0 0 0 4.5 4.5h1.5a.75.75 0 0 0 .75-.75V1.5a.75.75 0 0 0-1.5 0v6a.75.75 0 0 0 .75.75Z" clip-rule="evenodd" />
@@ -112,11 +135,24 @@
             </div>
         </section>
 
-        <!-- Other Pages -->
+        <!-- Placeholder Pages - These will NOT be displayed unless specifically navigated to by a direct URL load of this file -->
+        <section id="leaderboard" class="page-content py-16">
+            <div class="container mx-auto text-center p-4 bg-slate-800/80 rounded-2xl shadow-xl max-w-4xl">
+                <h2 class="bebas-neue text-4xl md:text-5xl lg:text-6xl font-bold text-yellow-400 mb-6">Leaderboard</h2>
+                <p class="text-lg md:text-xl text-gray-300 mb-8">
+                    See who's leading the charge in supporting the YDE Senior Fund! The top supporters will be listed here.
+                </p>
+                <div class="bg-slate-900 p-8 rounded-xl shadow-inner border border-gray-700">
+                    <p class="text-xl text-gray-400">Loading current rankings...</p>
+                    <img src="https://placehold.co/600x200/1f2937/d1d5db?text=Ranking+Table+Placeholder" alt="Leaderboard graphic" class="mx-auto rounded-lg shadow-xl mt-6">
+                </div>
+            </div>
+        </section>
+
         <section id="split" class="page-content py-16">
-            <div class="container mx-auto text-center p-4 bg-slate-900 rounded-lg shadow-xl">
+            <div class="container mx-auto text-center p-4 bg-slate-800/80 rounded-2xl shadow-xl max-w-4xl">
                 <h2 class="bebas-neue text-4xl md:text-5xl lg:text-6xl font-bold text-yellow-400 mb-6">Split the Pot</h2>
-                <p class="text-lg md:text-xl text-gray-200 mb-8">
+                <p class="text-lg md:text-xl text-gray-300 mb-8">
                     Get ready for our exciting raffle! More details coming soon on how to win big while supporting a great cause.
                 </p>
                 <img src="https://placehold.co/600x400/1f2937/d1d5db?text=Split+the+Pot+Details" alt="Split the Pot graphic" class="mx-auto rounded-lg shadow-xl">
@@ -124,9 +160,9 @@
         </section>
 
         <section id="spin" class="page-content py-16">
-            <div class="container mx-auto text-center p-4 bg-slate-900 rounded-lg shadow-xl">
+            <div class="container mx-auto text-center p-4 bg-slate-800/80 rounded-2xl shadow-xl max-w-4xl">
                 <h2 class="bebas-neue text-4xl md:text-5xl lg:text-6xl font-bold text-yellow-400 mb-6">Spin the Wheel</h2>
-                <p class="text-lg md:text-xl text-gray-200 mb-8">
+                <p class="text-lg md:text-xl text-gray-300 mb-8">
                     Try your luck with our virtual spin wheel! You could win amazing prizes just for donating.
                 </p>
                 <img src="https://placehold.co/600x400/1f2937/d1d5db?text=Spin+the+Wheel+Graphic" alt="Spin the Wheel graphic" class="mx-auto rounded-lg shadow-xl">
@@ -134,23 +170,23 @@
         </section>
 
         <section id="donate" class="page-content py-16">
-            <div class="container mx-auto text-center p-4 bg-slate-900 rounded-lg shadow-xl">
+            <div class="container mx-auto text-center p-4 bg-slate-800/80 rounded-2xl shadow-xl max-w-4xl">
                 <h2 class="bebas-neue text-4xl md:text-5xl lg:text-6xl font-bold text-yellow-400 mb-6">Donate Now</h2>
-                <p class="text-lg md:text-xl text-gray-200 mb-8 max-w-2xl mx-auto">
+                <p class="text-lg md:text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
                     Every donation, big or small, helps us reach our goal. Thank you for your support!
                 </p>
                 <!-- Donation form/details would go here -->
-                <div class="bg-slate-900 p-8 rounded-xl shadow-xl max-w-lg mx-auto">
+                <div class="bg-slate-900 p-8 rounded-xl shadow-xl max-w-lg mx-auto border-t-4 border-yellow-400">
                     <form>
                         <div class="mb-4">
                             <label for="amount" class="block text-gray-200 text-sm font-bold mb-2 text-left">Donation Amount</label>
-                            <input type="number" id="amount" name="amount" placeholder="$100" class="shadow appearance-none border rounded w-full py-3 px-4 text-gray-900 leading-tight focus:outline-none focus:shadow-outline">
+                            <input type="number" id="amount" name="amount" placeholder="$100" class="shadow appearance-none border rounded w-full py-3 px-4 text-gray-900 leading-tight focus:outline-none focus:ring-2 focus:ring-yellow-400">
                         </div>
                         <div class="mb-6">
                             <label for="name" class="block text-gray-200 text-sm font-bold mb-2 text-left">Your Name (Optional)</label>
-                            <input type="text" id="name" name="name" placeholder="John Doe" class="shadow appearance-none border rounded w-full py-3 px-4 text-gray-900 leading-tight focus:outline-none focus:shadow-outline">
+                            <input type="text" id="name" name="name" placeholder="John Doe" class="shadow appearance-none border rounded w-full py-3 px-4 text-gray-900 leading-tight focus:outline-none focus:ring-2 focus:ring-yellow-400">
                         </div>
-                        <button type="submit" class="w-full py-3 rounded-full bg-yellow-400 hover:bg-yellow-500 text-slate-950 font-bold transition-colors duration-300">
+                        <button type="submit" class="w-full py-3 rounded-full bg-yellow-400 hover:bg-yellow-500 text-slate-950 font-bold transition-colors duration-300 shadow-lg hover:shadow-xl">
                             Submit Donation
                         </button>
                     </form>
@@ -161,10 +197,11 @@
     </main>
 
     <!-- Footer -->
-    <footer class="bg-slate-950 py-8 mt-auto">
+    <footer class="bg-black/40 py-8 mt-auto shadow-[0_-5px_15px_rgba(0,0,0,0.5)]">
         <div class="container mx-auto px-4 text-center">
-            <h3 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4">Quick Links</h3>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-gray-400 mb-8">
+            <h3 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4">Contact</h3>
+            <!-- Contact section is now fully responsive, stacking on mobile -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 text-gray-400 mb-8">
                 <!-- Person 1 -->
                 <div>
                     <p class="font-bold text-white">Morris E.</p>
@@ -246,13 +283,37 @@
                 // Check if it's an internal link and not already pointing to a full external URL
                 if (currentHref && currentHref.startsWith('/') && !currentHref.includes('ref=')) {
                     const separator = currentHref.includes('?') ? '&' : '?';
+                    // Append the referral ID
                     link.setAttribute('href', `${currentHref}${separator}ref=${refId}`);
                 }
             });
         }
         // --- END Referrer Helper Functions ---
 
+        // Simple function to ensure only the desired page is active
+        function showPage(pageId) {
+            const pages = document.querySelectorAll('.page-content');
+            pages.forEach(page => {
+                page.classList.remove('active');
+            });
+            const activePage = document.getElementById(pageId);
+            if (activePage) {
+                activePage.classList.add('active');
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
+            
+            // Mobile Menu Toggle Logic
+            const menuToggle = document.getElementById('menu-toggle');
+            const mainMenu = document.getElementById('main-menu');
+
+            menuToggle.addEventListener('click', () => { 
+                mainMenu.classList.toggle('hidden'); 
+                document.body.classList.toggle('overflow-hidden'); // Disable background scroll
+            });
+
+            // Referral tracking logic
             const referrerRefId = getQueryParam('ref');
             
             if (referrerRefId) {
@@ -274,31 +335,8 @@
                 updateNavLinks(referrerRefId); 
             }
 
-            function showPage(pageId) {
-                // Hide all pages
-                const pages = document.querySelectorAll('.page-content');
-                pages.forEach(page => {
-                    page.classList.remove('active');
-                });
-                // Show the requested page
-                const activePage = document.getElementById(pageId);
-                if (activePage) {
-                    activePage.classList.add('active');
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                }
-            }
-            
-            // Basic URL routing for SPA functionality
-            const path = window.location.pathname.toLowerCase();
-            if (path.includes('/split-the-pot/')) {
-                showPage('split');
-            } else if (path.includes('/spin-the-wheel/')) {
-                showPage('spin');
-            } else if (path.includes('/donate/')) {
-                showPage('donate');
-            } else {
-                showPage('home');
-            }
+            // Only show the home page. All other navigation will be a full browser redirect.
+            showPage('home');
         });
     </script>
 </body>

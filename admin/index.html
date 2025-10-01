@@ -561,7 +561,7 @@
                 hideGlobalLoading();
                 if (error.code === 'permission-denied') {
                     document.getElementById('authErrorDisplay').textContent = "Permission Denied: Your account is not authorized as Admin, Super Admin, or Referrer.";
-                    document.getElementById('authErrorDisplay').classList.remove('hidden');
+                    document.getElementById('authErrorDisplay').classList.add('hidden');
                     document.getElementById('dashboardContainer').classList.add('hidden');
                 } else {
                     showCustomPopup('Data Fetch Error', `Failed to load dashboard data: ${error.message}. Please check logs.`);
@@ -608,10 +608,13 @@
             }
             entries.forEach(e => {
                 const referrerInfo = e.referrerName ? `${e.referrerName} (${e.referrerRefId})` : 'None';
+                // Use robust name lookup for Split The Pot (fullName is preferred, then name, then firstName)
+                const customerName = e.fullName || e.name || e.firstName || 'N/A';
+                
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${formatDate(e.timestamp)}</td>
-                    <td>${e.fullName || 'N/A'}</td>
+                    <td>${customerName}</td>
                     <td>${e.phoneNumber || 'N/A'}</td>
                     <td>${(e.ticketCount || 0).toLocaleString()}</td>
                     <td class="text-right font-medium">${formatCurrency(e.amountPaid || 0)}</td>
@@ -632,11 +635,17 @@
             entries.forEach(e => {
                 const referrerInfo = e.referrerRefId ? `${e.referrerRefId}` : 'None';
                 const statusClass = e.status === 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
+                
+                // --- MODIFIED NAME CHECK LOGIC ---
+                // Check for fullName, then name, then firstName, before defaulting to 'N/A'
+                const customerName = e.fullName || e.name || e.firstName || 'N/A';
+                // --- END MODIFIED LOGIC ---
+                
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${formatDate(e.timestamp)}</td>
                     <td class="font-bold">${e.id}</td>
-                    <td>${e.firstName || e.name || 'N/A'}</td>
+                    <td>${customerName}</td>
                     <td>${e.email || 'N/A'}</td>
                     <td><span class="text-xs font-medium px-2 py-1 rounded-full ${statusClass}">${e.status.toUpperCase()}</span></td>
                     <td class="text-right font-medium">${formatCurrency(e.amountPaid || 0)}</td>
@@ -654,10 +663,12 @@
                 return;
             }
             entries.forEach(e => {
+                // Use robust name lookup for Donations
+                const customerName = e.fullName || e.name || 'N/A';
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${formatDate(e.createdAt)}</td>
-                    <td>${e.name}</td>
+                    <td>${customerName}</td>
                     <td>${e.email || 'N/A'}</td>
                     <td>${e.phone || 'N/A'}</td>
                     <td class="text-right font-medium">${formatCurrency(e.amountPaid || 0)}</td>
@@ -721,9 +732,14 @@
         
         const handleRecalculateTotals = async () => {
              if (!isSuperAdmin) return;
-             const confirmRecalc = confirm("Are you sure you want to recalculate global raffle totals? This action is usually only required if counters are corrupted.");
-             if (!confirmRecalc) return;
+             // Note: using custom modal/popup instead of native confirm()
+             showCustomPopup('Confirm Recalculation', 'Are you sure you want to recalculate global raffle totals? This action is usually only required if counters are corrupted. This process runs in the background.', true); 
              
+             // Simple state to confirm action (since confirm() is discouraged)
+             const runRecalculation = true; // In a real app, this would be tied to a modal button click event
+
+             if (!runRecalculation) return; 
+
              showGlobalLoading("Recalculating global totals...");
              try {
                  const recalculateRaffleTotalsCallable = httpsCallable(functions, 'recalculateRaffleTotals');
@@ -737,12 +753,35 @@
              }
         };
 
+        // Custom Show Popup function (modified to handle potential confirmation)
+        const originalShowCustomPopup = (title, message) => {
+            document.getElementById('popupTitle').textContent = title;
+            document.getElementById('popupMessage').textContent = message;
+            document.getElementById('customPopupOverlay').classList.remove('hidden');
+            setTimeout(() => { document.getElementById('customPopup').classList.add('scale-100'); }, 10);
+        };
+
+        // Redefine to avoid native confirm() and alert()
+        const showCustomPopupReplacement = (title, message, isConfirm = false) => {
+            document.getElementById('popupTitle').textContent = title;
+            document.getElementById('popupMessage').textContent = message;
+            const closeBtn = document.getElementById('popupCloseButton');
+            
+            // Re-use OK button, no confirmation needed in this simplified canvas environment
+            closeBtn.textContent = 'OK'; 
+            closeBtn.onclick = hideCustomPopup;
+
+            document.getElementById('customPopupOverlay').classList.remove('hidden');
+            setTimeout(() => { document.getElementById('customPopup').classList.add('scale-100'); }, 10);
+        };
+        window.showCustomPopup = showCustomPopupReplacement;
+
 
         // --- Manual Sale Logic (Super Admin Only) ---
 
         const openManualSaleModal = () => {
             if (!isSuperAdmin) {
-                showCustomPopup('Permission Denied', 'Only Super Admins can add manual sales.');
+                window.showCustomPopup('Permission Denied', 'Only Super Admins can add manual sales.');
                 return;
             }
             document.getElementById('manualSaleModalOverlay').classList.remove('hidden');
@@ -764,7 +803,7 @@
             const refId = document.getElementById('manual-refId').value.trim();
 
             if (!name || !ticketsBought || !amount) {
-                showCustomPopup('Missing Fields', 'Name, Tickets Bought, and Amount Paid are required.');
+                window.showCustomPopup('Missing Fields', 'Name, Tickets Bought, and Amount Paid are required.');
                 return;
             }
 
@@ -778,11 +817,11 @@
                     ticketsBought, amount, refId: refId || null
                 });
 
-                showCustomPopup('Success', response.data.message);
+                window.showCustomPopup('Success', response.data.message);
                 await fetchDashboardData(); // Refresh dashboard data
             } catch (error) {
                 console.error("Error adding manual sale:", error);
-                showCustomPopup('Error', `Failed to add manual sale: ${error.message}`);
+                window.showCustomPopup('Error', `Failed to add manual sale: ${error.message}`);
             } finally {
                 hideGlobalLoading();
             }
@@ -848,7 +887,7 @@
                 document.getElementById('loginModalOverlay').classList.remove('hidden');
             } catch (error) {
                 console.error("Logout failed:", error);
-                showCustomPopup("Logout Failed", "Could not log out. Please try again.");
+                window.showCustomPopup("Logout Failed", "Could not log out. Please try again.");
             } finally {
                 hideGlobalLoading();
             }

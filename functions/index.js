@@ -13,7 +13,7 @@ const corsHandler = cors({
   ],
 });
 
-// --- SECURITY AND ROLE CHECK HELPERS (NEW/UPDATED) ---
+// --- SECURITY AND ROLE CHECKERS ---
 
 /**
  * Checks if the user is authorized as a super admin.
@@ -157,7 +157,7 @@ exports.deleteExpiredReservedTickets = functions.https.onCall(async (data, conte
 });
 
 
-// --- PAYMENT INTENT FUNCTIONS (UPDATED FOR NEW DATA STRUCTURE) ---
+// --- PAYMENT INTENT FUNCTIONS ---
 
 /**
  * Firebase Callable Function to create a Stripe PaymentIntent for the Spin to Win game (Rolex).
@@ -171,7 +171,7 @@ exports.createSpinPaymentIntent = functions.https.onCall(async (data, context) =
         const { name, email, phone, referral } = data;
         const TOTAL_TICKETS = 650;
         
-        // Extract first name for new structure (Split the Pot uses this)
+        // Extract first name for new structure
         const firstName = name.split(' ')[0] || name; 
 
         if (!name || !email || !phone) {
@@ -358,7 +358,7 @@ exports.createDonationPaymentIntent = functions.https.onCall(async (data, contex
 
 /**
  * Stripe Webhook Listener (HTTP Request Function).
- * UPDATED: Uses the requested simplified field names for splitThePotTickets.
+ * UPDATED: Raffle processing now saves the customer's full name under the 'fullName' field.
  */
 exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
     const sig = req.headers['stripe-signature'];
@@ -377,7 +377,7 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
 
       const { name, email, phone, ticketsBought, baseAmount, referrerRefId, ticketNumber, entryType, sourceApp } = paymentIntent.metadata;
 
-      // Extract first name for the new structure
+      // Extract first name for the new structure (used for Spin Wheel and kept for consistency)
       const firstName = name.split(' ')[0] || name;
       
       try {
@@ -427,7 +427,8 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
 
             // Using the requested new document structure for splitThePotTickets
             await db.collection('splitThePotTickets').add({
-              firstName: firstName, // New field
+              fullName: name, // ADDED: Saves the full name from Stripe metadata
+              firstName: firstName, // Kept for consistency
               phoneNumber: phone, // New field name
               email: email, // Added for completeness, if available
               referrerRefId: referrerRefId || null,
@@ -487,7 +488,7 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
 });
 
 
-// --- ADMIN/REFERRER MANAGEMENT FUNCTIONS (NEW) ---
+// --- ADMIN/REFERRER MANAGEMENT FUNCTIONS ---
 
 /**
  * Callable function to create a new referrer account.
@@ -660,7 +661,7 @@ exports.recalculateRaffleTotals = functions.https.onCall(async (data, context) =
 
 /**
  * Callable function to add a manual raffle entry.
- * UPDATED: Uses new security checks and new data field names.
+ * UPDATED: Now saves the customer's full name under the 'fullName' field.
  */
 exports.addManualSale = functions.https.onCall(async (data, context) => {
     const SOURCE_APP_TAG = 'YDE Manual Sale'; 
@@ -708,7 +709,8 @@ exports.addManualSale = functions.https.onCall(async (data, context) => {
 
 
     const newEntry = {
-        firstName: firstName, // New field
+        fullName: name, // ADDED: Saves the full name from the manual form input
+        firstName: firstName, // Kept for consistency
         email: email || null,
         phoneNumber: phone || null, // New field name
         ticketCount: ticketCount, // New field name
@@ -784,11 +786,13 @@ exports.updateRaffleEntry = functions.https.onCall(async (data, context) => {
 
                 const updatedTickets = updatedData.ticketCount;
                 const updatedAmount = updatedData.amountPaid;
+                const updatedFullName = updatedData.fullName || updatedData.name.split(' ')[0] || updatedData.name; // Ensure full name is preserved if possible
 
                 const ticketDiff = updatedTickets - originalTickets;
                 const amountDiff = updatedAmount - originalAmount;
 
                 await docRef.update({
+                    fullName: updatedFullName, // Added to update logic
                     firstName: updatedData.firstName,
                     email: updatedData.email,
                     phoneNumber: updatedData.phoneNumber,

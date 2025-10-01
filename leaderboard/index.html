@@ -24,6 +24,8 @@
                         'card-dark': '#1f2937', // gray-800 (used for list items)
                         'secondary-green': '#10b981', // Emerald Green
                         'danger-red': '#ef4444', // Red
+                        'podium-silver': '#9ca3af',
+                        'podium-bronze': '#b45309',
                     },
                     fontFamily: {
                         sans: ['Inter', 'sans-serif'],
@@ -58,9 +60,29 @@
         #leaderboard-header-fixed {
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
         }
+        /* Rank Glow for Top 3 in the List */
         .rank-glow-1 { text-shadow: 0 0 8px #facc15; }
         .rank-glow-2 { text-shadow: 0 0 8px #9ca3af; }
         .rank-glow-3 { text-shadow: 0 0 8px #b45309; }
+
+        /* Podium specific styles (now unused, but keeping stage and card styles removed for simplicity) */
+        .podium-stage {
+            transition: height 0.3s ease-in-out;
+            width: 100%;
+            max-width: 150px;
+        }
+        .podium-card {
+            transition: transform 0.3s ease-in-out;
+            z-index: 30;
+            margin-bottom: -10px; /* Overlap slightly with the stage */
+            width: 100%;
+            max-width: 200px; /* Increased size to hold more stats */
+        }
+        /* Translate the card up relative to the stage to visually float */
+        .podium-card-lift {
+            transform: translateY(-20px); 
+        }
+
     </style>
 </head>
 <body class="min-h-screen">
@@ -95,6 +117,8 @@
                     >
                 </div>
             </div>
+            
+            <!-- Podium Visualization Container (REMOVED) -->
 
             <!-- Leaderboard List -->
             <div id="leaderboard-list" class="space-y-4">
@@ -122,7 +146,6 @@
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, onSnapshot, doc, Timestamp, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        // Functions are not needed for the public leaderboard view, but we initialize them for consistency
         import { getFunctions } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
 
@@ -133,7 +156,7 @@
         let rankUpdateTimeout = null; // Used to debounce database writes
 
         // --- Core Application State & Logic ---
-        let leaderboardData = [];
+        let leaderboardData = []; // Holds all ranked data
         let searchFilter = '';
 
         // Hardcoded Firebase configuration provided by the user
@@ -197,7 +220,6 @@
 
         /**
          * Executes a batch write to update the current and previous ranks for all referrers.
-         * Note: This function requires write access to the /referrers collection for authenticated users.
          * @param {Firestore} dbInstance 
          * @param {Array<Object>} ranksToWrite Array of { uid, newRank, oldRank }
          */
@@ -347,23 +369,29 @@
          * Applies the current search filter and triggers rendering.
          */
         function applySearchFilter() {
-            const filteredData = leaderboardData.filter(item => 
+            // Filter all data
+            const filteredAllData = leaderboardData.filter(item => 
                 item.name.toLowerCase().includes(searchFilter.toLowerCase())
             );
-            renderLeaderboard(filteredData);
+            
+            // Render all filtered data directly to the list
+            renderLeaderboard(filteredAllData);
         }
 
+        // Removed generatePodiumElement and renderPodium functions.
+
         /**
-         * Renders the filtered data list to the DOM.
+         * Renders the filtered data list to the DOM (All Ranks).
          * @param {Array<Object>} data The filtered and ranked leaderboard data.
          */
         function renderLeaderboard(data) {
             const listContainer = document.getElementById('leaderboard-list');
             
+            // Handle empty list or search results
             if (data.length === 0) {
                 listContainer.innerHTML = `
                     <div class="text-center text-gray-400 p-8 rounded-xl bg-card-dark shadow-lg">
-                        <p>No results found for "${searchFilter}".</p>
+                        <p>${searchFilter ? `No results found for "${searchFilter}".` : 'No users found yet.'}</p>
                     </div>
                 `;
                 return;
@@ -372,20 +400,20 @@
             listContainer.innerHTML = data.map(item => {
                 let changeIcon = '';
                 let rankStyle = 'text-gray-400';
-                let rankGlow = '';
+                let borderStyle = 'border-gray-500/50';
 
-                // Determine rank indicator and color
+                // Apply special styling for the top 3
                 if (item.rank === 1) {
-                    rankStyle = 'text-accent-yellow font-bold';
-                    rankGlow = 'rank-glow-1';
+                    rankStyle = 'text-accent-yellow font-bold rank-glow-1';
+                    borderStyle = 'border-accent-yellow/70';
                 } else if (item.rank === 2) {
-                    rankStyle = 'text-gray-300 font-bold';
-                    rankGlow = 'rank-glow-2';
+                    rankStyle = 'text-gray-300 font-bold rank-glow-2';
+                    borderStyle = 'border-gray-300/70';
                 } else if (item.rank === 3) {
-                    rankStyle = 'text-amber-600 font-bold';
-                    rankGlow = 'rank-glow-3';
+                    rankStyle = 'text-amber-600 font-bold rank-glow-3';
+                    borderStyle = 'border-podium-bronze/70';
                 }
-
+                
                 // Determine placement change indicator
                 if (item.placementChange === 1) {
                     // Green up arrow
@@ -398,11 +426,6 @@
                     changeIcon = `<span class="text-gray-600 flex items-center"><i data-lucide="minus" class="w-4 h-4"></i></span>`;
                 }
 
-                // Format timestamp
-                const lastSaleFormatted = item.lastSaleTimestamp 
-                    ? item.lastSaleTimestamp.toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' })
-                    : 'N/A';
-                
                 // Format currency
                 const formattedAmount = new Intl.NumberFormat('en-US', {
                     style: 'currency',
@@ -413,10 +436,10 @@
                 
                 // Leaderboard item HTML
                 return `
-                    <div class="bg-card-dark p-4 rounded-2xl shadow-xl flex items-center space-x-4 transition-all hover:bg-gray-700 border-l-4 border-accent-yellow/50">
+                    <div class="bg-card-dark p-4 rounded-2xl shadow-xl flex items-center space-x-4 transition-all hover:bg-gray-700 border-l-4 ${borderStyle}">
                         <!-- Rank & Change Indicator -->
                         <div class="flex flex-col items-center w-12 sm:w-16">
-                            <span class="text-3xl ${rankStyle} ${rankGlow} bebas-neue leading-none">${item.rank}</span>
+                            <span class="text-3xl ${rankStyle} bebas-neue leading-none">${item.rank}</span>
                             <div class="text-xs mt-1">
                                 ${changeIcon}
                             </div>
@@ -429,7 +452,7 @@
                         </div>
 
                         <!-- Stats (Responsive Grid) -->
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2 text-right text-sm md:min-w-[420px] lg:min-w-[500px]">
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2 text-right text-sm md:min-w-[420px]">
                             
                             <!-- Money Raised -->
                             <div class="flex flex-col items-end">
@@ -455,12 +478,6 @@
                                 <span class="text-xs text-gray-400 whitespace-nowrap">Link Clicks</span>
                             </div>
 
-                        </div>
-                        
-                        <!-- Last Sale Timestamp (Hidden on small screens) -->
-                        <div class="hidden lg:flex flex-col items-end text-right w-36 ml-4">
-                            <span class="text-xs font-medium text-gray-300">${lastSaleFormatted}</span>
-                            <span class="text-xs text-gray-500">Last Sale</span>
                         </div>
                     </div>
                 `;

@@ -1392,3 +1392,43 @@ exports.createReferrer = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError('internal', 'Failed to create referrer.', error.message);
     }
 });
+exports.setSuperAdminClaim = functions.https.onCall(async (data, context) => {
+    // 1. Security Check: Only Super Admins can set this claim.
+    if (!isSuperAdmin(context)) {
+        throw new functions.https.HttpsError('permission-denied', 'Access denied. Only a Super Admin can promote another user.');
+    }
+
+    const { uid } = data;
+
+    if (!uid) {
+        throw new functions.https.HttpsError('invalid-argument', 'Missing target user ID (uid).');
+    }
+
+    try {
+        // Get existing claims to avoid overwriting (e.g., if they were a 'referrer')
+        const user = await admin.auth().getUser(uid);
+        const existingClaims = user.customClaims || {};
+
+        // Set the new claims: keep existing claims, and explicitly set 'superAdmin' to true.
+        const updatedClaims = {
+            ...existingClaims,
+            admin: true, // Ensure they also have general admin access
+            superAdmin: true
+        };
+
+        // Set the custom claim on the Firebase user object
+        await admin.auth().setCustomUserClaims(uid, updatedClaims);
+
+        // Force user to re-authenticate on their device to pick up the new claims immediately
+        await admin.auth().revokeRefreshTokens(uid);
+
+        return { 
+            success: true, 
+            message: `User ${uid} successfully promoted to Super Admin status. Tokens revoked.` 
+        };
+
+    } catch (error) {
+        console.error(`Error promoting user ${uid} to Super Admin:`, error);
+        throw new functions.https.HttpsError('internal', 'Failed to update user claims.', error.message);
+    }
+});

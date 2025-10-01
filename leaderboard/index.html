@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YDE Fundraising Leaderboard</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Lucide Icons (for arrows) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Configure Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-dark': '#0f172a', // slate-950
+                        'accent-yellow': '#facc15', // yellow-400
+                        'card-dark': '#1f2937', // gray-800 (used for list items)
+                        'secondary-green': '#10b981', // Emerald Green
+                        'danger-red': '#ef4444', // Red
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        title: ['Bebas Neue', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        /* General styling and font */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* Dark gray background (gray-900) */
+            color: #ffffff;
+        }
+        .bebas-neue {
+            font-family: 'Bebas Neue', sans-serif;
+        }
+        /* Custom scrollbar for better look */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563; /* Darker thumb */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1f2937; /* Dark track */
+        }
+        /* Style for the fixed header */
+        #leaderboard-header-fixed {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+        }
+        .rank-glow-1 { text-shadow: 0 0 8px #facc15; }
+        .rank-glow-2 { text-shadow: 0 0 8px #9ca3af; }
+        .rank-glow-3 { text-shadow: 0 0 8px #b45309; }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- Header (Matching the provided template style) -->
+    <header id="leaderboard-header-fixed" class="bg-primary-dark py-4 px-6 md:px-12 fixed w-full top-0 z-50">
+        <nav class="container mx-auto flex justify-center items-center">
+            <h1 class="bebas-neue text-4xl md:text-5xl font-bold text-accent-yellow drop-shadow-lg">
+                <span class="text-white">YDE</span> Leaderboard
+            </h1>
+        </nav>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-grow pt-[80px]">
+        <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+            
+            <!-- Sub-Header and Search Section -->
+            <div class="mb-8 p-6 rounded-2xl">
+                <p class="text-center text-gray-400 mb-6 text-lg">
+                    See who's leading the charge for the Senior Fund! Data updates in real-time.
+                </p>
+
+                <!-- Search Bar -->
+                <div class="relative max-w-lg mx-auto">
+                    <i data-lucide="search" class="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    <input
+                        type="text"
+                        id="search-input"
+                        placeholder="Search by User Name..."
+                        class="w-full pl-10 pr-4 py-3 border border-gray-700 bg-gray-800 text-white rounded-full focus:ring-2 focus:ring-accent-yellow focus:border-accent-yellow transition duration-150"
+                    >
+                </div>
+            </div>
+
+            <!-- Leaderboard List -->
+            <div id="leaderboard-list" class="space-y-4">
+                <!-- Loading State -->
+                <div class="flex flex-col items-center justify-center p-12 bg-gray-800 rounded-xl shadow-lg">
+                    <i data-lucide="loader-circle" class="w-8 h-8 text-accent-yellow animate-spin mb-3"></i>
+                    <p class="text-gray-400">Loading real-time leaderboard data...</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer (Matching the provided template style) -->
+    <footer class="bg-primary-dark py-8 mt-auto">
+        <div class="container mx-auto px-4 text-center">
+            <p class="text-sm text-gray-500 mt-4">
+                Ranking is based on total money raised.
+            </p>
+        </div>
+    </footer>
+
+    <!-- Firebase SDKs and Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, doc, getDoc, setDoc, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global Firebase instances
+        let app, db, auth;
+        let userId = null;
+        let isAuthReady = false;
+
+        // --- Core Application State & Logic ---
+        let leaderboardData = [];
+        let previousRanks = {}; // Store previous position by referrer UID for placement calculation
+        let searchFilter = '';
+
+        // Hardcoded Firebase configuration provided by the user
+        const firebaseConfig = {
+            apiKey: "AIzaSyAT539nr_s2OxHPTAmkxwMpaWt-FiDTgQs",
+            authDomain: "yderaffle.firebaseapp.com",
+            projectId: "yderaffle",
+            storageBucket: "yderaffle.firebasestorage.app",
+            messagingSenderId: "967768309102",
+            appId: "1:967768309102:web:c89d61a747e8cb941f557f"
+        };
+        
+        // Safely retrieve environment variables
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Set log level to Debug
+        setLogLevel('Debug');
+
+        /**
+         * Loads the previous rank data from Firestore's private user storage.
+         */
+        async function loadPreviousRanksFromDB(dbInstance, currentUserId) {
+            if (!currentUserId || !dbInstance) return;
+            
+            // Path: /artifacts/{appId}/users/{userId}/previous_ranks/current_view
+            const docRef = doc(dbInstance, 'artifacts', appId, 'users', currentUserId, 'previous_ranks', 'current_view');
+            try {
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    previousRanks = docSnap.data().ranks || {};
+                    console.log("Previous ranks loaded from Firestore.");
+                } else {
+                    previousRanks = {};
+                }
+            } catch (e) {
+                console.error("Error loading previous ranks from Firestore:", e);
+            }
+        }
+
+        /**
+         * Saves the current rank data to Firestore's private user storage.
+         * @param {Object} currentRanks A map of UID to current rank (number).
+         */
+        async function saveCurrentRanksToDB(dbInstance, currentUserId, currentRanks) {
+            if (!currentUserId || !dbInstance) return;
+
+            // Path: /artifacts/{appId}/users/{userId}/previous_ranks/current_view
+            const docRef = doc(dbInstance, 'artifacts', appId, 'users', currentUserId, 'previous_ranks', 'current_view');
+            try {
+                // Use setDoc with merge to create the document if it doesn't exist or update it if it does
+                await setDoc(docRef, { ranks: currentRanks, timestamp: Timestamp.now() }, { merge: true });
+                console.log("Current ranks saved to Firestore.");
+            } catch (e) {
+                console.error("Error saving current ranks to Firestore:", e);
+            }
+        }
+
+
+        /**
+         * Initializes Firebase and authenticates anonymously.
+         */
+        async function initializeFirebase() {
+            try {
+                if (Object.keys(firebaseConfig).length === 0) {
+                    console.error("Firebase config is empty. Cannot initialize.");
+                    renderLeaderboard(mockData());
+                    return; 
+                }
+                
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                // --- Authentication Listener ---
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                    } else {
+                        // Sign in anonymously to get a stable userId for persistence
+                        try {
+                            const result = await signInAnonymously(auth);
+                            userId = result.user.uid;
+                        } catch(e) {
+                            console.error("Anonymous sign-in failed:", e);
+                            // Fallback to a random ID if auth completely fails (for persistence key)
+                            userId = crypto.randomUUID(); 
+                        }
+                    }
+                    isAuthReady = true;
+
+                    // 1. Load previous ranks from DB now that we have a stable userId
+                    await loadPreviousRanksFromDB(db, userId); 
+
+                    // 2. Setup the real-time data listener
+                    setupRealtimeListener(db);
+                });
+
+            } catch (error) {
+                console.error("Firebase Initialization Error:", error);
+                renderLeaderboard(mockData());
+            }
+        }
+
+        /**
+         * Sets up the real-time Firestore listener for the public leaderboard data
+         * from the /referrers collection.
+         */
+        function setupRealtimeListener(dbInstance) {
+            const leaderboardPath = 'referrers'; 
+            const q = collection(dbInstance, leaderboardPath);
+
+            onSnapshot(q, (snapshot) => {
+                const newLeaderboardData = [];
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    newLeaderboardData.push({
+                        uid: doc.id,
+                        name: data.name || 'Unknown Referrer',
+                        refId: data.refId || 'N/A', 
+                        totalAmount: parseFloat(data.totalAmount) || 0,
+                        splitTickets: parseInt(data.totalTickets) || 0,
+                        // Assuming totalSpinTickets exists in the referrer document
+                        spinTickets: parseInt(data.totalSpinTickets) || 0, 
+                        clickCount: parseInt(data.clickCount) || 0,
+                        lastSaleTimestamp: data.lastSaleTimestamp ? data.lastSaleTimestamp.toDate() : null, 
+                    });
+                });
+                
+                // Process and render the new data
+                if (isAuthReady) {
+                    processAndRender(newLeaderboardData);
+                } else {
+                    // Render initial data if not authenticated yet, but don't save ranks
+                    processAndRender(newLeaderboardData, false);
+                }
+
+            }, (error) => {
+                console.error("Firestore Leaderboard Snapshot Error:", error);
+                document.getElementById('leaderboard-list').innerHTML = `
+                    <div class="text-center text-danger-red p-8 bg-gray-800 rounded-xl shadow-lg">
+                        Error loading leaderboard data: ${error.message}. Please check console for details.
+                    </div>
+                `;
+            });
+        }
+
+        /**
+         * Sorts, ranks, and updates the leaderboard state.
+         * @param {Array<Object>} newRawData The new array of referrer data.
+         * @param {boolean} saveRanks Whether to save the new rank data to DB (default: true).
+         */
+        function processAndRender(newRawData, saveRanks = true) {
+            
+            // 1. Sort by totalAmount (descending)
+            const sortedData = newRawData.sort((a, b) => b.totalAmount - a.totalAmount);
+            
+            // 2. Calculate Rank and Placement Change
+            const currentRanks = {};
+            
+            leaderboardData = sortedData.map((item, index) => {
+                const rank = index + 1;
+                currentRanks[item.uid] = rank;
+                
+                let placementChange = 0; // 0: same, 1: up, -1: down
+                
+                if (previousRanks[item.uid] !== undefined) {
+                    const oldRank = previousRanks[item.uid];
+                    if (rank < oldRank) {
+                        placementChange = 1; // Went up
+                    } else if (rank > oldRank) {
+                        placementChange = -1; // Went down
+                    }
+                }
+
+                return {
+                    ...item,
+                    rank,
+                    placementChange
+                };
+            });
+
+            // 3. Update previousRanks state and save for persistence (only if requested and authenticated)
+            if (saveRanks && userId && db) {
+                previousRanks = currentRanks;
+                saveCurrentRanksToDB(db, userId, currentRanks);
+            }
+
+            // 4. Apply search filter and render
+            applySearchFilter();
+        }
+
+        /**
+         * Applies the current search filter and triggers rendering.
+         */
+        function applySearchFilter() {
+            const filteredData = leaderboardData.filter(item => 
+                item.name.toLowerCase().includes(searchFilter.toLowerCase())
+            );
+            renderLeaderboard(filteredData);
+        }
+
+        /**
+         * Renders the filtered data list to the DOM.
+         * @param {Array<Object>} data The filtered and ranked leaderboard data.
+         */
+        function renderLeaderboard(data) {
+            const listContainer = document.getElementById('leaderboard-list');
+            
+            if (data.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="text-center text-gray-400 p-8 rounded-xl bg-card-dark shadow-lg">
+                        <p>No results found for "${searchFilter}".</p>
+                    </div>
+                `;
+                return;
+            }
+
+            listContainer.innerHTML = data.map(item => {
+                let changeIcon = '';
+                let rankStyle = 'text-gray-400';
+                let rankGlow = '';
+
+                // Determine rank indicator and color
+                if (item.rank === 1) {
+                    rankStyle = 'text-accent-yellow font-bold';
+                    rankGlow = 'rank-glow-1';
+                } else if (item.rank === 2) {
+                    rankStyle = 'text-gray-300 font-bold';
+                    rankGlow = 'rank-glow-2';
+                } else if (item.rank === 3) {
+                    rankStyle = 'text-amber-600 font-bold';
+                    rankGlow = 'rank-glow-3';
+                }
+
+                // Determine placement change indicator
+                if (item.placementChange === 1) {
+                    // Green up arrow
+                    changeIcon = `<span class="text-secondary-green flex items-center"><i data-lucide="arrow-up" class="w-4 h-4 mr-1"></i><span class="hidden sm:inline text-xs">Up</span></span>`;
+                } else if (item.placementChange === -1) {
+                    // Red down arrow
+                    changeIcon = `<span class="text-danger-red flex items-center"><i data-lucide="arrow-down" class="w-4 h-4 mr-1"></i><span class="hidden sm:inline text-xs">Down</span></span>`;
+                } else {
+                    // Neutral dash/line
+                    changeIcon = `<span class="text-gray-600 flex items-center"><i data-lucide="minus" class="w-4 h-4"></i></span>`;
+                }
+
+                // Format timestamp
+                const lastSaleFormatted = item.lastSaleTimestamp 
+                    ? item.lastSaleTimestamp.toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' })
+                    : 'N/A';
+                
+                // Format currency
+                const formattedAmount = new Intl.NumberFormat('en-US', {
+                    style: 'currency',
+                    currency: 'USD',
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0,
+                }).format(item.totalAmount);
+                
+                // Leaderboard item HTML
+                return `
+                    <div class="bg-card-dark p-4 rounded-2xl shadow-xl flex items-center space-x-4 transition-all hover:bg-gray-700 border-l-4 border-accent-yellow/50">
+                        <!-- Rank & Change Indicator -->
+                        <div class="flex flex-col items-center w-12 sm:w-16">
+                            <span class="text-3xl ${rankStyle} ${rankGlow} bebas-neue leading-none">${item.rank}</span>
+                            <div class="text-xs mt-1">
+                                ${changeIcon}
+                            </div>
+                        </div>
+
+                        <!-- User Info -->
+                        <div class="flex-grow min-w-0">
+                            <p class="text-xl font-bold text-white truncate">${item.name}</p>
+                            <p class="text-sm text-gray-400 hidden sm:block">Ref ID: ${item.refId}</p>
+                        </div>
+
+                        <!-- Stats (Responsive Grid) -->
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2 text-right text-sm md:min-w-[420px] lg:min-w-[500px]">
+                            
+                            <!-- Money Raised -->
+                            <div class="flex flex-col items-end">
+                                <span class="font-bold text-xl text-secondary-green">${formattedAmount}</span>
+                                <span class="text-xs text-gray-400">Raised</span>
+                            </div>
+
+                            <!-- Split Tickets -->
+                            <div class="flex flex-col items-end">
+                                <span class="font-bold text-lg text-white">${item.splitTickets}</span>
+                                <span class="text-xs text-gray-400 whitespace-nowrap">Split Tickets</span>
+                            </div>
+
+                            <!-- Spin Tickets -->
+                            <div class="flex flex-col items-end">
+                                <span class="font-bold text-lg text-white">${item.spinTickets}</span>
+                                <span class="text-xs text-gray-400 whitespace-nowrap">Spin Tickets</span>
+                            </div>
+                            
+                            <!-- Link Clicks -->
+                            <div class="flex flex-col items-end">
+                                <span class="font-bold text-lg text-white">${item.clickCount}</span>
+                                <span class="text-xs text-gray-400 whitespace-nowrap">Link Clicks</span>
+                            </div>
+
+                        </div>
+                        
+                        <!-- Last Sale Timestamp (Hidden on small screens) -->
+                        <div class="hidden lg:flex flex-col items-end text-right w-36 ml-4">
+                            <span class="text-xs font-medium text-gray-300">${lastSaleFormatted}</span>
+                            <span class="text-xs text-gray-500">Last Sale</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            // Re-render Lucide icons after DOM update
+            lucide.createIcons();
+        }
+
+        // --- Event Listeners and Initializers ---
+
+        /**
+         * Handles the search input event.
+         */
+        function handleSearch(event) {
+            searchFilter = event.target.value.trim();
+            applySearchFilter();
+        }
+
+        // Attach the search handler on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('search-input').addEventListener('input', handleSearch);
+            // Start the application
+            initializeFirebase();
+        });
+
+
+        // --- MOCK DATA FALLBACK (For testing in environments without live data) ---
+        function mockData() {
+            console.log("Using mock data as Firebase environment is not ready or failed.");
+            const now = Date.now();
+            const mock = [
+                { uid: 'userA123', name: 'Alex Johnson', refId: 'alexj', totalAmount: 7500, splitTickets: 150, spinTickets: 25, clickCount: 155, lastSaleTimestamp: new Date(now - 3600000) },
+                { uid: 'userB456', name: 'Brenda Smith', refId: 'brendas', totalAmount: 12000, splitTickets: 240, spinTickets: 40, clickCount: 300, lastSaleTimestamp: new Date(now) },
+                { uid: 'userC789', name: 'Chris Lee', refId: 'chrisl', totalAmount: 9000, splitTickets: 180, spinTickets: 30, clickCount: 220, lastSaleTimestamp: new Date(now - 7200000) },
+                { uid: 'userD012', name: 'Diana Clark', refId: 'dianac', totalAmount: 5000, splitTickets: 100, spinTickets: 15, clickCount: 80, lastSaleTimestamp: new Date(now - 10800000) },
+                { uid: 'userE345', name: 'Ethan Miller', refId: 'ethanm', totalAmount: 15000, splitTickets: 300, spinTickets: 50, clickCount: 450, lastSaleTimestamp: new Date(now - 1800000) },
+                { uid: 'userF678', name: 'Fiona White', refId: 'fionaw', totalAmount: 3500, splitTickets: 70, spinTickets: 10, clickCount: 50, lastSaleTimestamp: new Date(now - 2400000) },
+            ];
+            // Process mock data to set initial ranks for the comparison logic
+            processAndRender(mock, false); // Don't save mock data ranks
+            return leaderboardData;
+        }
+
+    </script>
+</body>
+</html>

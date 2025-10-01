@@ -38,6 +38,9 @@
             background-color: rgba(0, 0, 0, 0.6);
             backdrop-filter: blur(5px);
         }
+        /* Custom scrollbar for better appearance on table containers */
+        .overflow-x-auto::-webkit-scrollbar { height: 8px; }
+        .overflow-x-auto::-webkit-scrollbar-thumb { background-color: #d1d5db; border-radius: 4px; }
     </style>
 </head>
 <body class="min-h-screen">
@@ -84,6 +87,51 @@
                     <button type="submit" id="submitManualSale" class="px-4 py-2 text-white bg-yellow-500 rounded-lg hover:bg-yellow-600 transition-colors">Add Sale</button>
                 </div>
             </form>
+        </div>
+    </div>
+    
+    <!-- UPDATED: Apply Tickets Modal (Super Admin Only) - Now handles transfers -->
+    <div id="applyTicketsModalOverlay" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4 hidden">
+        <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">Assign/Transfer Tickets to: <span id="targetReferrerName" class="text-yellow-600"></span></h2>
+            <p class="text-sm text-gray-500 mb-4">Select sales below to assign (if unassigned) or transfer (if already assigned) them to this referrer's ID (<span id="targetReferrerId"></span>).</p>
+
+            <!-- Search and Action Bar -->
+            <div class="flex flex-col md:flex-row gap-3 md:items-center mb-4">
+                <!-- Search now searches by customer or current referrer -->
+                <input type="text" id="unassignedSearchInput" placeholder="Search customer, phone, email, or current referrer ID..." class="w-full md:w-1/2 p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500">
+                <div class="flex-grow"></div>
+                <span id="selectedCountDisplay" class="text-sm font-medium text-gray-600">0 sales selected</span>
+                <button id="applyReferrerButton" class="px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 transition-colors disabled:opacity-50" disabled>
+                    Apply Referrer to Selected
+                </button>
+            </div>
+
+            <!-- Unassigned Sales Table -->
+            <div class="overflow-x-auto dashboard-card max-h-[50vh]">
+                <table class="data-table w-full whitespace-nowrap">
+                    <thead>
+                        <tr>
+                            <th class="w-12 text-center">
+                                <input type="checkbox" id="selectAllUnassigned" class="rounded text-blue-600 focus:ring-blue-500">
+                            </th>
+                            <th>Date</th>
+                            <th>Full Name</th>
+                            <th>Phone/Email</th>
+                            <th>Tickets</th>
+                            <th class="text-right">Amount Paid</th>
+                            <th>Current Referrer</th> <!-- NEW/UPDATED COLUMN -->
+                        </tr>
+                    </thead>
+                    <tbody id="unassignedSalesTableBody">
+                        <tr><td colspan="7" class="text-center py-4 text-gray-500">Loading sales data...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pt-6 flex justify-end">
+                <button type="button" id="closeApplyTicketsModal" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors">Close</button>
+            </div>
         </div>
     </div>
 
@@ -155,25 +203,61 @@
 
             <!-- Referrers Tab Content (Super Admin Only) -->
             <div id="tab-referrers" class="tab-pane hidden">
-                <div class="dashboard-card p-4 overflow-x-auto">
+                <div class="dashboard-card p-4">
                     <h3 class="text-xl font-semibold mb-3 text-gray-800">All Referrers</h3>
-                    <table class="data-table w-full whitespace-nowrap">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Ref ID</th>
-                                <th>Email</th>
-                                <th class="text-right">Split Pot Tickets</th>
-                                <th class="text-right">Spin Wheel Tickets</th>
-                                <th class="text-right">Total Amount</th>
-                                <th class="text-right">Goal</th>
-                                <th class="text-right">Clicks</th> <!-- NEW COLUMN -->
-                            </tr>
-                        </thead>
-                        <tbody id="referrersTableBody">
-                            <tr><td colspan="8" class="text-center py-4 text-gray-500">Loading referrer data...</td></tr>
-                        </tbody>
-                    </table>
+                    
+                    <!-- Search and Sort Controls -->
+                    <div class="flex flex-col sm:flex-row gap-4 mb-4">
+                        <!-- Search Input -->
+                        <div class="relative flex-grow">
+                            <input type="text" id="referrerSearchInput" placeholder="Search by Name, ID, or Email..." class="w-full p-2 pl-10 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.197 5.197a7.5 7.5 0 0010.607 10.607z" /></svg>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="data-table w-full whitespace-nowrap">
+                            <thead>
+                                <tr>
+                                    <th class="referrer-sort-header cursor-pointer group hover:bg-gray-200" data-sort-key="name">
+                                        <div class="flex items-center justify-between">Name
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 ml-1 hidden text-yellow-500"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+                                        </div>
+                                    </th>
+                                    <th class="referrer-sort-header cursor-pointer group hover:bg-gray-200" data-sort-key="refId">
+                                        <div class="flex items-center justify-between">Ref ID
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 ml-1 hidden text-yellow-500"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+                                        </div>
+                                    </th>
+                                    <th>Email</th>
+                                    <th class="referrer-sort-header cursor-pointer group hover:bg-gray-200 text-right" data-sort-key="raffleTickets">
+                                        <div class="flex items-center justify-end">Split Pot Tickets
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 ml-1 hidden text-yellow-500"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+                                        </div>
+                                    </th>
+                                    <th class="referrer-sort-header cursor-pointer group hover:bg-gray-200 text-right" data-sort-key="rolexTickets">
+                                        <div class="flex items-center justify-end">Spin Wheel Tickets
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 ml-1 hidden text-yellow-500"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+                                        </div>
+                                    </th>
+                                    <th class="referrer-sort-header cursor-pointer group hover:bg-gray-200 text-right" data-sort-key="combinedTotalAmount">
+                                        <div class="flex items-center justify-end">Total Amount
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 ml-1 hidden text-yellow-500"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+                                        </div>
+                                    </th>
+                                    <th>Goal</th>
+                                    <th class="referrer-sort-header cursor-pointer group hover:bg-gray-200 text-right" data-sort-key="clickCount">
+                                        <div class="flex items-center justify-end">Clicks
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 ml-1 hidden text-yellow-500"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+                                        </div>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody id="referrersTableBody">
+                                <tr><td colspan="8" class="text-center py-4 text-gray-500">Loading referrer data...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
             
@@ -320,7 +404,23 @@
         let db;
         let isSuperAdmin = false;
         let isReferrer = false;
-        let isLoggedInAdmin = false; // New flag for General Admin/Super Admin
+        let isLoggedInAdmin = false; 
+
+        // --- GLOBAL STATE FOR TICKET ASSIGNMENT (UPDATED) ---
+        // Changed purpose from 'unassigned' to hold ALL relevant sales for filtering/transferring
+        let allAssignmentRaffleSales = []; 
+        let filteredUnassignedSales = []; 
+        let selectedSaleIds = new Set(); 
+        let targetRefId = null; 
+        let targetRefName = null; 
+
+        // --- Global State for Sorting and Searching ---
+        let sortConfig = {
+            key: 'combinedTotalAmount', // Default sort: Most money/Total Amount
+            direction: 'desc'
+        };
+        let searchTerm = '';
+        // ---------------------------------------------
 
         // Configuration and App ID (MUST be present in Canvas environment)
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
@@ -374,9 +474,17 @@
         const hideGlobalLoading = () => {
             document.getElementById('globalLoadingOverlay').classList.add('hidden');
         };
-        const showCustomPopup = (title, message) => {
+        
+        // Redefine to avoid native confirm() and alert()
+        const showCustomPopup = (title, message, isConfirm = false) => {
             document.getElementById('popupTitle').textContent = title;
             document.getElementById('popupMessage').textContent = message;
+            const closeBtn = document.getElementById('popupCloseButton');
+            
+            // Re-use OK button, no confirmation needed in this simplified canvas environment
+            closeBtn.textContent = 'OK'; 
+            closeBtn.onclick = hideCustomPopup;
+
             document.getElementById('customPopupOverlay').classList.remove('hidden');
             setTimeout(() => { document.getElementById('customPopup').classList.add('scale-100'); }, 10);
         };
@@ -384,6 +492,7 @@
             document.getElementById('customPopup').classList.remove('scale-100');
             setTimeout(() => { document.getElementById('customPopupOverlay').classList.add('hidden'); }, 300);
         };
+        window.showCustomPopup = showCustomPopup; // Make available globally for handlers
         
         // Copy to clipboard function
         const copyToClipboard = (text, message = 'Link copied!') => {
@@ -410,7 +519,6 @@
         // --- NEW: Function to get Ref ID from URL ---
         const getRefIdFromUrl = () => {
             const urlParams = new URLSearchParams(window.location.search);
-            // Assuming the parameter is always named 'ref'
             return urlParams.get('ref');
         };
 
@@ -418,16 +526,50 @@
         const trackRefClick = async (refId) => {
             try {
                 const trackRefLinkClickCallable = httpsCallable(functions, 'trackRefLinkClick');
-                // Call the function without waiting for a result or showing a loading spinner
                 await trackRefLinkClickCallable({ refId }); 
                 console.log(`Click tracked for refId: ${refId}`);
             } catch (error) {
-                // Log errors silently, as this is a background task
                 console.error(`Failed to track click for ${refId}:`, error);
             }
         };
 
         
+        // --- Client-Side Filtering and Sorting Logic ---
+        
+        const filterAndSortReferrers = (data) => {
+            // 1. Filter
+            let filtered = data.filter(r => {
+                const searchLower = searchTerm.toLowerCase();
+                return r.name.toLowerCase().includes(searchLower) ||
+                       (r.refId || '').toLowerCase().includes(searchLower) ||
+                       (r.email || '').toLowerCase().includes(searchLower);
+            });
+
+            // 2. Sort
+            if (sortConfig.key) {
+                filtered.sort((a, b) => {
+                    let aVal = a[sortConfig.key] || 0;
+                    let bVal = b[sortConfig.key] || 0;
+                    
+                    if (sortConfig.key === 'name' || sortConfig.key === 'refId' || sortConfig.key === 'email') {
+                        // String comparison
+                        aVal = String(aVal).toLowerCase();
+                        bVal = String(bVal).toLowerCase();
+                        if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+                        if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+                        return 0;
+                    } else {
+                        // Numeric comparison
+                        if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+                        if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+                        return 0;
+                    }
+                });
+            }
+            return filtered;
+        };
+
+
         // --- Client-Side Calculation for Referrer Metrics (Tickets & Combined Amount) ---
         const calculateReferrerMetrics = (data) => {
             const referrerMap = new Map();
@@ -441,7 +583,7 @@
                     rolexTickets: 0,
                     combinedTotalAmount: r.totalAmount || 0, 
                     totalTickets: r.totalTickets || 0,
-                    clickCount: r.clickCount || 0 // NEW: Initialize click count
+                    clickCount: r.clickCount || 0 
                 });
             });
 
@@ -453,9 +595,9 @@
                 if (refId && referrerMap.has(refId)) {
                     const referrer = referrerMap.get(refId);
                     
-                    referrer.rolexTickets += 1; // Each Rolex entry is 1 ticket
+                    referrer.rolexTickets += 1; 
                     referrer.totalTickets += 1;
-                    referrer.combinedTotalAmount += amountPaid; // Aggregate amount
+                    referrer.combinedTotalAmount += amountPaid; 
                 }
                 
                 // If this entry belongs to the currently logged-in user, update their overview data too
@@ -572,7 +714,7 @@
                     document.getElementById('overviewRefId').textContent = refId;
                     
                     // Update Clicks
-                    document.getElementById('overviewTotalClicks').textContent = (dashboardData.userData.clickCount || 0).toLocaleString(); // NEW
+                    document.getElementById('overviewTotalClicks').textContent = (dashboardData.userData.clickCount || 0).toLocaleString(); 
                     
                     // Update Tickets and Amount
                     document.getElementById('overviewTotalTickets').textContent = (dashboardData.userData.totalTickets || 0).toLocaleString();
@@ -595,6 +737,7 @@
 
 
                 renderTables();
+                updateSortIndicators();
                 // Admin Tools data fetch (only if SA or Admin to save bandwidth, but only SA sees it)
                 if (isSuperAdmin || isLoggedInAdmin) {
                      await updateReservedTicketCounts();
@@ -615,19 +758,61 @@
                 }
             }
         };
+        
+        // --- Sorting Indicator Logic ---
+        const updateSortIndicators = () => {
+             document.querySelectorAll('.referrer-sort-header').forEach(header => {
+                header.classList.remove('text-yellow-700', 'font-semibold');
+                const icon = header.querySelector('svg');
+                if (icon) icon.classList.add('hidden');
+             });
+
+             const activeHeader = document.querySelector(`[data-sort-key="${sortConfig.key}"]`);
+             if (activeHeader) {
+                 activeHeader.classList.add('text-yellow-700', 'font-semibold');
+                 const icon = activeHeader.querySelector('svg');
+                 if (icon) {
+                     icon.classList.remove('hidden');
+                     // Update path for up/down arrow icons
+                     if (sortConfig.direction === 'asc') {
+                         icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />'; // Up arrow
+                     } else {
+                         icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />'; // Down arrow
+                     }
+                 }
+             }
+        };
+
 
         const renderReferrersTable = (referrers) => {
             const tbody = document.getElementById('referrersTableBody');
             tbody.innerHTML = '';
+            
+            // Apply filtering and sorting
+            const sortedReferrers = filterAndSortReferrers(referrers);
+
             // NOTE: The colspan is 8 now due to the new Clicks column
-            if (referrers.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-gray-500">No referrers found.</td></tr>';
+            if (sortedReferrers.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-gray-500">No referrers found matching search criteria.</td></tr>';
                 return;
             }
-            referrers.forEach(r => {
+            sortedReferrers.forEach(r => {
                 const tr = document.createElement('tr');
+                
+                // --- RESTORE CLICKABLE NAME LOGIC ---
+                let nameCellContent = r.name;
+                if (isSuperAdmin) {
+                    nameCellContent = `<span 
+                                        class="text-blue-600 font-semibold cursor-pointer hover:underline" 
+                                        data-action="assign-tickets" 
+                                        data-refid="${r.refId}" 
+                                        data-refname="${r.name}"
+                                      >${r.name}</span>`;
+                }
+                // -------------------------------------
+
                 tr.innerHTML = `
-                    <td>${r.name}</td>
+                    <td>${nameCellContent}</td>
                     <td><span class="font-mono text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded">${r.refId}</span></td>
                     <td>${r.email}</td>
                     <td class="text-right">${(r.raffleTickets || 0).toLocaleString()}</td>
@@ -638,6 +823,8 @@
                 `;
                 tbody.appendChild(tr);
             });
+            // Update sort indicators visually after rendering
+            updateSortIndicators();
         };
 
         const renderRaffleTable = (entries) => {
@@ -656,7 +843,7 @@
                 return;
             }
             entries.forEach(e => {
-                const referrerInfo = e.referrerName ? `${e.referrerName} (${e.referrerRefId})` : 'None';
+                const referrerInfo = e.referrerName ? `${e.referrerName} (${e.referrerRefId})` : '<span class="text-red-500 font-medium">None</span>';
                 // Use robust name lookup for Split The Pot (fullName is preferred, then name, then firstName)
                 const customerName = e.fullName || e.name || e.firstName || 'N/A';
                 
@@ -685,10 +872,7 @@
                 const referrerInfo = e.referrerRefId ? `${e.referrerRefId}` : 'None';
                 const statusClass = e.status === 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
                 
-                // --- MODIFIED NAME CHECK LOGIC ---
-                // Check for fullName, then name, then firstName, before defaulting to 'N/A'
                 const customerName = e.fullName || e.name || e.firstName || 'N/A';
-                // --- END MODIFIED LOGIC ---
                 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -876,6 +1060,195 @@
             }
         };
 
+        // --- NEW: Apply Tickets Logic (Super Admin Only) ---
+
+        // RENAMED/REPURPOSED to fetch all sales relevant for assignment/transfer
+        const fetchAssignmentRaffleSales = async () => {
+            showGlobalLoading("Fetching all sales for assignment...");
+            try {
+                // For Super Admin, raffleEntries should already contain all sales.
+                // We map this local array to the assignment state.
+                allAssignmentRaffleSales = dashboardData.raffleEntries.map((sale, index) => ({
+                    // Ensure each item has an ID for selection tracking
+                    id: sale.id || `sale-${index}`, 
+                    ...sale
+                }));
+                
+                filteredUnassignedSales = [...allAssignmentRaffleSales];
+                selectedSaleIds.clear();
+                updateApplyTicketsUI();
+
+            } catch (error) {
+                console.error("Error fetching assignment sales:", error);
+                showCustomPopup('Error', `Failed to load sales: ${error.message}`);
+            } finally {
+                hideGlobalLoading();
+            }
+        };
+        
+        const openApplyTicketsModal = async (refId, refName) => {
+            if (!isSuperAdmin) {
+                showCustomPopup('Permission Denied', 'Only Super Admins can assign tickets.');
+                return;
+            }
+            
+            targetRefId = refId;
+            targetRefName = refName;
+
+            document.getElementById('targetReferrerName').textContent = refName;
+            document.getElementById('targetReferrerId').textContent = refId;
+            document.getElementById('unassignedSearchInput').value = '';
+            
+            // Call the repurposed fetch function to load all relevant sales
+            await fetchAssignmentRaffleSales();
+            
+            document.getElementById('applyTicketsModalOverlay').classList.remove('hidden');
+        };
+
+        const closeApplyTicketsModal = () => {
+            document.getElementById('applyTicketsModalOverlay').classList.add('hidden');
+            // Reset state
+            targetRefId = null;
+            targetRefName = null;
+            allAssignmentRaffleSales = [];
+            filteredUnassignedSales = [];
+            selectedSaleIds.clear();
+        };
+
+        const updateApplyTicketsUI = () => {
+            const tbody = document.getElementById('unassignedSalesTableBody');
+            tbody.innerHTML = '';
+            const selectAllCheckbox = document.getElementById('selectAllUnassigned');
+            const selectedCountDisplay = document.getElementById('selectedCountDisplay');
+            const applyButton = document.getElementById('applyReferrerButton');
+            
+            selectAllCheckbox.checked = false;
+            
+            // Updated colspan count to 7 (6 data columns + 1 checkbox)
+            if (filteredUnassignedSales.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-500">No sales found matching the criteria.</td></tr>';
+                applyButton.disabled = true;
+                selectedCountDisplay.textContent = '0 sales selected';
+                return;
+            }
+
+            filteredUnassignedSales.forEach(sale => {
+                const isSelected = selectedSaleIds.has(sale.id);
+                const customerName = sale.fullName || sale.name || sale.firstName || 'N/A';
+                const contact = sale.email || sale.phoneNumber || 'N/A';
+
+                // Display current referrer details
+                const currentReferrerContent = sale.referrerRefId 
+                    ? `<span class="font-mono text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded">${sale.referrerRefId}</span>`
+                    : '<span class="text-red-500">None</span>';
+
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="text-center">
+                        <input type="checkbox" data-sale-id="${sale.id}" class="sale-checkbox rounded text-blue-600 focus:ring-blue-500" ${isSelected ? 'checked' : ''}>
+                    </td>
+                    <td>${formatDate(sale.timestamp)}</td>
+                    <td>${customerName}</td>
+                    <td>${contact}</td>
+                    <td>${(sale.ticketCount || 0).toLocaleString()}</td>
+                    <td class="text-right font-medium">${formatCurrency(sale.amountPaid || 0)}</td>
+                    <td>${currentReferrerContent}</td> 
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            selectedCountDisplay.textContent = `${selectedSaleIds.size} sales selected`;
+            applyButton.disabled = selectedSaleIds.size === 0;
+
+            // Update select all state
+            if (filteredUnassignedSales.length > 0 && selectedSaleIds.size === filteredUnassignedSales.length) {
+                selectAllCheckbox.checked = true;
+            }
+        };
+
+        const handleSearchChange = () => {
+            const searchLower = document.getElementById('unassignedSearchInput').value.toLowerCase().trim();
+            if (searchLower === '') {
+                filteredUnassignedSales = [...allAssignmentRaffleSales];
+            } else {
+                filteredUnassignedSales = allAssignmentRaffleSales.filter(sale => {
+                    const name = (sale.fullName || sale.name || sale.firstName || '').toLowerCase();
+                    const email = (sale.email || '').toLowerCase();
+                    const phone = (sale.phoneNumber || '').toLowerCase();
+                    const currentRef = (sale.referrerRefId || '').toLowerCase(); 
+                    // Search includes current referrer for easy identification
+                    return name.includes(searchLower) || email.includes(searchLower) || phone.includes(searchLower) || currentRef.includes(searchLower);
+                });
+            }
+            updateApplyTicketsUI();
+        };
+
+        const handleCheckboxChange = (e) => {
+            const saleId = e.target.dataset.saleId;
+            if (e.target.checked) {
+                selectedSaleIds.add(saleId);
+            } else {
+                selectedSaleIds.delete(saleId);
+            }
+            
+            // Check/uncheck select all if applicable
+            const selectAllCheckbox = document.getElementById('selectAllUnassigned');
+            if (selectedSaleIds.size === filteredUnassignedSales.length && filteredUnassignedSales.length > 0) {
+                selectAllCheckbox.checked = true;
+            } else {
+                selectAllCheckbox.checked = false;
+            }
+
+            document.getElementById('selectedCountDisplay').textContent = `${selectedSaleIds.size} sales selected`;
+            document.getElementById('applyReferrerButton').disabled = selectedSaleIds.size === 0;
+        };
+
+        const handleSelectAllChange = (e) => {
+            selectedSaleIds.clear();
+            const isChecked = e.target.checked;
+
+            document.querySelectorAll('.sale-checkbox').forEach(checkbox => {
+                checkbox.checked = isChecked;
+                const saleId = checkbox.dataset.saleId;
+                if (isChecked) {
+                    selectedSaleIds.add(saleId);
+                }
+            });
+
+            document.getElementById('selectedCountDisplay').textContent = `${selectedSaleIds.size} sales selected`;
+            document.getElementById('applyReferrerButton').disabled = selectedSaleIds.size === 0;
+        };
+
+        const applyReferrerToSales = async () => {
+            if (!targetRefId || selectedSaleIds.size === 0) {
+                showCustomPopup('Error', 'No referrer or sales selected.');
+                return;
+            }
+            
+            const salesToUpdate = Array.from(selectedSaleIds);
+            const refId = targetRefId;
+            
+            closeApplyTicketsModal();
+            showGlobalLoading(`Processing transfer/assignment of ${salesToUpdate.length} sales to ${refId}...`);
+
+            try {
+                // This calls the NEW backend function which handles decrement/increment logic
+                const assignReferrerToSalesCallable = httpsCallable(functions, 'assignReferrerToSales');
+                const response = await assignReferrerToSalesCallable({ saleIds: salesToUpdate, refId: refId });
+
+                showCustomPopup('Success', response.data.message || `Successfully processed ${salesToUpdate.length} sales for ${refId}.`);
+                
+                await fetchDashboardData(); // Refresh the main dashboard data
+
+            } catch (error) {
+                console.error("Error assigning referrer:", error);
+                showCustomPopup('Assignment/Transfer Failed', `Error: ${error.message}`);
+            } finally {
+                hideGlobalLoading();
+            }
+        };
+
 
         // --- Authentication and Initialization ---
 
@@ -941,50 +1314,105 @@
                 hideGlobalLoading();
             }
         };
+        
+        // --- Event Listeners for Search and Sort Controls ---
+        const attachSortAndSearchListeners = () => {
+            // Search Input Listener
+            const searchInput = document.getElementById('referrerSearchInput');
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    searchTerm = e.target.value;
+                    renderReferrersTable(dashboardData.referrers);
+                });
+            }
+
+            // Table Header Sort Listener
+            document.querySelectorAll('.referrer-sort-header').forEach(header => {
+                header.addEventListener('click', (e) => {
+                    const key = e.currentTarget.dataset.sortKey;
+                    if (sortConfig.key === key) {
+                        sortConfig.direction = sortConfig.direction === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        sortConfig.key = key;
+                        // Default to descending for numeric values (tickets, amount, clicks)
+                        sortConfig.direction = (key === 'name' || key === 'refId' || key === 'email') ? 'asc' : 'desc';
+                    }
+                    renderReferrersTable(dashboardData.referrers);
+                });
+            });
+        };
 
 
         // --- Event Listeners and Initial Setup ---
         window.onload = async () => {
             try {
+                // Initialize Firebase
                 app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
                 functions = getFunctions(app);
                 db = getFirestore(app);
                 
                 setLogLevel('debug');
+
+                // --- Handle Click Tracking if 'ref' is in URL ---
+                const refId = getRefIdFromUrl();
+                if (refId) {
+                    await trackRefClick(refId); 
+                }
+
+                setupAuthListeners();
                 
+                // Attach Event Listeners
+                document.getElementById('loginForm').addEventListener('submit', handleLogin);
+                document.getElementById('logoutButton').addEventListener('click', handleLogout);
+                document.getElementById('popupCloseButton').addEventListener('click', hideCustomPopup);
+                
+                // Tab navigation
+                document.querySelectorAll('.tab-button').forEach(button => {
+                    button.addEventListener('click', (e) => switchTab(e.target.dataset.tab));
+                });
+                
+                // Attach Search and Sort listeners
+                attachSortAndSearchListeners();
+                
+                // Manual Sale Modal listeners
+                document.getElementById('addManualSaleButton').addEventListener('click', openManualSaleModal);
+                document.getElementById('closeManualSaleModal').addEventListener('click', closeManualSaleModal);
+                document.getElementById('manualSaleForm').addEventListener('submit', handleManualSaleSubmit);
+                
+                // Admin Tools listeners
+                document.getElementById('deleteExpiredTicketsButton').addEventListener('click', handleCleanupClick);
+                document.getElementById('recalculateTotalsButton').addEventListener('click', handleRecalculateTotals);
+
+                // --- NEW: Apply Tickets Modal listeners ---
+                document.getElementById('closeApplyTicketsModal').addEventListener('click', closeApplyTicketsModal);
+                document.getElementById('applyReferrerButton').addEventListener('click', applyReferrerToSales);
+                document.getElementById('unassignedSearchInput').addEventListener('input', handleSearchChange);
+                document.getElementById('selectAllUnassigned').addEventListener('change', handleSelectAllChange);
+                
+                // Event delegation for Referrers Table clicks (Needed for newly rendered rows)
+                document.getElementById('referrersTableBody').addEventListener('click', (e) => {
+                    const target = e.target;
+                    // Check if the clicked element is the span with the assign-tickets action
+                    if (target.dataset.action === 'assign-tickets' && isSuperAdmin) {
+                        const refId = target.dataset.refid;
+                        const refName = target.dataset.refname;
+                        openApplyTicketsModal(refId, refName);
+                    }
+                });
+
+                // Event delegation for checkboxes inside the unassigned sales table
+                document.getElementById('unassignedSalesTableBody').addEventListener('change', (e) => {
+                    if (e.target.classList.contains('sale-checkbox')) {
+                        handleCheckboxChange(e);
+                    }
+                });
             } catch (error) {
-                document.getElementById('globalSpinnerText').textContent = 'Firebase Initialization Failed. Check console for config error.';
-                console.error("Firebase Init Error:", error);
-                return;
+                // Catches any critical error during setup (Firebase config, listener creation, etc.)
+                document.getElementById('globalSpinnerText').textContent = 'A critical error occurred during setup. Check the console for details.';
+                console.error("Critical Application Error:", error);
+                hideGlobalLoading();
             }
-
-            // --- NEW: Handle Click Tracking if 'ref' is in URL ---
-            const refId = getRefIdFromUrl();
-            if (refId) {
-                // Track the click immediately and silently
-                await trackRefClick(refId); 
-            }
-            // --- END NEW LOGIC ---
-
-            setupAuthListeners();
-            document.getElementById('loginForm').addEventListener('submit', handleLogin);
-            document.getElementById('logoutButton').addEventListener('click', handleLogout);
-            document.getElementById('popupCloseButton').addEventListener('click', hideCustomPopup);
-            
-            // Tab navigation
-            document.querySelectorAll('.tab-button').forEach(button => {
-                button.addEventListener('click', (e) => switchTab(e.target.dataset.tab));
-            });
-            
-            // Manual Sale Modal listeners
-            document.getElementById('addManualSaleButton').addEventListener('click', openManualSaleModal);
-            document.getElementById('closeManualSaleModal').addEventListener('click', closeManualSaleModal);
-            document.getElementById('manualSaleForm').addEventListener('submit', handleManualSaleSubmit);
-            
-            // Admin Tools listeners
-            document.getElementById('deleteExpiredTicketsButton').addEventListener('click', handleCleanupClick);
-            document.getElementById('recalculateTotalsButton').addEventListener('click', handleRecalculateTotals);
         };
     </script>
 </body>

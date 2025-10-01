@@ -335,8 +335,29 @@
         };
         const formatDate = (timestamp) => {
             if (!timestamp) return 'N/A';
-            // Firestore Timestamps have a .toDate() method which we check for
-            const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+            
+            let date;
+            
+            // 1. Check for the official Firestore Timestamp object (via SDK)
+            if (timestamp.toDate && typeof timestamp.toDate === 'function') {
+                date = timestamp.toDate();
+            } 
+            // 2. Check for the raw object serialized by Callable Functions (e.g., { seconds: 123456... })
+            else if (typeof timestamp === 'object' && timestamp.seconds) {
+                // Firestore timestamps store time in seconds, convert to milliseconds
+                date = new Date(timestamp.seconds * 1000);
+            }
+            // 3. Treat as a standard JavaScript Date object, milliseconds, or parsable date string
+            else {
+                date = new Date(timestamp);
+            }
+
+            // Final check for validity
+            if (isNaN(date.getTime())) {
+                // Return original input if parsing failed for debugging, or 'Invalid Date'
+                return 'Invalid Date';
+            }
+
             return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
         };
         const showGlobalLoading = (message = "Loading dashboard data...") => {

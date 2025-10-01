@@ -684,28 +684,48 @@
         
         // --- Client-Side Sorting and Filtering Logic ---
         
+        /**
+         * Safely converts a value (Firebase Timestamp, Date object, string, or number) to milliseconds.
+         * Returns 0 for null/undefined/invalid dates.
+         */
+        const getTimestampValue = (val) => {
+            if (!val) return 0;
+            // Handle Firebase Timestamp object from Cloud Function
+            if (typeof val.seconds === 'number') {
+                return val.seconds * 1000;
+            }
+            // Handle Date object or parsable value
+            let date = new Date(val);
+            if (isNaN(date.getTime())) {
+                return 0;
+            }
+            return date.getTime();
+        };
+
         const sortEntries = (data, sortConfig) => {
              // 1. Sort
              if (sortConfig.key) {
                 data.sort((a, b) => {
-                    let aVal = a[sortConfig.key] || 0;
-                    let bVal = b[sortConfig.key] || 0;
+                    let aVal = a[sortConfig.key];
+                    let bVal = b[sortConfig.key];
                     
                     if (sortConfig.key === 'name' || sortConfig.key === 'fullName' || sortConfig.key === 'referrerRefId') {
                         // String comparison
-                        aVal = String(aVal).toLowerCase();
-                        bVal = String(bVal).toLowerCase();
+                        aVal = String(aVal || '').toLowerCase();
+                        bVal = String(bVal || '').toLowerCase();
                         if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
                         if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
                         return 0;
                     } else if (sortConfig.key === 'timestamp') {
                         // Date comparison
-                         const aTime = aVal ? (aVal.seconds ? aVal.seconds * 1000 : aVal.getTime()) : 0;
-                         const bTime = bVal ? (bVal.seconds ? bVal.seconds * 1000 : bVal.getTime()) : 0;
+                         const aTime = getTimestampValue(aVal);
+                         const bTime = getTimestampValue(bVal);
                          return sortConfig.direction === 'asc' ? aTime - bTime : bTime - aTime;
                     } 
                     else {
                         // Numeric comparison
+                        aVal = aVal || 0;
+                        bVal = bVal || 0;
                         if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
                         if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
                         return 0;
@@ -731,7 +751,7 @@
             if (filterType === 'assigned') {
                  filtered = filtered.filter(e => e.referrerRefId && e.referrerRefId !== null);
             } else if (filterType === 'unassigned') {
-                 filtered = filtered.filter(e => !e.referrerRefId || e.referrerRefId === null);
+                 filtered = filtered.filter(e => !e.referrerRefId || e.referrerRefId === null || e.referrerRefId === "");
             }
             return filtered;
         }
@@ -874,7 +894,7 @@
                 }
                 
                 renderTables();
-                updateSortIndicators('referrer', referrerSortConfig); // Update referrer indicators
+                updateSortIndicators('referrer', referrerSortConfig); 
                 
                 if (isSuperAdmin || isLoggedInAdmin) {
                     await updateReservedTicketCounts();
@@ -1140,6 +1160,7 @@
         const clearRaffleFilter = () => {
             raffleFilterRefId = null;
             raffleFilterRefName = null;
+            document.getElementById('raffleFilter').value = raffleFilter; // Restore the main filter setting
             renderRaffleTable(dashboardData.raffleEntries); 
         };
         
@@ -1200,8 +1221,6 @@
 
         const upgradeToSuperAdmin = async (uid) => {
             try {
-                // IMPORTANT: This function must be implemented in your backend index.js
-                // It should verify the caller is SA, then use admin.auth().setCustomUserClaims(uid, { superAdmin: true });
                 const setSuperAdminClaimCallable = httpsCallable(functions, 'setSuperAdminClaim'); 
                 const response = await setSuperAdminClaimCallable({ uid });
                 return response.data;
@@ -1831,7 +1850,7 @@
                     } else {
                         config.key = key;
                         // Default to ascending for strings, descending for numbers/dates
-                        config.direction = (key === 'fullName' || key === 'referrerRefId' || key === 'name') ? 'asc' : 'desc';
+                        config.direction = (key === 'fullName' || key === 'referrerRefId' || key === 'name' || key === 'id') ? 'asc' : 'desc';
                     }
                     renderFunc(table === 'raffle' ? dashboardData.raffleEntries : dashboardData.rolexEntries);
                 });

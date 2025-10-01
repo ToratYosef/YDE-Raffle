@@ -60,7 +60,7 @@
                     <p class="text-lg md:text-2xl text-white mb-8 max-w-2xl">
                         Join us in building a bright future for the Class of 2026. Your generous contribution makes a world of difference.
                     </p>
-                    <a href="/spin-the-wheel/" class="py-4 px-8 md:text-lg lg:text-xl rounded-full bg-yellow-400 text-slate-950 font-bold shadow-lg transform transition-transform duration-300 hover:scale-105 hover:shadow-xl">
+                    <a id="main-action-button" href="/spin-the-wheel/" class="py-4 px-8 md:text-lg lg:text-xl rounded-full bg-yellow-400 text-slate-950 font-bold shadow-lg transform transition-transform duration-300 hover:scale-105 hover:shadow-xl">
                         Support Senior Fund- Spin The Wheel Now!!!
                     </a>
                 </div>
@@ -190,19 +190,60 @@
 
     <!-- JavaScript for page navigation -->
     <script>
-        function showPage(pageId) {
-            // Hide all pages
-            const pages = document.querySelectorAll('.page-content');
-            pages.forEach(page => {
-                page.classList.remove('active');
-            });
-            // Show the requested page
-            const activePage = document.getElementById(pageId);
-            if (activePage) {
-                activePage.classList.add('active');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            }
+        // --- Referrer Helper Functions (NEW) ---
+        function getQueryParam(param) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(param);
         }
+
+        function updateNavLinks(refId) {
+            if (!refId) return;
+
+            // Select all links in the header navigation
+            const navLinks = document.querySelectorAll('header a');
+            
+            // Select the main action button
+            const mainActionButton = document.getElementById('main-action-button');
+
+            const allLinks = [...navLinks];
+            if (mainActionButton) {
+                allLinks.push(mainActionButton);
+            }
+
+            allLinks.forEach(link => {
+                const currentHref = link.getAttribute('href');
+                // Check if it's an internal link and not already pointing to a full external URL
+                if (currentHref && currentHref.startsWith('/') && !currentHref.includes('ref=')) {
+                    const separator = currentHref.includes('?') ? '&' : '?';
+                    link.setAttribute('href', `${currentHref}${separator}ref=${refId}`);
+                }
+            });
+        }
+        // --- END Referrer Helper Functions ---
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Referral Logic Initialization (NEW) ---
+            const referrerRefId = getQueryParam('ref');
+            if (referrerRefId) {
+                console.log('Referrer ID found on index page:', referrerRefId);
+                updateNavLinks(referrerRefId); // Update all navigation links and the main button
+            }
+            // --- END Referral Logic Initialization ---
+
+            function showPage(pageId) {
+                // Hide all pages
+                const pages = document.querySelectorAll('.page-content');
+                pages.forEach(page => {
+                    page.classList.remove('active');
+                });
+                // Show the requested page
+                const activePage = document.getElementById(pageId);
+                if (activePage) {
+                    activePage.classList.add('active');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            }
+        });
     </script>
 </body>
 </html>

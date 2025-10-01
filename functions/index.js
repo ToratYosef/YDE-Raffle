@@ -47,7 +47,7 @@ exports.cleanupReservedTickets = functions.pubsub.schedule('every 5 minutes').on
     const fiveMinutesAgo = new Date(Date.now() - fiveMinutesInMs); 
 
     try {
-        // Find tickets that are 'reserved' AND were reserved before 5 minutes ago
+        // NOTE: This query requires a composite index on ['status', 'timestamp']
         const reservedTicketsSnapshot = await db.collection('rolex_tickets')
             .where('status', '==', 'reserved')
             .where('timestamp', '<', fiveMinutesAgo) 
@@ -73,12 +73,11 @@ exports.cleanupReservedTickets = functions.pubsub.schedule('every 5 minutes').on
 
 /**
  * Callable function to retrieve counts of reserved and expired tickets for the admin tool.
- * Requires Admin role.
+ * Requires Super Admin role. (Security updated)
  */
 exports.getReservedTicketCounts = functions.https.onCall(async (data, context) => {
-    // UPDATED: Use isAdmin check
-    if (!isAdmin(context)) {
-        throw new functions.https.HttpsError('permission-denied', 'Access denied. Requires Admin role.');
+    if (!isSuperAdmin(context)) { // REQUIRES SUPER ADMIN
+        throw new functions.https.HttpsError('permission-denied', 'Access denied. Requires Super Admin role.');
     }
 
     const db = admin.firestore();
@@ -120,12 +119,11 @@ exports.getReservedTicketCounts = functions.https.onCall(async (data, context) =
 
 /**
  * Callable function to manually delete reserved tickets older than 5 minutes.
- * Requires Admin role.
+ * Requires Super Admin role. (Security updated)
  */
 exports.deleteExpiredReservedTickets = functions.https.onCall(async (data, context) => {
-    // UPDATED: Use isAdmin check
-    if (!isAdmin(context)) {
-        throw new functions.https.HttpsError('permission-denied', 'Access denied. Requires Admin role.');
+    if (!isSuperAdmin(context)) { // REQUIRES SUPER ADMIN
+        throw new functions.https.HttpsError('permission-denied', 'Access denied. Requires Super Admin role.');
     }
 
     const db = admin.firestore();
@@ -133,7 +131,7 @@ exports.deleteExpiredReservedTickets = functions.https.onCall(async (data, conte
     const fiveMinutesAgo = new Date(Date.now() - fiveMinutesInMs); 
 
     try {
-        // Find tickets that are 'reserved' AND were reserved before 5 minutes ago
+        // CRITICAL: This query requires a composite index on ['status', 'timestamp']
         const reservedTicketsSnapshot = await db.collection('rolex_tickets')
             .where('status', '==', 'reserved')
             .where('timestamp', '<', fiveMinutesAgo) 
@@ -224,6 +222,7 @@ exports.createSpinPaymentIntent = functions.https.onCall(async (data, context) =
             amount: amountInCents,
             currency: 'usd',
             description: `YDE Spin The Wheel - Ticket ${ticketNumber}`, 
+            payment_method_types: ['card'],
             metadata: {
                 name,
                 email,
@@ -275,6 +274,7 @@ exports.createStripePaymentIntent = functions.https.onCall(async (data, context)
             amount: amountToChargeInCents,
             currency: 'usd',
             description: `YDE Split The Pot - ${ticketsBought} Tickets`, 
+            payment_method_types: ['card'],
             metadata: {
                 name,
                 email,
@@ -327,6 +327,7 @@ exports.createDonationPaymentIntent = functions.https.onCall(async (data, contex
             amount: amountInCents,
             currency: 'usd',
             description: `YDE Donation`, 
+            payment_method_types: ['card'],
             metadata: {
                 name,
                 email,
@@ -492,42 +493,6 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
  * Callable function to create a new referrer account.
  * Requires Super Admin role.
  */
-exports.createReferrer = functions.https.onCall(async (data, context) => {
-    if (!isSuperAdmin(context)) {
-        throw new functions.https.HttpsError('permission-denied', 'Only Super Admins can create new referrers.');
-    }
-    const { email, password, name, goal } = data;
-
-    if (!email || !password || !name) {
-        throw new functions.https.HttpsError('invalid-argument', 'Missing required fields.');
-    }
-
-    try {
-        const userRecord = await admin.auth().createUser({ email, password, displayName: name });
-        const uid = userRecord.uid;
-
-        // Set custom claims for referrer access
-        await admin.auth().setCustomUserClaims(uid, { referrer: true });
-
-        const refId = uid.substring(0, 6).toUpperCase(); 
-
-        await admin.firestore().collection('referrers').doc(uid).set({
-            name,
-            email,
-            refId,
-            goal: goal || 0, // Goal tracking
-            totalTickets: 0,
-            totalAmount: 0,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-
-        return { success: true, message: `Referrer ${name} created successfully with Ref ID: ${refId}.` };
-    } catch (error) {
-        console.error('Error creating new referrer:', error);
-        throw new functions.https.HttpsError('internal', 'Failed to create referrer.', error.message);
-    }
-});
-
 /**
  * Callable function to create a new Admin account (non-SuperAdmin, non-Referrer viewer).
  * Requires Super Admin role.
@@ -607,6 +572,7 @@ exports.getAdminDashboardData = functions.https.onCall(async (data, context) => 
 
         // 3. Fetch Transaction Data
         // Filter to only show 'paid' or 'claimed' entries for display, ignoring 'reserved'
+        // CRITICAL: All these complex queries require composite indexes (see step 2 below)
         const rolexSnapshot = await rolexQuery
             .where('status', 'in', ['paid', 'claimed'])
             .orderBy('timestamp', 'desc').get();
@@ -640,7 +606,8 @@ exports.getAdminDashboardData = functions.https.onCall(async (data, context) => 
 
     } catch (error) {
         console.error("Error in getAdminDashboardData:", error);
-        throw new functions.https.HttpsError('internal', 'An internal error occurred while fetching dashboard data.', error.message);
+        // The error here is likely due to a missing index, which presents as an 'internal' error.
+        throw new functions.https.HttpsError('internal', 'An internal error occurred while fetching dashboard data. This is often caused by a missing Firestore composite index.', error.message);
     }
 });
 
@@ -650,7 +617,6 @@ exports.getAdminDashboardData = functions.https.onCall(async (data, context) => 
  * Requires Super Admin role.
  */
 exports.recalculateRaffleTotals = functions.https.onCall(async (data, context) => {
-    // UPDATED: Use isSuperAdmin check
     if (!isSuperAdmin(context)) {
         throw new functions.https.HttpsError('permission-denied', 'You must be a super admin to run this function.');
     }
@@ -660,20 +626,15 @@ exports.recalculateRaffleTotals = functions.https.onCall(async (data, context) =
     let totalAmount = 0;
 
     try {
-        // NOTE: This recalculation uses the old field names ('Tickets', '$'). 
-        // For accurate recalculation based on the new structure, this block needs to be updated.
         const raffleEntriesSnapshot = await db.collection('splitThePotTickets').get();
         if (raffleEntriesSnapshot.empty) {
             console.log("No raffle entries found to recalculate totals.");
         } else {
             raffleEntriesSnapshot.forEach(doc => {
                 const entry = doc.data();
-                // Assuming new structure for recalculation:
                 if (typeof entry.ticketCount === 'number') {
                     totalTickets += entry.ticketCount;
                 }
-                // Assuming amount for pot (baseAmount) is stored in a separate field or can be calculated from amountPaid if needed.
-                // For simplicity here, we'll use amountPaid if baseAmount is not explicitly tracked in splitThePotTickets for the pot total.
                 if (typeof entry.amountPaid === 'number') {
                     totalAmount += entry.amountPaid;
                 }
@@ -683,7 +644,7 @@ exports.recalculateRaffleTotals = functions.https.onCall(async (data, context) =
         const raffleTotalsRef = db.collection('counters').doc('raffle_totals');
         await raffleTotalsRef.set({
             totalTickets: totalTickets,
-            totalAmount: totalAmount // Note: This should ideally be the amount going to the pot, not necessarily total revenue.
+            totalAmount: totalAmount
         }, { merge: true });
 
         return {
@@ -974,4 +935,46 @@ exports.claimSpinTicket = functions.https.onCall(async (data, context) => {
             resolve({ success: true, ticketNumber });
         });
     });
+});
+/**
+ * Callable function to create a new referrer account.
+ * ***CRITICAL FIX: Now saves the client-provided intendedRefId (e.g., SaulS)***
+ */
+exports.createReferrer = functions.https.onCall(async (data, context) => {
+    if (!isSuperAdmin(context)) {
+        throw new functions.https.HttpsError('permission-denied', 'Only Super Admins can create new referrers.');
+    }
+    // PULL the intendedRefId from the client tool's payload
+    const { email, password, name, goal, intendedRefId } = data; 
+
+    if (!email || !password || !name || !intendedRefId) { // Check that the intendedRefId is present
+        throw new functions.https.HttpsError('invalid-argument', 'Missing required fields (email, password, name, or intendedRefId).');
+    }
+
+    try {
+        const userRecord = await admin.auth().createUser({ email, password, displayName: name });
+        const uid = userRecord.uid;
+
+        // Set custom claims for referrer access
+        await admin.auth().setCustomUserClaims(uid, { referrer: true });
+        
+        // --- FIX IMPLEMENTED HERE ---
+        const refIdToSave = intendedRefId; // Use the value passed from the bulk creator (e.g., 'SaulS')
+
+        await admin.firestore().collection('referrers').doc(uid).set({
+            name,
+            email,
+            refId: refIdToSave, // This is now the name-based RefID
+            goal: goal || 0, // Goal tracking
+            totalTickets: 0,
+            totalAmount: 0,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        // Return the correct Ref ID to the client tool for display
+        return { success: true, message: `Referrer ${name} created successfully with Ref ID: ${refIdToSave}.` };
+    } catch (error) {
+        console.error('Error creating new referrer:', error);
+        throw new functions.https.HttpsError('internal', 'Failed to create referrer.', error.message);
+    }
 });

@@ -1,4 +1,51 @@
 {
-  "indexes": [],
+  "indexes": [
+    {
+      "collectionGroup": "rolex_tickets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "status", "order": "ASCENDING"},
+        {"fieldPath": "timestamp", "order": "ASCENDING"}
+      ],
+      "description": "Required for scheduled/manual cleanup (status == reserved AND timestamp < X)"
+    },
+    {
+      "collectionGroup": "rolex_tickets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "status", "order": "ASCENDING"},
+        {"fieldPath": "timestamp", "order": "DESCENDING"}
+      ],
+      "description": "Required for General/Super Admin Rolex Dashboard ('status' IN ['paid', 'claimed'] ORDER BY 'timestamp' DESC)"
+    },
+    {
+      "collectionGroup": "rolex_tickets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "referrerRefId", "order": "ASCENDING"},
+        {"fieldPath": "status", "order": "ASCENDING"},
+        {"fieldPath": "timestamp", "order": "DESCENDING"}
+      ],
+      "description": "Required for Referrer Rolex Dashboard (filter by 'referrerRefId', status IN, and ORDER BY 'timestamp' DESC)"
+    },
+    {
+      "collectionGroup": "splitThePotTickets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "referrerUid", "order": "ASCENDING"},
+        {"fieldPath": "timestamp", "order": "DESCENDING"}
+      ],
+      "description": "Required for Referrer Raffle Dashboard (filter by 'referrerUid' and ORDER BY 'timestamp' DESC)"
+    },
+    {
+      "collectionGroup": "stripe_donation_payment_intents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "status", "order": "ASCENDING"},
+        {"fieldPath": "createdAt", "order": "DESCENDING"}
+      ],
+      "description": "Required for Super Admin Donations Dashboard (filter by 'status' and ORDER BY 'createdAt' DESC)"
+    }
+  ],
   "fieldOverrides": []
 }

@@ -398,6 +398,23 @@
             return urlParams.get(param);
         }
 
+        function updateNavLinks(refId) {
+            if (!refId) return;
+
+            // Select all links in the header navigation
+            const navLinks = document.querySelectorAll('header a');
+
+            navLinks.forEach(link => {
+                const currentHref = link.getAttribute('href');
+                // Check if it's an internal link and not already pointing to a full external URL
+                if (currentHref && currentHref.startsWith('/') && !currentHref.includes('ref=')) {
+                    const separator = currentHref.includes('?') ? '&' : '?';
+                    link.setAttribute('href', `${currentHref}${separator}ref=${refId}`);
+                }
+            });
+        }
+        // --- END Referrer Helper Functions ---
+
         // --- Modal Functions (PORTED) ---
         function showPrizeModal(element) {
             const name = element.getAttribute('data-name');
@@ -486,11 +503,13 @@
             let spinTicketNumber = 0;
             let flashInterval;
 
-            // --- Referrer Logic Initialization (NEW) ---
+            // --- Referrer Logic Initialization (UPDATED) ---
             const referrerRefId = getQueryParam('ref');
             if (referrerRefId) {
                 console.log('Referrer ID found:', referrerRefId);
+                updateNavLinks(referrerRefId); // Update all navigation links
             }
+            // --- END Referrer Logic Initialization ---
 
             // --- Stripe & Firebase Initialization ---
             const stripe = Stripe('pk_live_51JFiZnKhiMP0wjNsMlHMg2o7Eo6xaWczALlQ0eu0GVpnWel1Pgz1AbUVXUJGs2pFaavhaln5jKpHSrRhxrBppBDq00Hijyiu4V');

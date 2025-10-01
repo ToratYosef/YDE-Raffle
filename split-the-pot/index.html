@@ -201,6 +201,29 @@
     <script src="https://js.stripe.com/v3/"></script>
 
     <script>
+        // --- Referrer Helper Functions (NEW) ---
+        function getQueryParam(param) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(param);
+        }
+
+        function updateNavLinks(refId) {
+            if (!refId) return;
+
+            // Select all links in the header navigation
+            const navLinks = document.querySelectorAll('header a');
+
+            navLinks.forEach(link => {
+                const currentHref = link.getAttribute('href');
+                // Check if it's an internal link and not already pointing to a full external URL
+                if (currentHref && currentHref.startsWith('/') && !currentHref.includes('ref=')) {
+                    const separator = currentHref.includes('?') ? '&' : '?';
+                    link.setAttribute('href', `${currentHref}${separator}ref=${refId}`);
+                }
+            });
+        }
+        // --- END Referrer Helper Functions ---
+
         document.addEventListener('DOMContentLoaded', () => {
             // --- UI Elements ---
             const proceedToPaymentButton = document.getElementById('proceed-to-payment');
@@ -230,11 +253,14 @@
 
             // --- Referral Logic Variables ---
             let referrerRefId = null;
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.has('ref')) {
-                referrerRefId = urlParams.get('ref');
+            
+            // --- Referral Logic Initialization (UPDATED) ---
+            referrerRefId = getQueryParam('ref');
+            if (referrerRefId) {
                 console.log(`Referral ID found in URL: ${referrerRefId}`);
+                updateNavLinks(referrerRefId); // Update all navigation links
             }
+            // --- END Referral Logic Initialization ---
 
             // --- Stripe & Firebase Initialization ---
             const stripe = Stripe('pk_live_51JFiZnKhiMP0wjNsMlHMg2o7Eo6xaWczALlQ0eu0GVpnWel1Pgz1AbUVXUJGs2pFaavhaln5jKpHSrRhxrBppBDq00Hijyiu4V');

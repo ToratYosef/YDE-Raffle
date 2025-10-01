@@ -3,264 +3,322 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YDE Senior Fund - Admin Dashboard</title>
+    <title>YDE Senior Fund Admin Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        body { 
-            font-family: 'Inter', sans-serif; 
-            background-color: #0d1222;
-            color: #e2e8f0; /* text-slate-200 */
-        }
-        .bebas-neue { font-family: 'Bebas Neue', sans-serif; }
-        .dashboard-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-        .card {
-            background-color: #1e293b; /* slate-800 */
+        body { font-family: 'Inter', sans-serif; background-color: #f8f9fa; }
+        .dashboard-card {
+            background-color: #ffffff;
             border-radius: 0.75rem;
-            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.2);
-            border: 1px solid #334155; /* slate-700 */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+            transition: all 0.3s ease;
         }
         .tab-button.active {
-            border-bottom: 3px solid #fde047; /* yellow-400 */
-            color: #fde047;
-            font-weight: 700;
-        }
-        /* Style for tables */
-        .data-table th, .data-table td {
-            padding: 12px 15px;
-            text-align: left;
-            border-bottom: 1px solid #334155;
+            border-bottom: 3px solid #facc15; /* Tailwind yellow-400 */
+            color: #1f2937; /* Tailwind gray-800 */
+            font-weight: 600;
         }
         .data-table th {
-            background-color: #334155; /* slate-700 */
-            color: #fde047;
-            font-size: 0.85rem;
+            text-align: left;
+            padding: 0.75rem 1rem;
+            font-size: 0.75rem;
             text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #6b7280;
+            background-color: #f3f4f6;
+            border-bottom: 2px solid #e5e7eb;
         }
-        .data-table tr:last-child td {
-            border-bottom: none;
+        .data-table td {
+            padding: 0.75rem 1rem;
+            font-size: 0.875rem;
+            border-bottom: 1px solid #f3f4f6;
         }
-        .data-table-wrapper {
-            max-height: 500px;
-            overflow-y: auto;
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
         }
     </style>
 </head>
-<body class="p-0 sm:p-4">
+<body class="min-h-screen">
 
-    <!-- Login Modal/Screen -->
-    <div id="loginScreen" class="fixed inset-0 bg-gray-900 flex items-center justify-center z-50 p-4">
-        <div class="card p-8 w-full max-w-sm text-center">
-            <h2 class="bebas-neue text-3xl text-yellow-400 mb-6">Admin Login</h2>
-            <input type="email" id="emailInput" placeholder="Email" class="w-full p-3 mb-3 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-yellow-400">
-            <input type="password" id="passwordInput" placeholder="Password" class="w-full p-3 mb-4 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-yellow-400">
-            <button id="loginButton" class="w-full py-3 bg-yellow-400 text-black font-bold rounded-lg hover:bg-yellow-500 transition duration-150">
-                Sign In
-            </button>
-            <p id="loginError" class="text-red-400 text-sm mt-3 hidden">Login Failed.</p>
+    <!-- Global Loading Overlay -->
+    <div id="globalLoadingOverlay" class="fixed inset-0 z-50 bg-white/70 backdrop-blur-sm flex flex-col items-center justify-center gap-4 hidden">
+        <div class="animate-spin w-10 h-10 border-4 border-t-4 border-yellow-500 border-opacity-20 rounded-full"></div>
+        <p id="globalSpinnerText" class="text-gray-700 font-semibold">Checking authorization...</p>
+    </div>
+
+    <!-- Custom Popup Modal -->
+    <div id="customPopupOverlay" class="fixed inset-0 z-[101] modal-overlay flex items-center justify-center p-4 hidden">
+        <div id="customPopup" class="bg-white p-6 rounded-lg shadow-2xl max-w-sm w-full text-center scale-95 transition-all duration-300">
+            <h2 id="popupTitle" class="text-2xl font-bold text-yellow-600 mb-3"></h2>
+            <p id="popupMessage" class="text-gray-600 mb-5"></p>
+            <button id="popupCloseButton" class="w-full py-2 rounded-lg bg-yellow-500 text-white font-semibold hover:bg-yellow-600 transition-colors">OK</button>
         </div>
     </div>
-    
-    <!-- Dashboard Container -->
-    <div id="dashboard" class="dashboard-container hidden">
-        <header class="mb-8 flex justify-between items-center border-b border-slate-700 pb-4">
-            <h1 class="bebas-neue text-4xl text-yellow-400">Fundraising Dashboard</h1>
-            <button id="logoutButton" class="text-sm text-red-400 hover:text-red-500 transition">Logout</button>
+
+    <!-- Manual Sale Modal (Super Admin Only) -->
+    <div id="manualSaleModalOverlay" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4 hidden">
+        <div class="bg-white p-6 rounded-lg shadow-2xl max-w-md w-full">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Add Manual Raffle Sale (SA Only)</h2>
+            <form id="manualSaleForm" class="space-y-4">
+                <div>
+                    <input type="text" id="manual-name" placeholder="Customer Full Name" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500" required>
+                </div>
+                <div>
+                    <input type="email" id="manual-email" placeholder="Customer Email (Optional)" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500">
+                </div>
+                <div>
+                    <input type="tel" id="manual-phone" placeholder="Customer Phone (Optional)" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500">
+                </div>
+                <div class="flex space-x-4">
+                    <input type="number" id="manual-tickets" placeholder="Tickets Bought" min="1" class="w-1/2 p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500" required>
+                    <input type="number" id="manual-amount" placeholder="Amount Paid ($)" step="0.01" min="0.01" class="w-1/2 p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500" required>
+                </div>
+                <div id="manual-referrer-container" class="hidden">
+                    <input type="text" id="manual-refId" placeholder="Referrer ID (e.g., A1B2C3)" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500">
+                    <p class="text-xs text-gray-500 mt-1">Credited to this Ref ID.</p>
+                </div>
+                <div class="pt-4 flex justify-end space-x-3">
+                    <button type="button" id="closeManualSaleModal" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors">Cancel</button>
+                    <button type="submit" id="submitManualSale" class="px-4 py-2 text-white bg-yellow-500 rounded-lg hover:bg-yellow-600 transition-colors">Add Sale</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- Main Dashboard Container -->
+    <div id="dashboardContainer" class="hidden max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+        
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b pb-4">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2 md:mb-0">
+                Admin Dashboard 
+                <span id="userRoleDisplay" class="text-base font-normal text-yellow-600"></span>
+            </h1>
+            <div class="flex items-center space-x-3">
+                <button id="addManualSaleButton" class="flex items-center px-4 py-2 bg-green-500 text-white font-semibold rounded-lg shadow-md hover:bg-green-600 transition-colors hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+                    Add Manual Sale
+                </button>
+                <button id="logoutButton" class="px-3 py-2 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">Logout</button>
+            </div>
         </header>
 
-        <!-- Referrer Goals/Summary (Visible for all logged-in users) -->
-        <div id="referrerSummary" class="card p-6 mb-8 hidden">
-            <h2 class="bebas-neue text-3xl text-white mb-4">Welcome, <span id="referrerNameDisplay" class="text-yellow-400"></span>!</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="p-4 bg-slate-700/50 rounded-lg">
-                    <p class="text-sm font-semibold text-slate-400 uppercase">Your Tickets Sold</p>
-                    <p id="myTicketsSold" class="bebas-neue text-4xl font-extrabold text-white mt-1">0</p>
-                </div>
-                <div class="p-4 bg-slate-700/50 rounded-lg">
-                    <p class="text-sm font-semibold text-slate-400 uppercase">Your Amount Raised</p>
-                    <p id="myAmountRaised" class="bebas-neue text-4xl font-extrabold text-green-400 mt-1">$0</p>
-                </div>
-                <div class="p-4 bg-slate-700/50 rounded-lg">
-                    <p class="text-sm font-semibold text-slate-400 uppercase">Goal Progress</p>
-                    <p id="myGoalText" class="text-lg font-semibold text-yellow-400 mb-1">0 / $0</p>
-                    <div class="w-full bg-slate-600 rounded-full h-2.5">
-                        <div id="goalProgressBar" class="bg-yellow-400 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
-                    </div>
+        <!-- Referrer Overview (For Referrers and Super Admins) -->
+        <div id="referrerOverview" class="dashboard-card p-6 mb-6 hidden">
+            <!-- New Referral Link Section -->
+            <div id="referrerLinkContainer" class="mb-4">
+                <p class="text-sm font-medium text-gray-500 mb-1">Your Referral Link:</p>
+                <div class="flex items-center bg-gray-100 p-2 rounded-lg border border-gray-200">
+                    <span id="referralLink" class="text-base font-mono text-blue-600 truncate mr-3 select-all"></span>
+                    <button id="copyLinkButton" class="ml-auto p-1 text-gray-400 hover:text-blue-500 transition-colors" title="Copy Link">
+                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M7.75 3.75a.75.75 0 0 1 1.5 0v3.5h3.5a.75.75 0 0 1 0 1.5h-3.5v3.5a.75.75 0 0 1-1.5 0v-3.5h-3.5a.75.75 0 0 1 0-1.5h3.5v-3.5Z" clip-rule="evenodd" /></svg>
+                    </button>
                 </div>
             </div>
-        </div>
-        
-        <!-- Global Stats (SuperAdmin View) -->
-        <div id="globalStats" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 hidden">
-            <div class="card p-6">
-                <p class="text-sm font-semibold text-slate-400 uppercase">Total Referral Tickets</p>
-                <p id="totalTickets" class="bebas-neue text-5xl font-extrabold text-white mt-2">0</p>
-            </div>
-            <div class="card p-6">
-                <p class="text-sm font-semibold text-slate-400 uppercase">Total Referral Amount</p>
-                <p id="totalReferralAmount" class="bebas-neue text-5xl font-extrabold text-green-400 mt-2">$0</p>
-            </div>
-            <div class="card p-6">
-                <p class="text-sm font-semibold text-slate-400 uppercase">Total Donations Raised</p>
-                <p id="totalDonationAmount" class="bebas-neue text-5xl font-extrabold text-blue-400 mt-2">$0</p>
+            
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Your Performance</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="p-4 bg-yellow-50 border-l-4 border-yellow-500 rounded-lg">
+                    <p class="text-sm font-medium text-gray-500">Ref ID</p>
+                    <p id="overviewRefId" class="text-xl font-bold text-gray-900 mt-1">Loading...</p>
+                </div>
+                <div class="p-4 bg-blue-50 border-l-4 border-blue-500 rounded-lg">
+                    <p class="text-sm font-medium text-gray-500">Total Tickets</p>
+                    <p id="overviewTotalTickets" class="text-xl font-bold text-gray-900 mt-1">0</p>
+                </div>
+                <div class="p-4 bg-green-50 border-l-4 border-green-500 rounded-lg">
+                    <p class="text-sm font-medium text-gray-500">Total Sales Amount</p>
+                    <p id="overviewTotalAmount" class="text-xl font-bold text-gray-900 mt-1">$0.00</p>
+                </div>
             </div>
         </div>
 
-        <!-- Referrer Table (SuperAdmin View) -->
-        <div id="referrerTableSection" class="card p-6 mb-8 hidden">
-            <h2 class="text-2xl font-semibold text-white mb-4 border-b border-slate-700 pb-3">Referrer Leaderboard</h2>
-            <div id="referrerTableWrapper" class="data-table-wrapper">
-                <table class="w-full data-table">
-                    <thead>
-                        <tr>
-                            <th>Referrer Name</th>
-                            <th>Ref ID</th>
-                            <th>Tickets Sold</th>
-                            <th>Amount Raised</th>
-                            <th>Goal</th>
-                        </tr>
-                    </thead>
-                    <tbody id="referrerTableBody">
-                        <!-- Referrer data will be inserted here -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        
-        <!-- Detailed Transactions Tabs (Visible for all logged-in users) -->
-        <div id="transactionTabsSection" class="card p-6 hidden">
-            <h2 class="text-2xl font-semibold text-white mb-4 border-b border-slate-700 pb-3">Transaction History</h2>
-            <div class="flex border-b border-slate-700 mb-4">
-                <button data-tab="rolex" class="tab-button active py-2 px-4 text-sm font-medium transition">Spin to Win (Rolex)</button>
-                <button data-tab="raffle" class="tab-button py-2 px-4 text-sm font-medium transition">Split the Pot</button>
-                <button data-tab="donations" class="tab-button py-2 px-4 text-sm font-medium transition">Donations</button>
-            </div>
+        <!-- Tab Navigation -->
+        <nav class="flex space-x-4 mb-6 border-b border-gray-200">
+            <button data-tab="referrers" class="tab-button py-3 px-4 text-gray-500 hover:text-gray-800 transition-colors hidden">Referrers</button>
+            <button data-tab="raffle" class="tab-button py-3 px-4 text-gray-500 hover:text-gray-800 transition-colors">Split The Pot Sales</button>
+            <button data-tab="rolex" class="tab-button py-3 px-4 text-gray-500 hover:text-gray-800 transition-colors hidden">Spin The Wheel Sales</button>
+            <button data-tab="donations" class="tab-button py-3 px-4 text-gray-500 hover:text-gray-800 transition-colors hidden">Donations</button>
+            <button data-tab="tools" class="tab-button py-3 px-4 text-gray-500 hover:text-gray-800 transition-colors hidden">Admin Tools</button>
+        </nav>
 
-            <div id="tabContent">
-                
-                <!-- Rolex Tab -->
-                <div id="rolex" class="tab-pane data-table-wrapper">
-                    <table class="w-full data-table">
+        <!-- Tab Content Containers -->
+        <div id="tab-content" class="space-y-6">
+
+            <!-- Referrers Tab Content (Super Admin Only) -->
+            <div id="tab-referrers" class="tab-pane hidden">
+                <div class="dashboard-card p-4 overflow-x-auto">
+                    <h3 class="text-xl font-semibold mb-3 text-gray-800">All Referrers</h3>
+                    <table class="data-table w-full whitespace-nowrap">
                         <thead>
                             <tr>
-                                <th>Ticket #</th>
-                                <th>Status</th>
-                                <th>Amount Paid</th>
-                                <th>Customer Name</th>
-                                <th>Referrer ID</th>
-                                <th>Time</th>
+                                <th>Name</th>
+                                <th>Ref ID</th>
+                                <th>Email</th>
+                                <th class="text-right">Split Pot Tickets</th>
+                                <th class="text-right">Spin Wheel Tickets</th>
+                                <th class="text-right">Total Amount</th>
+                                <th class="text-right">Goal</th>
                             </tr>
                         </thead>
-                        <tbody id="rolexTableBody">
-                            <!-- Rolex transaction data will be inserted here -->
+                        <tbody id="referrersTableBody">
+                            <tr><td colspan="7" class="text-center py-4 text-gray-500">Loading referrer data...</td></tr>
                         </tbody>
                     </table>
                 </div>
-
-                <!-- Raffle Tab -->
-                <div id="raffle" class="tab-pane hidden data-table-wrapper">
-                    <table class="w-full data-table">
+            </div>
+            
+            <!-- Split The Pot Sales Tab Content -->
+            <div id="tab-raffle" class="tab-pane hidden">
+                <div class="dashboard-card p-4 overflow-x-auto">
+                    <h3 class="text-xl font-semibold mb-3 text-gray-800" id="raffleSalesHeader">Split The Pot Sales</h3>
+                    <table class="data-table w-full whitespace-nowrap">
                         <thead>
                             <tr>
-                                <th>Customer Name</th>
-                                <th>Tickets</th>
-                                <th>Amount Paid</th>
-                                <th>Referrer Name</th>
+                                <th>Date</th>
+                                <th>Full Name</th>
                                 <th>Phone</th>
-                                <th>Time</th>
+                                <th>Tickets</th>
+                                <th class="text-right">Amount Paid</th>
+                                <th>Referrer</th>
+                                <th>Source</th>
                             </tr>
                         </thead>
                         <tbody id="raffleTableBody">
-                            <!-- Raffle transaction data will be inserted here -->
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Donations Tab -->
-                <div id="donations" class="tab-pane hidden data-table-wrapper">
-                    <table class="w-full data-table">
-                        <thead>
-                            <tr>
-                                <th>Customer Name</th>
-                                <th>Amount</th>
-                                <th>Status</th>
-                                <th>Time</th>
-                            </tr>
-                        </thead>
-                        <tbody id="donationsTableBody">
-                            <!-- Donation transaction data will be inserted here -->
+                            <tr><td colspan="7" class="text-center py-4 text-gray-500">Loading raffle sales data...</td></tr>
                         </tbody>
                     </table>
                 </div>
             </div>
+
+            <!-- Spin The Wheel Sales Tab Content (Super Admin Only) -->
+            <div id="tab-rolex" class="tab-pane hidden">
+                <div class="dashboard-card p-4 overflow-x-auto">
+                    <h3 class="text-xl font-semibold mb-3 text-gray-800">Spin The Wheel Sales (SA Only)</h3>
+                    <table class="data-table w-full whitespace-nowrap">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Ticket #</th>
+                                <th>Full Name</th>
+                                <th>Email</th>
+                                <th>Status</th>
+                                <th class="text-right">Amount Paid</th>
+                                <th>Referrer</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rolexTableBody">
+                            <tr><td colspan="7" class="text-center py-4 text-gray-500">No Spin The Wheel sales found.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Donations Tab Content (Super Admin Only) -->
+            <div id="tab-donations" class="tab-pane hidden">
+                <div class="dashboard-card p-4 overflow-x-auto">
+                    <h3 class="text-xl font-semibold mb-3 text-gray-800">All Donations (SA Only)</h3>
+                    <table class="data-table w-full whitespace-nowrap">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                                <th class="text-right">Amount</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="donationsTableBody">
+                            <tr><td colspan="6" class="text-center py-4 text-gray-500">No donations found.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Admin Tools Tab Content (Super Admin Only) -->
+            <div id="tab-tools" class="tab-pane hidden">
+                <div class="dashboard-card p-6 space-y-4">
+                    <h3 class="text-2xl font-bold text-gray-800">System Tools (SA Only)</h3>
+                    
+                    <!-- Reserved Ticket Cleanup -->
+                    <div class="border p-4 rounded-lg bg-red-50 border-red-200">
+                        <h4 class="font-semibold text-lg text-red-700 mb-2">Reserved Ticket Cleanup (Spin The Wheel)</h4>
+                        <div id="reservedTicketInfo" class="text-sm text-gray-600 mb-3">Loading counts...</div>
+                        <button id="deleteExpiredTicketsButton" class="px-4 py-2 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50">
+                            Manually Run Cleanup
+                        </button>
+                    </div>
+
+                    <!-- Recalculate Totals (Super Admin Only) -->
+                    <div id="recalculateTotalsCard" class="border p-4 rounded-lg bg-indigo-50 border-indigo-200">
+                        <h4 class="font-semibold text-lg text-indigo-700 mb-2">Recalculate Raffle Totals</h4>
+                        <p class="text-sm text-gray-600 mb-3">Use this to reset the global ticket/amount counters by summing all Split the Pot entries.</p>
+                        <button id="recalculateTotalsButton" class="px-4 py-2 bg-indigo-500 text-white font-semibold rounded-lg hover:bg-indigo-600 transition-colors disabled:opacity-50">
+                            Recalculate Now
+                        </button>
+                    </div>
+
+                </div>
+            </div>
         </div>
 
-        <!-- Loading Indicator -->
-        <div id="loadingIndicator" class="text-center mt-8 text-yellow-400 hidden">
-            <svg class="animate-spin h-8 w-8 text-yellow-400 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <p>Loading Dashboard Data...</p>
+        <p id="authErrorDisplay" class="text-red-500 text-center mt-8 hidden">
+            Authentication Error: You must sign in with a valid Admin, Super Admin, or Referrer account.
+        </p>
+    </div>
+    
+    <!-- Login Modal -->
+    <div id="loginModalOverlay" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4">
+        <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-sm">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6 text-center">Admin Login</h2>
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <input type="email" id="loginEmail" placeholder="Email" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500" required>
+                </div>
+                <div>
+                    <input type="password" id="loginPassword" placeholder="Password" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500" required>
+                </div>
+                <button type="submit" id="loginButton" class="w-full py-3 text-white bg-yellow-500 rounded-lg font-semibold hover:bg-yellow-600 transition-colors">Sign In</button>
+            </form>
+            <p id="loginError" class="text-red-500 text-sm mt-3 text-center hidden"></p>
         </div>
-        
     </div>
 
-    <!-- Firebase Scripts -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
 
-    <script>
-        // --- Configuration ---
-        const HARDCODED_PASSWORD = "YdeSeniorTest"; // Only used for initial script execution
-        const ADMIN_EMAIL = "admin@ydefund.com"; // Placeholder - use your actual admin email
+    <script type="module">
+        // Import the modular functions you need from the SDKs using CDN paths
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+        import { 
+            getAuth, 
+            onAuthStateChanged, 
+            signInWithEmailAndPassword, 
+            signOut 
+        } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+        import { 
+            getFirestore, 
+            setLogLevel
+        } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+        import { 
+            getFunctions, 
+            httpsCallable 
+        } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-functions.js";
 
-        // --- UI Elements ---
-        const loginScreen = document.getElementById('loginScreen');
-        const emailInput = document.getElementById('emailInput');
-        const passwordInput = document.getElementById('passwordInput');
-        const loginButton = document.getElementById('loginButton');
-        const loginError = document.getElementById('loginError');
-        const dashboard = document.getElementById('dashboard');
-        const logoutButton = document.getElementById('logoutButton');
-        const loadingIndicator = document.getElementById('loadingIndicator');
+        // Global variables for Firebase services
+        let app;
+        let auth;
+        let functions;
+        let db;
+        let isSuperAdmin = false;
+        let isReferrer = false;
+        let isLoggedInAdmin = false; // New flag for General Admin/Super Admin
 
-        // Referrer Specific
-        const referrerSummary = document.getElementById('referrerSummary');
-        const referrerNameDisplay = document.getElementById('referrerNameDisplay');
-        const myTicketsSold = document.getElementById('myTicketsSold');
-        const myAmountRaised = document.getElementById('myAmountRaised');
-        const myGoalText = document.getElementById('myGoalText');
-        const goalProgressBar = document.getElementById('goalProgressBar');
-
-        // SuperAdmin Specific
-        const globalStats = document.getElementById('globalStats');
-        const totalTicketsEl = document.getElementById('totalTickets');
-        const totalReferralAmountEl = document.getElementById('totalReferralAmount');
-        const totalDonationAmountEl = document.getElementById('totalDonationAmount');
-        const referrerTableSection = document.getElementById('referrerTableSection');
-        
-        // Tables
-        const referrerTableBody = document.getElementById('referrerTableBody');
-        const rolexTableBody = document.getElementById('rolexTableBody');
-        const raffleTableBody = document.getElementById('raffleTableBody');
-        const donationsTableBody = document.getElementById('donationsTableBody');
-        const tabButtons = document.querySelectorAll('.tab-button');
-        const tabPanes = document.querySelectorAll('.tab-pane');
-        const transactionTabsSection = document.getElementById('transactionTabsSection');
-
-
-        // --- Firebase Initialization ---
+        // Configuration and App ID (MUST be present in Canvas environment)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        // Using the user-provided API key and configuration:
         const firebaseConfig = {
-            // NOTE: Insert your actual Firebase config here. The canvas environment will handle this if the global variable __firebase_config is used.
             apiKey: "AIzaSyAT539nr_s2OxHPTAmkxwMpaWt-FiDTgQs",
             authDomain: "yderaffle.firebaseapp.com",
             projectId: "yderaffle",
@@ -268,280 +326,570 @@
             messagingSenderId: "967768309102",
             appId: "1:967768309102:web:c89d61a747e8cb941f557f"
         };
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const functions = firebase.functions();
-        const db = firebase.firestore();
-
-        const getAdminDashboardDataCallable = functions.httpsCallable('getAdminDashboardData');
-
-        // --- Helper Functions ---
-
-        function formatCurrency(amount) {
-            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount || 0);
-        }
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         
-        function formatTime(timestamp) {
-            if (timestamp && timestamp.toDate) {
-                return timestamp.toDate().toLocaleString();
-            }
-            return 'N/A';
-        }
+        // --- Utility Functions ---
 
-        function showDashboard() {
-            loginScreen.classList.add('hidden');
-            dashboard.classList.remove('hidden');
-            loadingIndicator.classList.remove('hidden');
-            fetchDashboardData();
-        }
-
-        function showLogin() {
-            dashboard.classList.add('hidden');
-            loginScreen.classList.remove('hidden');
-        }
-
-        function setActiveTab(tabId) {
-            tabButtons.forEach(button => {
-                button.classList.remove('active');
-                if (button.getAttribute('data-tab') === tabId) {
-                    button.classList.add('active');
+        const formatCurrency = (amount) => {
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+        };
+        const formatDate = (timestamp) => {
+            if (!timestamp) return 'N/A';
+            // Firestore Timestamps have a .toDate() method which we check for
+            const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+            return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        };
+        const showGlobalLoading = (message = "Loading dashboard data...") => {
+            document.getElementById('globalSpinnerText').textContent = message;
+            document.getElementById('globalLoadingOverlay').classList.remove('hidden');
+        };
+        const hideGlobalLoading = () => {
+            document.getElementById('globalLoadingOverlay').classList.add('hidden');
+        };
+        const showCustomPopup = (title, message) => {
+            document.getElementById('popupTitle').textContent = title;
+            document.getElementById('popupMessage').textContent = message;
+            document.getElementById('customPopupOverlay').classList.remove('hidden');
+            setTimeout(() => { document.getElementById('customPopup').classList.add('scale-100'); }, 10);
+        };
+        const hideCustomPopup = () => {
+            document.getElementById('customPopup').classList.remove('scale-100');
+            setTimeout(() => { document.getElementById('customPopupOverlay').classList.add('hidden'); }, 300);
+        };
+        
+        // Copy to clipboard function
+        const copyToClipboard = (text, message = 'Link copied!') => {
+            // Using navigator.clipboard.writeText is more reliable
+            navigator.clipboard.writeText(text).then(() => {
+                showCustomPopup('Success', message);
+            }, (err) => {
+                console.error('Could not copy text: ', err);
+                // Fallback for iFrame restrictions
+                try {
+                    const tempInput = document.createElement('input');
+                    tempInput.value = text;
+                    document.body.appendChild(tempInput);
+                    tempInput.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(tempInput);
+                    showCustomPopup('Success', message);
+                } catch (e) {
+                    showCustomPopup('Error', 'Failed to copy link. Please copy it manually.');
                 }
             });
-            tabPanes.forEach(pane => {
-                pane.classList.add('hidden');
-                if (pane.id === tabId) {
-                    pane.classList.remove('hidden');
-                }
+        };
+        
+        // --- Client-Side Calculation for Referrer Metrics (Tickets & Combined Amount) ---
+        const calculateReferrerMetrics = (data) => {
+            const referrerMap = new Map();
+            let currentUserRefId = data.userData.refId;
+
+            // 1. Initialize map with existing referrer data (Split Pot data from Firestore /referrers collection)
+            // This data should contain the totalTickets and totalAmount calculated by the webhook/manual sale functions.
+            data.referrers.forEach(r => {
+                referrerMap.set(r.refId, {
+                    ...r,
+                    // Use totalTickets and totalAmount from Firestore for Split Pot base metrics
+                    raffleTickets: r.totalTickets || 0, 
+                    rolexTickets: 0,
+                    combinedTotalAmount: r.totalAmount || 0, 
+                    totalTickets: r.totalTickets || 0 
+                });
             });
-        }
-        
-        // --- Render Functions ---
-        
-        function renderReferrerSummary(userData) {
-            const tickets = userData.totalTickets || 0;
-            const amount = userData.totalAmount || 0;
-            const goal = userData.goal || 0;
-            const progress = goal > 0 ? Math.min(100, (amount / goal) * 100) : 0;
-            
-            referrerNameDisplay.textContent = userData.name || 'Admin';
-            myTicketsSold.textContent = tickets;
-            myAmountRaised.textContent = formatCurrency(amount);
-            myGoalText.textContent = `${formatCurrency(amount)} / ${formatCurrency(goal)} Goal`;
-            goalProgressBar.style.width = `${progress}%`;
-            
-            referrerSummary.classList.remove('hidden');
-        }
 
-        function renderReferrers(referrers, isSuperAdmin) {
-            if (!isSuperAdmin) {
-                referrerTableSection.classList.add('hidden');
-                return;
-            }
+            // 2. Calculate Rolex (Spin The Wheel) totals and aggregate amount
+            data.rolexEntries.forEach(entry => {
+                const refId = entry.referrerRefId;
+                const amountPaid = entry.amountPaid || 0;
 
-            referrerTableBody.innerHTML = '';
-            let totalAmount = 0;
-            let totalTickets = 0;
-
-            referrers.sort((a, b) => b.totalAmount - a.totalAmount).forEach(r => {
-                totalAmount += r.totalAmount || 0;
-                totalTickets += r.totalTickets || 0;
+                // Check if the entry has a referrer ID that exists in our map
+                if (refId && referrerMap.has(refId)) {
+                    const referrer = referrerMap.get(refId);
+                    
+                    // Update tickets and combined amount for the referrer in the map
+                    referrer.rolexTickets += 1; // Each Rolex entry is 1 ticket
+                    referrer.totalTickets += 1;
+                    referrer.combinedTotalAmount += amountPaid; // Aggregate amount
+                }
                 
-                const row = `
-                    <tr class="hover:bg-slate-700 transition duration-100">
-                        <td>${r.name}</td>
-                        <td>${r.refId}</td>
-                        <td>${r.totalTickets || 0}</td>
-                        <td>${formatCurrency(r.totalAmount)}</td>
-                        <td>${formatCurrency(r.goal)}</td>
-                    </tr>
-                `;
-                referrerTableBody.insertAdjacentHTML('beforeend', row);
+                // If this entry belongs to the currently logged-in user, update their overview data too
+                if (refId === currentUserRefId) {
+                     // Note: The backend's userData should already include the current Split Pot totals from the /referrers doc. 
+                     // We only need to manually add the Rolex entry here for the overview card's total.
+                     data.userData.totalAmount = (data.userData.totalAmount || 0) + amountPaid;
+                     data.userData.totalTickets = (data.userData.totalTickets || 0) + 1;
+                }
             });
             
-            totalReferralAmountEl.textContent = formatCurrency(totalAmount);
-            totalTicketsEl.textContent = totalTickets;
-            globalStats.classList.remove('hidden');
-            referrerTableSection.classList.remove('hidden');
-        }
+            // 3. Update the global data structure
+            data.referrers = Array.from(referrerMap.values());
+            return data;
+        };
 
-        function renderRolex(entries, isSuperAdmin) {
-            rolexTableBody.innerHTML = '';
-            // Only show the donation tab if Super Admin
-            document.querySelector('[data-tab="donations"]').classList.toggle('hidden', !isSuperAdmin);
 
-            entries.forEach(e => {
-                const row = `
-                    <tr>
-                        <td>#${e.id}</td>
-                        <td><span class="px-2 py-1 text-xs font-semibold rounded ${e.status === 'paid' ? 'bg-green-600' : e.status === 'reserved' ? 'bg-orange-500' : 'bg-blue-500'}">${e.status.toUpperCase()}</span></td>
-                        <td>${formatCurrency(e.amountPaid || e.ticketNumber)}</td>
-                        <td>${e.name || e.firstName}</td>
-                        <td>${e.referrerRefId || 'N/A'}</td>
-                        <td>${formatTime(e.timestamp)}</td>
-                    </tr>
-                `;
-                rolexTableBody.insertAdjacentHTML('beforeend', row);
-            });
-            transactionTabsSection.classList.remove('hidden');
-        }
+        // --- Core Data Fetching and UI Logic ---
 
-        function renderRaffle(entries) {
-            raffleTableBody.innerHTML = '';
-            entries.forEach(e => {
-                // Using new field names: firstName, ticketCount, amountPaid, phoneNumber
-                const row = `
-                    <tr>
-                        <td>${e.firstName}</td>
-                        <td>${e.ticketCount}</td>
-                        <td>${formatCurrency(e.amountPaid)}</td>
-                        <td>${e.referrerName || 'N/A'}</td>
-                        <td>${e.phoneNumber || 'N/A'}</td>
-                        <td>${formatTime(e.timestamp)}</td>
-                    </tr>
-                `;
-                raffleTableBody.insertAdjacentHTML('beforeend', row);
-            });
-        }
-        
-        function renderDonations(entries, isSuperAdmin) {
-            if (!isSuperAdmin) {
-                // Hide the donation tab content for non-SuperAdmins
-                document.getElementById('donations').classList.add('hidden');
-                return;
+        let dashboardData = {
+            referrers: [],
+            raffleEntries: [],
+            rolexEntries: [],
+            donationEntries: [],
+            userData: {}
+        };
+        let currentTab = '';
+
+        const renderTables = () => {
+            if (isSuperAdmin) {
+                renderReferrersTable(dashboardData.referrers);
+                renderRolexTable(dashboardData.rolexEntries); // SA sees all Rolex entries
+                renderDonationsTable(dashboardData.donationEntries);
             }
+            // All roles see their filtered raffle data
+            renderRaffleTable(dashboardData.raffleEntries);
+            
+            // Render Rolex for regular referrer if needed (Backend should filter to only their entries)
+            if (isReferrer && !isSuperAdmin) {
+                 renderRolexTable(dashboardData.rolexEntries); // Referrer sees only their Rolex entries if the backend returns them
+            }
+        };
 
-            donationsTableBody.innerHTML = '';
-            let totalDonationAmount = 0;
-
-            entries.forEach(e => {
-                if (e.status === 'succeeded') {
-                    totalDonationAmount += e.amountPaid || parseFloat(e.amount);
-                }
-                const statusColor = e.status === 'succeeded' ? 'bg-green-600' : 'bg-red-600';
-                
-                const row = `
-                    <tr>
-                        <td>${e.name}</td>
-                        <td>${formatCurrency(e.amountPaid || parseFloat(e.amount))}</td>
-                        <td><span class="px-2 py-1 text-xs font-semibold rounded ${statusColor}">${e.status.toUpperCase()}</span></td>
-                        <td>${formatTime(e.createdAt)}</td>
-                    </tr>
-                `;
-                donationsTableBody.insertAdjacentHTML('beforeend', row);
-            });
-            totalDonationAmountEl.textContent = formatCurrency(totalDonationAmount);
-        }
-
-        // --- Data Fetching ---
-        async function fetchDashboardData() {
-            loadingIndicator.classList.remove('hidden');
-
+        const fetchDashboardData = async () => {
+            showGlobalLoading("Fetching dashboard data...");
             try {
-                const { data } = await getAdminDashboardDataCallable();
+                const getAdminDashboardDataCallable = httpsCallable(functions, 'getAdminDashboardData');
+                const response = await getAdminDashboardDataCallable({});
                 
-                const { 
-                    isSuperAdmin, 
-                    isReferrer, 
-                    userData, 
-                    referrers, 
-                    rolexEntries, 
-                    raffleEntries, 
-                    donationEntries 
-                } = data;
+                dashboardData = response.data;
+                isSuperAdmin = dashboardData.isSuperAdmin;
+                isReferrer = dashboardData.isReferrer;
+                isLoggedInAdmin = dashboardData.isSuperAdmin || dashboardData.isReferrer || (auth.currentUser && auth.currentUser.customClaims.admin);
 
-                // 1. Render Referrer Summary (for Referrers and Super Admins)
-                if (isReferrer || isSuperAdmin) {
-                    const summaryData = isReferrer && !isSuperAdmin ? userData : { 
-                        name: 'Super Admin',
-                        totalTickets: referrers.reduce((sum, r) => sum + (r.totalTickets || 0), 0),
-                        totalAmount: referrers.reduce((sum, r) => sum + (r.totalAmount || 0), 0),
-                        goal: 0 
-                    };
-                    renderReferrerSummary(summaryData);
-                } else {
-                    referrerSummary.classList.add('hidden');
+                // Calculate referrer metrics (tickets and combined amount)
+                // This step is crucial for aggregating Rolex sales into the Firestore totals.
+                dashboardData = calculateReferrerMetrics(dashboardData); 
+
+                // Update UI based on role
+                let roleText = 'Admin';
+                if (isSuperAdmin) roleText = 'Super Admin';
+                else if (isReferrer) roleText = 'Referrer';
+                document.getElementById('userRoleDisplay').textContent = `(${roleText})`;
+                
+                const referrerTab = document.querySelector('[data-tab="referrers"]');
+                const donationTab = document.querySelector('[data-tab="donations"]');
+                const toolsTab = document.querySelector('[data-tab="tools"]');
+                const rolexTab = document.querySelector('[data-tab="rolex"]');
+                const addManualSaleButton = document.getElementById('addManualSaleButton');
+                const overviewCard = document.getElementById('referrerOverview');
+
+                // --- Access Control Logic ---
+                
+                // Hide everything first
+                referrerTab.classList.add('hidden');
+                donationTab.classList.add('hidden');
+                toolsTab.classList.add('hidden');
+                rolexTab.classList.add('hidden');
+                addManualSaleButton.classList.add('hidden');
+                overviewCard.classList.add('hidden');
+                
+                if (isSuperAdmin) {
+                    // Super Admin sees all tabs and tools/buttons
+                    referrerTab.classList.remove('hidden');
+                    donationTab.classList.remove('hidden');
+                    toolsTab.classList.remove('hidden');
+                    rolexTab.classList.remove('hidden'); 
+                    addManualSaleButton.classList.remove('hidden');
+                    document.getElementById('manual-referrer-container').classList.remove('hidden'); // SA can attribute to anyone
+                    document.getElementById('recalculateTotalsCard').classList.remove('hidden');
+                    overviewCard.classList.remove('hidden');
+                    
+                    // Always default to Referrers tab for SA
+                    currentTab = currentTab || 'referrers';
+
+                } else if (isReferrer) {
+                    // Referrer sees only overview, raffle, and rolex tabs (if data is returned)
+                    overviewCard.classList.remove('hidden');
+                    document.querySelector('[data-tab="raffle"]').classList.remove('hidden');
+                    // Per user request, hide the Rolex tab from regular referrers
+                    rolexTab.classList.add('hidden'); 
+                    document.getElementById('manual-referrer-container').classList.add('hidden'); // Ref IDs are handled automatically
+
+                    // Always default to Raffle tab for Referrer
+                    currentTab = currentTab || 'raffle';
+                    
+                } else if (isLoggedInAdmin) { 
+                    // General Admin sees only raffle sales (all sales for Split Pot)
+                    document.querySelector('[data-tab="raffle"]').classList.remove('hidden');
+                    // Default to Raffle tab for Admin
+                    currentTab = currentTab || 'raffle';
                 }
 
-                // 2. Render SuperAdmin specific sections
-                renderReferrers(referrers, isSuperAdmin);
+                // --- Overview Card Population ---
+                if (isReferrer || isSuperAdmin) {
+                    const refId = dashboardData.userData.refId || 'N/A';
+                    document.getElementById('overviewRefId').textContent = refId;
+                    // The overview card is updated in calculateReferrerMetrics now
+                    document.getElementById('overviewTotalTickets').textContent = (dashboardData.userData.totalTickets || 0).toLocaleString();
+                    document.getElementById('overviewTotalAmount').textContent = formatCurrency(dashboardData.userData.totalAmount || 0);
+
+                    // Setup Referral Link
+                    const referralLinkElement = document.getElementById('referralLink');
+                    const link = `ydeseniors.com/?ref=${refId}`;
+                    referralLinkElement.textContent = link;
+                    document.getElementById('referrerLinkContainer').classList.remove('hidden');
+
+                    document.getElementById('copyLinkButton').onclick = () => {
+                        copyToClipboard(`https://${link}`, 'Referral link copied!');
+                    };
+                } else {
+                    document.getElementById('referrerLinkContainer').classList.add('hidden');
+                }
                 
-                // 3. Render Transaction Tables
-                renderRolex(rolexEntries, isSuperAdmin);
-                renderRaffle(raffleEntries);
-                renderDonations(donationEntries, isSuperAdmin);
+                // --- End Access Control Logic ---
+
+
+                renderTables();
+                // Admin Tools data fetch (only if SA or Admin to save bandwidth, but only SA sees it)
+                if (isSuperAdmin || isLoggedInAdmin) {
+                     await updateReservedTicketCounts();
+                }
                 
-                // Initial tab display
-                setActiveTab('rolex');
+                hideGlobalLoading();
+                switchTab(currentTab || 'raffle'); // Ensure a tab is always active
 
             } catch (error) {
                 console.error("Error fetching dashboard data:", error);
-                loginError.textContent = `Failed to load dashboard: ${error.message}. Please check your role/rules.`;
-                loginError.classList.remove('hidden');
-                auth.signOut();
-                showLogin();
-            } finally {
-                loadingIndicator.classList.add('hidden');
+                hideGlobalLoading();
+                if (error.code === 'permission-denied') {
+                    document.getElementById('authErrorDisplay').textContent = "Permission Denied: Your account is not authorized as Admin, Super Admin, or Referrer.";
+                    document.getElementById('authErrorDisplay').classList.remove('hidden');
+                    document.getElementById('dashboardContainer').classList.add('hidden');
+                } else {
+                    showCustomPopup('Data Fetch Error', `Failed to load dashboard data: ${error.message}. Please check logs.`);
+                }
             }
-        }
-        
-        // --- Authentication Logic ---
+        };
 
-        async function handleLogin() {
-            const email = emailInput.value.trim();
-            const password = passwordInput.value.trim();
-            loginError.classList.add('hidden');
+        const renderReferrersTable = (referrers) => {
+            const tbody = document.getElementById('referrersTableBody');
+            tbody.innerHTML = '';
+            if (referrers.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-500">No referrers found.</td></tr>';
+                return;
+            }
+            referrers.forEach(r => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${r.name}</td>
+                    <td><span class="font-mono text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded">${r.refId}</span></td>
+                    <td>${r.email}</td>
+                    <td class="text-right">${(r.raffleTickets || 0).toLocaleString()}</td>
+                    <td class="text-right">${(r.rolexTickets || 0).toLocaleString()}</td>
+                    <td class="text-right font-semibold">${formatCurrency(r.combinedTotalAmount || 0)}</td>
+                    <td class="text-right">${formatCurrency(r.goal || 0)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        };
+
+        const renderRaffleTable = (entries) => {
+            const tbody = document.getElementById('raffleTableBody');
+            const header = document.getElementById('raffleSalesHeader');
+            tbody.innerHTML = '';
             
-            if (!email || !password) {
-                loginError.textContent = "Please enter both email and password.";
-                loginError.classList.remove('hidden');
+            if (isReferrer && !isSuperAdmin) {
+                 header.textContent = "Your Split The Pot Sales";
+            } else {
+                 header.textContent = "All Split The Pot Sales";
+            }
+
+            if (entries.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-500">No Split The Pot sales found.</td></tr>';
+                return;
+            }
+            entries.forEach(e => {
+                const referrerInfo = e.referrerName ? `${e.referrerName} (${e.referrerRefId})` : 'None';
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${formatDate(e.timestamp)}</td>
+                    <td>${e.fullName || 'N/A'}</td>
+                    <td>${e.phoneNumber || 'N/A'}</td>
+                    <td>${(e.ticketCount || 0).toLocaleString()}</td>
+                    <td class="text-right font-medium">${formatCurrency(e.amountPaid || 0)}</td>
+                    <td>${referrerInfo}</td>
+                    <td>${e.sourceApp || 'N/A'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        };
+
+        const renderRolexTable = (entries) => {
+            const tbody = document.getElementById('rolexTableBody');
+            tbody.innerHTML = '';
+            if (entries.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-500">No Spin The Wheel sales found.</td></tr>';
+                return;
+            }
+            entries.forEach(e => {
+                const referrerInfo = e.referrerRefId ? `${e.referrerRefId}` : 'None';
+                const statusClass = e.status === 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${formatDate(e.timestamp)}</td>
+                    <td class="font-bold">${e.id}</td>
+                    <td>${e.firstName || e.name || 'N/A'}</td>
+                    <td>${e.email || 'N/A'}</td>
+                    <td><span class="text-xs font-medium px-2 py-1 rounded-full ${statusClass}">${e.status.toUpperCase()}</span></td>
+                    <td class="text-right font-medium">${formatCurrency(e.amountPaid || 0)}</td>
+                    <td>${referrerInfo}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        };
+        
+        const renderDonationsTable = (entries) => {
+            const tbody = document.getElementById('donationsTableBody');
+            tbody.innerHTML = '';
+            if (entries.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-500">No donations found.</td></tr>';
+                return;
+            }
+            entries.forEach(e => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${formatDate(e.createdAt)}</td>
+                    <td>${e.name}</td>
+                    <td>${e.email || 'N/A'}</td>
+                    <td>${e.phone || 'N/A'}</td>
+                    <td class="text-right font-medium">${formatCurrency(e.amountPaid || 0)}</td>
+                    <td><span class="text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-800">${e.status.toUpperCase()}</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        };
+
+        const switchTab = (tabName) => {
+            currentTab = tabName;
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            const activeBtn = document.querySelector(`.tab-button[data-tab="${tabName}"]`);
+            if (activeBtn) activeBtn.classList.add('active');
+
+            document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.add('hidden'));
+            const activePane = document.getElementById(`tab-${tabName}`);
+            if (activePane) activePane.classList.remove('hidden');
+        };
+
+        // --- Admin Tools Logic (SA Only) ---
+        
+        const updateReservedTicketCounts = async () => {
+            // Check if user is authorized to see this data
+            if (!isSuperAdmin && !isLoggedInAdmin) return;
+            
+            const infoDiv = document.getElementById('reservedTicketInfo');
+            infoDiv.textContent = "Updating...";
+            try {
+                const getReservedTicketCountsCallable = httpsCallable(functions, 'getReservedTicketCounts');
+                const response = await getReservedTicketCountsCallable({});
+                const { totalReserved, expired5Min, expired10Min } = response.data;
+                
+                infoDiv.innerHTML = `
+                    <p>Total Reserved Tickets: <span class="font-bold">${totalReserved}</span></p>
+                    <p>Reserved > 5 Min (Expired by Cron): <span class="font-bold text-red-600">${expired5Min}</span></p>
+                    <p>Reserved > 10 Min: <span class="font-bold text-red-600">${expired10Min}</span></p>
+                `;
+            } catch (error) {
+                infoDiv.textContent = 'Failed to load ticket counts.';
+                console.error("Error fetching ticket counts:", error);
+            }
+        };
+
+        const handleCleanupClick = async () => {
+            if (!isSuperAdmin) return;
+            showGlobalLoading("Running manual ticket cleanup...");
+            try {
+                const deleteExpiredReservedTicketsCallable = httpsCallable(functions, 'deleteExpiredReservedTickets');
+                const response = await deleteExpiredReservedTicketsCallable({});
+                showCustomPopup('Cleanup Success', response.data.message);
+                await updateReservedTicketCounts();
+                await fetchDashboardData();
+            } catch (error) {
+                console.error("Error running cleanup:", error);
+                showCustomPopup('Cleanup Failed', `Error: ${error.message}`);
+            } finally {
+                hideGlobalLoading();
+            }
+        };
+        
+        const handleRecalculateTotals = async () => {
+             if (!isSuperAdmin) return;
+             const confirmRecalc = confirm("Are you sure you want to recalculate global raffle totals? This action is usually only required if counters are corrupted.");
+             if (!confirmRecalc) return;
+             
+             showGlobalLoading("Recalculating global totals...");
+             try {
+                 const recalculateRaffleTotalsCallable = httpsCallable(functions, 'recalculateRaffleTotals');
+                 const response = await recalculateRaffleTotalsCallable({});
+                 showCustomPopup('Recalculation Complete', response.data.message);
+             } catch (error) {
+                 console.error("Error recalculating totals:", error);
+                 showCustomPopup('Recalculation Failed', `Error: ${error.message}`);
+             } finally {
+                 hideGlobalLoading();
+             }
+        };
+
+
+        // --- Manual Sale Logic (Super Admin Only) ---
+
+        const openManualSaleModal = () => {
+            if (!isSuperAdmin) {
+                showCustomPopup('Permission Denied', 'Only Super Admins can add manual sales.');
+                return;
+            }
+            document.getElementById('manualSaleModalOverlay').classList.remove('hidden');
+            document.getElementById('manualSaleForm').reset();
+        };
+
+        const closeManualSaleModal = () => {
+            document.getElementById('manualSaleModalOverlay').classList.add('hidden');
+        };
+
+        const handleManualSaleSubmit = async (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('manual-name').value.trim();
+            const email = document.getElementById('manual-email').value.trim();
+            const phone = document.getElementById('manual-phone').value.trim();
+            const ticketsBought = document.getElementById('manual-tickets').value.trim();
+            const amount = document.getElementById('manual-amount').value.trim();
+            const refId = document.getElementById('manual-refId').value.trim();
+
+            if (!name || !ticketsBought || !amount) {
+                showCustomPopup('Missing Fields', 'Name, Tickets Bought, and Amount Paid are required.');
                 return;
             }
 
+            closeManualSaleModal();
+            showGlobalLoading("Adding manual entry...");
+
             try {
-                await auth.signInWithEmailAndPassword(email, password);
-                // AuthStateChanged listener handles the rest
+                const addManualSaleCallable = httpsCallable(functions, 'addManualSale');
+                const response = await addManualSaleCallable({
+                    name, email: email || null, phone: phone || null,
+                    ticketsBought, amount, refId: refId || null
+                });
+
+                showCustomPopup('Success', response.data.message);
+                await fetchDashboardData(); // Refresh dashboard data
             } catch (error) {
-                console.error("Login Error:", error);
-                loginError.textContent = "Sign-in failed. Check credentials and console.";
-                loginError.classList.remove('hidden');
+                console.error("Error adding manual sale:", error);
+                showCustomPopup('Error', `Failed to add manual sale: ${error.message}`);
+            } finally {
+                hideGlobalLoading();
             }
-        }
-        
-        function handleLogout() {
-            auth.signOut();
-            showLogin();
-        }
-        
-        // --- Event Handlers ---
+        };
 
-        loginButton.addEventListener('click', handleLogin);
-        
-        passwordInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') { handleLogin(); }
-        });
-        emailInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') { handleLogin(); }
-        });
-        
-        logoutButton.addEventListener('click', handleLogout);
 
-        tabButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                setActiveTab(button.getAttribute('data-tab'));
+        // --- Authentication and Initialization ---
+
+        const setupAuthListeners = () => {
+            onAuthStateChanged(auth, async (user) => {
+                showGlobalLoading("Checking authorization...");
+                if (user) {
+                    const idTokenResult = await user.getIdTokenResult(true);
+                    const claims = idTokenResult.claims;
+                    
+                    const isAuthenticated = claims.admin || claims.superAdmin || claims.referrer;
+
+                    if (isAuthenticated) {
+                        document.getElementById('loginModalOverlay').classList.add('hidden');
+                        document.getElementById('dashboardContainer').classList.remove('hidden');
+                        document.getElementById('authErrorDisplay').classList.add('hidden');
+                        await fetchDashboardData();
+                    } else {
+                        document.getElementById('loginModalOverlay').classList.remove('hidden');
+                        document.getElementById('dashboardContainer').classList.add('hidden');
+                        document.getElementById('loginError').textContent = "Unauthorized. Please use an Admin/Referrer account.";
+                        document.getElementById('loginError').classList.remove('hidden');
+                        hideGlobalLoading();
+                    }
+                } else {
+                    document.getElementById('dashboardContainer').classList.add('hidden');
+                    document.getElementById('loginModalOverlay').classList.remove('hidden');
+                    hideGlobalLoading();
+                }
             });
-        });
+        };
+        
+        const handleLogin = async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const loginError = document.getElementById('loginError');
+            
+            loginError.classList.add('hidden');
+            document.getElementById('loginButton').disabled = true;
 
-        // --- Auth State Listener ---
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                // User is signed in. Check custom claims are propagated.
-                // Firebase automatically refreshes the token to include claims after sign-in.
-                showDashboard();
-            } else {
-                // User is signed out.
-                showLogin();
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+            } catch (error) {
+                console.error("Login failed:", error);
+                loginError.textContent = "Login failed: Invalid credentials or account type.";
+                loginError.classList.remove('hidden');
+            } finally {
+                document.getElementById('loginButton').disabled = false;
             }
-        });
+        };
+
+        const handleLogout = async () => {
+            showGlobalLoading("Logging out...");
+            try {
+                await signOut(auth);
+                document.getElementById('dashboardContainer').classList.add('hidden');
+                document.getElementById('loginModalOverlay').classList.remove('hidden');
+            } catch (error) {
+                console.error("Logout failed:", error);
+                showCustomPopup("Logout Failed", "Could not log out. Please try again.");
+            } finally {
+                hideGlobalLoading();
+            }
+        };
+
+
+        // --- Event Listeners and Initial Setup ---
+        window.onload = async () => {
+            try {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                functions = getFunctions(app);
+                db = getFirestore(app);
+                
+                setLogLevel('debug');
+                
+            } catch (error) {
+                document.getElementById('globalSpinnerText').textContent = 'Firebase Initialization Failed. Check console for config error.';
+                console.error("Firebase Init Error:", error);
+                return;
+            }
+
+            setupAuthListeners();
+            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+            document.getElementById('logoutButton').addEventListener('click', handleLogout);
+            document.getElementById('popupCloseButton').addEventListener('click', hideCustomPopup);
+            
+            // Tab navigation
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.addEventListener('click', (e) => switchTab(e.target.dataset.tab));
+            });
+            
+            // Manual Sale Modal listeners
+            document.getElementById('addManualSaleButton').addEventListener('click', openManualSaleModal);
+            document.getElementById('closeManualSaleModal').addEventListener('click', closeManualSaleModal);
+            document.getElementById('manualSaleForm').addEventListener('submit', handleManualSaleSubmit);
+            
+            // Admin Tools listeners
+            document.getElementById('deleteExpiredTicketsButton').addEventListener('click', handleCleanupClick);
+            document.getElementById('recalculateTotalsButton').addEventListener('click', handleRecalculateTotals);
+        };
     </script>
 </body>
 </html>

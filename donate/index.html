@@ -189,7 +189,39 @@
     <script src="https://js.stripe.com/v3/"></script>
 
     <script>
+        // --- Referrer Helper Functions (NEW) ---
+        function getQueryParam(param) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(param);
+        }
+
+        function updateNavLinks(refId) {
+            if (!refId) return;
+
+            // Select all links in the header navigation
+            const navLinks = document.querySelectorAll('header a');
+
+            navLinks.forEach(link => {
+                const currentHref = link.getAttribute('href');
+                // Check if it's an internal link and not already pointing to a full external URL
+                if (currentHref && currentHref.startsWith('/') && !currentHref.includes('ref=')) {
+                    const separator = currentHref.includes('?') ? '&' : '?';
+                    link.setAttribute('href', `${currentHref}${separator}ref=${refId}`);
+                }
+            });
+        }
+        // --- END Referrer Helper Functions ---
+
+
         document.addEventListener('DOMContentLoaded', () => {
+            // --- Referral Logic Initialization (NEW) ---
+            const referrerRefId = getQueryParam('ref');
+            if (referrerRefId) {
+                console.log('Referrer ID found:', referrerRefId);
+                updateNavLinks(referrerRefId); // Update all navigation links
+            }
+            // --- END Referral Logic Initialization ---
+
             // UI Elements
             const donationOptions = document.querySelectorAll('.donation-option-card');
             const otherAmountContainer = document.getElementById('other-amount-container');
@@ -320,7 +352,8 @@
                         amount: finalDonationAmount.toFixed(2), // Send fixed amount for calculation consistency
                         name: name,
                         email: email,
-                        phone: phone
+                        phone: phone,
+                        referral: referrerRefId || null // Pass the referral ID if it exists
                     });
 
                     elements = stripe.elements({ clientSecret: data.clientSecret });
@@ -349,11 +382,14 @@
                 event.preventDefault();
                 showGlobalLoadingOverlay("Processing donation...");
 
+                // Include referral ID in the return URL
+                const refParam = referrerRefId ? `&ref=${referrerRefId}` : '';
+
                 const { error } = await stripe.confirmPayment({
                     elements,
                     confirmParams: {
                         // Pass name and amount as URL parameters to the success page
-                        return_url: `${window.location.origin}/successful.html?name=${encodeURIComponent(donationNameInput.value)}&amount=${finalDonationAmount.toFixed(2)}`,
+                        return_url: `${window.location.origin}/successful.html?name=${encodeURIComponent(donationNameInput.value)}&amount=${finalDonationAmount.toFixed(2)}${refParam}`,
                     }
                 });
 

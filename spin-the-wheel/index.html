@@ -537,6 +537,7 @@
             firebase.initializeApp(firebaseConfig);
             const db = firebase.firestore();
             const auth = firebase.auth();
+            // CORRECTED: The firebase functions object must be initialized using firebase.functions()
             const functions = firebase.functions();
 
             // --- Helper Functions ---
@@ -669,7 +670,8 @@
                 showGlobalLoadingOverlay("Preparing your ticket...", true);
                 
                 try {
-                    const createSpinPaymentIntentCallable = functions.httpsCallable('createSpinPaymentIntent');
+                    // FIX: Changed functions.https.callable to functions.httpsCallable (the correct method)
+                    const createRolexPaymentIntentCallable = functions.httpsCallable('createRolexPaymentIntent');
                     
                     // --- Send Referrer ID to Firebase (NEW) ---
                     const requestData = {
@@ -679,7 +681,8 @@
                         referral: referrerRefId || null // Pass the referral ID if it exists
                     };
 
-                    const { data } = await createSpinPaymentIntentCallable(requestData);
+                    const { data } = await createRolexPaymentIntentCallable(requestData);
+                    // *** END UPDATED FUNCTION NAME ***
 
                     spinTicketNumber = data.ticketNumber;
                     

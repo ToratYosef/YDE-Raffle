@@ -131,7 +131,7 @@
     <!-- MISSING MODAL: Edit Raffle Sale Modal (Super Admin Only) -->
     <div id="editSaleModalOverlay" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4 hidden">
         <div class="bg-gray-800 p-6 rounded-lg shadow-2xl max-w-md w-full">
-            <h2 class="text-2xl font-bold text-white mb-4">Edit Raffle Sale Entry</h2>
+            <h2 class="text-2xl font-bold text-white mb-4">Edit Raffle Sale Entry </h2>
             <form id="editSaleForm" class="space-y-4">
                 <input type="hidden" id="edit-sale-id">
                 <div>
@@ -341,7 +341,6 @@
             <button data-tab="raffle" class="tab-button py-3 px-4 text-gray-400 hover:text-white transition-colors">Split The Pot Sales</button>
             <button data-tab="rolex" class="tab-button py-3 px-4 text-gray-400 hover:text-white transition-colors hidden">Spin The Wheel Sales</button>
             <button data-tab="donations" class="tab-button py-3 px-4 text-gray-400 hover:text-white transition-colors hidden">Donations</button>
-            <!-- User Management tab was removed from the nav in the provided HTML. Since the user fixed the batch reset modal, I assume they want the functionality. Restoring it. -->
             <button data-tab="users" class="tab-button py-3 px-4 text-gray-400 hover:text-white transition-colors hidden">User Management</button>
             <button data-tab="tools" class="tab-button py-3 px-4 text-gray-400 hover:text-white transition-colors hidden">Admin Tools</button>
         </nav>
@@ -392,7 +391,7 @@
             <!-- Referrers Tab Content (Super Admin Only) -->
             <div id="tab-referrers" class="tab-pane hidden">
                 <div class="dashboard-card p-4">
-                    <h3 class="text-xl font-semibold mb-3 text-white">All Referrers</h3>
+                    <h3 class="text-xl font-semibold mb-3 text-white">All Referrers (SA Only)</h3>
                     
                     <!-- Search and Sort Controls -->
                     <div class="flex flex-col sm:flex-row gap-4 mb-4">
@@ -456,8 +455,8 @@
                     <!-- Filter and Header Controls -->
                     <div class="flex justify-between items-center mb-3">
                         <h3 class="text-xl font-semibold text-white" id="raffleSalesHeader">Split The Pot Sales</h3>
-                        <!-- NEW FILTER DROPDOWN -->
-                        <div class="flex items-center space-x-2">
+                        <!-- FILTER DROPDOWN (Hidden for non-SA Referrers) -->
+                        <div id="raffleFilterControls" class="flex items-center space-x-2">
                             <label for="raffleFilter" class="text-sm font-medium text-gray-400">Filter:</label>
                             <select id="raffleFilter" class="p-2 border border-gray-600 rounded-lg text-sm focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white">
                                 <option value="all">All Sales</option>
@@ -660,7 +659,7 @@
         let targetRolexRefId = null;
         let targetRolexRefName = null;
         
-        // Unified state for filtering sales tables by specific referrer
+        // Unified state for filtering sales tables by specific referrer (SA only)
         let activeRefIdFilter = null;
         let activeRefNameFilter = null;
 
@@ -891,23 +890,33 @@
             let currentUserRefId = data.userData.refId;
 
             data.referrers.forEach(r => {
-                const raffleTickets = r.totalTickets || 0; 
-                const rolexTickets = r.rolexTicketsTotal || 0; 
-                const combinedTotalAmount = r.totalAmount || 0; 
+                // FIX: Explicitly parse ticket and amount values to ensure they are treated as numbers
+                const raffleTickets = parseInt(r.totalTickets) || 0; 
+                const rolexTickets = parseInt(r.rolexTicketsTotal) || 0; 
+                
+                // Use the server-provided amount directly (should be the correct combined revenue)
+                let combinedTotalAmount = parseFloat(r.totalAmount) || 0; 
+
+                // FIX: Remove the faulty estimation logic from the previous step.
+                // We rely on the server's aggregated 'totalAmount' now, which is correct for the list.
+
                 const totalTickets = raffleTickets + rolexTickets;
 
                 referrerMap.set(r.refId, {
                     ...r,
                     raffleTickets: raffleTickets,
                     rolexTickets: rolexTickets,
-                    combinedTotalAmount: combinedTotalAmount,
-                    totalTickets: totalTickets,
-                    clickCount: r.clickCount || 0 
+                    // Use the server's authoritative combined amount
+                    combinedTotalAmount: combinedTotalAmount, 
+                    totalTickets: totalTickets, 
+                    clickCount: parseInt(r.clickCount) || 0
                 });
             });
 
             data.referrers = Array.from(referrerMap.values());
             
+            // FIX: Ensure data.userData gets the fully calculated/parsed metrics from the map.
+            // This is the key fix to update the overview card.
             if (currentUserRefId && referrerMap.has(currentUserRefId)) {
                 data.userData = referrerMap.get(currentUserRefId);
             }
@@ -933,11 +942,14 @@
                 renderRolexTable(dashboardData.rolexEntries); 
                 renderDonationsTable(dashboardData.donationEntries);
             }
-            // Render Raffle table always (as it's the default or main referrer view)
+            // Render Raffle table is the base view for all authorized users
             renderRaffleTable(dashboardData.raffleEntries);
             
             if (isReferrer && !isSuperAdmin) {
-                renderRolexTable(dashboardData.rolexEntries);
+                // If a non-SA referrer logs in, show their personal rolex data
+                // This is hidden by default and only for referrers who have access to their own referral card
+                // The Rolex tab is hidden below, but if we wanted them to see their rolex sales here, we'd add logic.
+                // For now, only Super Admin sees the Rolex Sales tab, so we skip rendering it for the base case.
             }
         };
 
@@ -986,64 +998,81 @@
                 const toolsTab = document.querySelector('[data-tab="tools"]');
                 const rolexTab = document.querySelector('[data-tab="rolex"]');
                 const usersTab = document.querySelector('[data-tab="users"]');
+                const raffleTab = document.querySelector('[data-tab="raffle"]');
                 const addManualSaleButton = document.getElementById('addManualSaleButton');
                 const overviewCard = document.getElementById('referrerOverview');
                 const exportButton = document.getElementById('exportDataButton');
+                const raffleFilterControls = document.getElementById('raffleFilterControls');
 
                 // --- Access Control Logic ---
                 
+                // 1. Hide all SA-only sections initially
                 referrerTab.classList.add('hidden');
                 donationTab.classList.add('hidden');
                 toolsTab.classList.add('hidden');
-                rolexTab.classList.add('hidden');
-                usersTab.classList.add('hidden'); // Default hide new tab
+                rolexTab.classList.add('hidden'); 
+                usersTab.classList.add('hidden'); 
                 addManualSaleButton.classList.add('hidden');
                 overviewCard.classList.add('hidden');
-                exportButton.classList.add('hidden'); // Default hide
+                exportButton.classList.add('hidden');
+                raffleTab.classList.add('hidden'); // Start hidden, only show if authenticated
 
                 
                 if (isSuperAdmin) {
+                    // Super Admin sees everything
                     referrerTab.classList.remove('hidden');
                     donationTab.classList.remove('hidden');
                     toolsTab.classList.remove('hidden');
                     rolexTab.classList.remove('hidden'); 
-                    usersTab.classList.remove('hidden'); // Show new tab
+                    usersTab.classList.remove('hidden'); 
                     addManualSaleButton.classList.remove('hidden');
-                    // The manual-referrer-container is inside the manual sale modal, so it doesn't need to be accessed here, but the check for its visibility is kept below.
-                    // document.getElementById('manual-referrer-container').classList.remove('hidden'); 
-                    document.getElementById('recalculateRaffleTotalsCard').classList.remove('hidden');
-                    document.getElementById('recalculateRolexTotalsCard').classList.remove('hidden');
-                    document.getElementById('recalculateAllTotalsCard').classList.remove('hidden');
+                    exportButton.classList.remove('hidden');
                     overviewCard.classList.remove('hidden');
-                    exportButton.classList.remove('hidden'); // Show export button
-                    
+                    raffleTab.classList.remove('hidden'); // Show Raffle Tab
+
                     currentTab = currentTab || 'referrers'; // Set referrers tab as default for SA
 
                 } else if (isReferrer) {
+                    // Regular Referrer sees their overview and Split The Pot Sales (filtered internally)
                     overviewCard.classList.remove('hidden');
-                    document.querySelector('[data-tab="raffle"]').classList.remove('hidden');
-                    rolexTab.classList.add('hidden'); 
-                    // document.getElementById('manual-referrer-container').classList.add('hidden'); 
-
+                    raffleTab.classList.remove('hidden'); // Show Raffle Tab
+                    raffleFilterControls.classList.add('hidden'); // Hide filter dropdown for non-SA Referrers
+                    
                     currentTab = currentTab || 'raffle';
                     
                 } else if (isLoggedInAdmin) { 
-                    document.querySelector('[data-tab="raffle"]').classList.remove('hidden');
+                    // General Admin (non-referrer, non-super) sees only the Raffle Tab (All Sales)
+                    raffleTab.classList.remove('hidden');
+                    raffleFilterControls.classList.remove('hidden'); // Show filter controls for general admins
                     currentTab = currentTab || 'raffle';
                 }
 
-                // --- Overview Card Population ---
+                // --- Overview Card Population (Visible to SA and Referrers) ---
                 if (isReferrer || isSuperAdmin) {
                     const refId = dashboardData.userData.refId || 'N/A';
-                    document.getElementById('overviewRefId').textContent = refId;
                     
-                    document.getElementById('overviewTotalClicks').textContent = (dashboardData.userData.clickCount || 0).toLocaleString(); 
+                    // FIX: Find the authoritative entry in the processed referrers list
+                    let currentSelfData = dashboardData.userData;
+                    const authoritativeData = dashboardData.referrers.find(r => r.refId === refId);
+                    if (authoritativeData) {
+                        currentSelfData = authoritativeData;
+                    }
                     
-                    document.getElementById('overviewTotalTickets').textContent = (dashboardData.userData.totalTickets || 0).toLocaleString();
-                    document.getElementById('overviewTotalAmount').textContent = formatCurrency(dashboardData.userData.combinedTotalAmount || 0); 
+                    // These values should now be correctly calculated and sourced from the authoritative list entry
+                    const finalRefId = currentSelfData.refId || 'N/A';
+                    const finalTotalTickets = currentSelfData.totalTickets || 0; // Should be 40 (39+1)
+                    const finalTotalAmount = currentSelfData.combinedTotalAmount || 0; // Should be 847
+                    const finalClicks = currentSelfData.clickCount || 0;
+                    
+                    document.getElementById('overviewRefId').textContent = finalRefId;
+                    
+                    document.getElementById('overviewTotalClicks').textContent = finalClicks.toLocaleString(); 
+                    
+                    document.getElementById('overviewTotalTickets').textContent = finalTotalTickets.toLocaleString();
+                    document.getElementById('overviewTotalAmount').textContent = formatCurrency(finalTotalAmount); 
 
                     const referralLinkElement = document.getElementById('referralLink');
-                    const link = `ydeseniors.com/?ref=${refId}`;
+                    const link = `ydeseniors.com/?ref=${finalRefId}`;
                     referralLinkElement.textContent = link;
                     document.getElementById('referrerLinkContainer').classList.remove('hidden');
 
@@ -1223,6 +1252,7 @@
         };
         
         const openBatchResetModal = () => {
+            if (!isSuperAdmin) return;
             if (selectedUserUids.size === 0) {
                 showCustomPopup('Selection Required', 'Please select at least one user to reset the password.');
                 return;
@@ -1281,6 +1311,12 @@
             const tbody = document.getElementById('referrersTableBody');
             tbody.innerHTML = '';
             
+            // Only Super Admins see this table content
+            if (!isSuperAdmin) {
+                 tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-gray-400">Permission Denied. Only Super Admins can view all referrers.</td></tr>';
+                 return;
+            }
+
             const sortedReferrers = filterReferrers(referrers);
 
             if (sortedReferrers.length === 0) {
@@ -1294,14 +1330,15 @@
                 let actionCellContent = 'N/A';
                 let upgradeButton = '';
 
+                // Super Admin can see the action buttons and click to filter sales
                 if (isSuperAdmin) {
                     // Update: Clicking the name now applies the combined filter and shows sales.
                     nameCellContent = `<span 
-                                                class="text-white font-semibold cursor-pointer hover:underline" 
-                                                data-action="view-referrer-sales" 
-                                                data-refid="${r.refId}" 
-                                                data-refname="${r.name}"
-                                                >${r.name}</span>`;
+                                        class="text-white font-semibold cursor-pointer hover:underline" 
+                                        data-action="view-referrer-sales" 
+                                        data-refid="${r.refId}" 
+                                        data-refname="${r.name}"
+                                        >${r.name}</span>`;
                     
                     if (r.uid !== auth.currentUser?.uid) {
                         upgradeButton = `
@@ -1346,19 +1383,33 @@
             const tbody = document.getElementById('raffleTableBody');
             const header = document.getElementById('raffleSalesHeader');
             const actionHeader = document.getElementById('raffleSalesActionHeader');
+            const raffleFilterControls = document.getElementById('raffleFilterControls');
             tbody.innerHTML = '';
             
             // 1. Filter based on current filter state ('all', 'assigned', 'unassigned') and referrer filter
             let displayEntries = filterSalesEntries(entries, raffleFilter);
 
-            // Apply direct referrer filter
-            if (activeRefIdFilter) {
+            // Apply automatic filter for non-Super Admin referrers.
+            const currentRefId = dashboardData.userData.refId;
+            
+            // Determine header and filter visibility
+            raffleFilterControls.classList.remove('hidden');
+
+            if (isReferrer && !isSuperAdmin) {
+                // Non-Super Admin Referrer: filter sales to only show their referred sales
+                displayEntries = displayEntries.filter(e => e.referrerRefId === currentRefId);
+                header.textContent = "Your Split The Pot Sales";
+                activeRefIdFilter = null; // Clear manual filter if automatic filter is active
+                raffleFilterControls.classList.add('hidden'); // Hide filter dropdown
+                
+            } else if (activeRefIdFilter) {
+                // Super Admin manual filter is active
                 header.textContent = `Split The Pot Sales for ${activeRefNameFilter}`;
                 displayEntries = displayEntries.filter(e => e.referrerRefId === activeRefIdFilter);
                 header.innerHTML += ` <button id="clearRaffleFilter" class="ml-4 px-2 py-1 text-sm text-white bg-red-500 rounded-lg hover:bg-red-600">Clear Filter</button>`;
-            } else if (isReferrer && !isSuperAdmin) {
-                header.textContent = "Your Split The Pot Sales";
+                
             } else {
+                // Super Admin or General Admin viewing all sales
                 header.textContent = "All Split The Pot Sales";
             }
 
@@ -1419,7 +1470,10 @@
                 header.textContent = `Spin The Wheel Sales for ${activeRefNameFilter}`;
                 header.innerHTML += ` <button id="clearRolexFilter" class="ml-4 px-2 py-1 text-sm text-white bg-red-500 rounded-lg hover:bg-red-600">Clear Filter</button>`;
             } else if (!isSuperAdmin) {
-                    // Regular referrer view (only shows their own if it's not SuperAdmin) - but only applies if it's the right tab
+                // Regular referrer view (they shouldn't see this tab anyway, but just in case, only show their own)
+                // This logic is mostly redundant because the tab is hidden via fetchDashboardData, but good practice.
+                const currentRefId = dashboardData.userData.refId;
+                displayEntries = displayEntries.filter(e => e.referrerRefId === currentRefId);
                 header.textContent = "Your Spin The Wheel Sales";
             } else {
                 header.textContent = "Spin The Wheel Sales (SA Only)";
@@ -1494,6 +1548,15 @@
             if (activeRefIdFilter) {
                 renderRaffleTable(dashboardData.raffleEntries);
                 renderRolexTable(dashboardData.rolexEntries);
+            }
+            // Ensure filter control visibility is respected if we land on raffle tab
+            if (tabName === 'raffle') {
+                 const raffleFilterControls = document.getElementById('raffleFilterControls');
+                 if (isReferrer && !isSuperAdmin) {
+                     raffleFilterControls.classList.add('hidden');
+                 } else {
+                     raffleFilterControls.classList.remove('hidden');
+                 }
             }
         };
 
@@ -1788,6 +1851,10 @@
 
 
         const handleExportClick = () => {
+            if (!isSuperAdmin) {
+                 showCustomPopup('Permission Denied', 'Only Super Admins can export data.');
+                 return;
+            }
             let dataToExport = [];
             let filename = `export_${currentTab}_${new Date().toISOString().slice(0, 10)}.csv`;
 
@@ -1859,6 +1926,8 @@
             }
             document.getElementById('manualSaleModalOverlay').classList.remove('hidden');
             document.getElementById('manualSaleForm').reset();
+            // Show Ref ID field only for SA
+            document.getElementById('manual-referrer-container').classList.remove('hidden');
         };
 
         const closeManualSaleModal = () => {
@@ -2161,7 +2230,7 @@
                     <td>${customerName}</td>
                     <td>${contact}</td>
                     <td class="text-right font-medium">${formatCurrency(ticket.amountPaid || 0)}</td>
-                    <td>${currentReferrerContent}</td> 
+                    <td>${referrerInfo}</td>
                 `;
                 tbody.appendChild(tr);
             });

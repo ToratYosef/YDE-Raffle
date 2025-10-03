@@ -270,7 +270,7 @@
                 <div class="flex items-center bg-gray-100 p-2 rounded-lg border border-gray-200">
                     <span id="referralLink" class="text-base font-mono text-blue-600 truncate mr-3 select-all"></span>
                     <button id="copyLinkButton" class="ml-auto p-1 text-gray-400 hover:text-blue-500 transition-colors" title="Copy Link">
-                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M7.75 3.75a.75.75 0 0 1 1.5 0v3.5h3.5a.75.75 0 0 1 0 1.5h-3.5v3.5a.75.75 0 0 1-1.5 0v-3.5h-3.5a.75.75 0 0 1 0-1.5h3.5v-3.5Z" clip-rule="evenodd" /></svg>
+                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M7.75 3.75a.75.75 0 0 1 1.5 0v3.5h3.5a.75.75 0 0 1 0 1.5h-3.5v3.5a.75.75 0 0 1-1.5 0v-3.5h-3.5a.75.75 0 0 1 0-1.5h3.5v-3.5Z" clip-rule="evenodd" /></svg>
                     </button>
                 </div>
             </div>
@@ -481,23 +481,32 @@
                     </div>
 
                     <!-- Recalculate Totals -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        
+                        <!-- NEW: Recalculate ALL Referrer Totals (The requested feature) -->
+                        <div id="recalculateAllTotalsCard" class="border p-4 rounded-lg bg-red-100 border-red-300">
+                            <h4 class="font-semibold text-lg text-red-700 mb-2">Recalculate ALL Referrer Totals</h4>
+                            <p class="text-sm text-gray-600 mb-3">Rebuilds all ticket counts (Split/Spin) and combined sales amount for **every** referrer from all sales data.</p>
+                            <button id="recalculateAllReferrerTotalsButton" class="px-4 py-2 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50">
+                                Rebuild All Totals
+                            </button>
+                        </div>
                         
                         <!-- Recalculate Split The Pot Totals (Original) -->
                         <div id="recalculateRaffleTotalsCard" class="border p-4 rounded-lg bg-indigo-50 border-indigo-200">
-                            <h4 class="font-semibold text-lg text-indigo-700 mb-2">Recalculate Split The Pot Totals</h4>
-                            <p class="text-sm text-gray-600 mb-3">Resets and sums all Split the Pot entries to update <code>totalTickets</code> (Split Count) and <code>totalAmount</code> (Split $).</p>
+                            <h4 class="font-semibold text-lg text-indigo-700 mb-2">Recalculate Split The Pot Totals (Global)</h4>
+                            <p class="text-sm text-gray-600 mb-3">Resets and sums all Split the Pot entries to update **Global** <code>totalTickets</code> (Split Count) and <code>totalAmount</code> (Split $).</p>
                             <button id="recalculateTotalsButton" class="px-4 py-2 bg-indigo-500 text-white font-semibold rounded-lg hover:bg-indigo-600 transition-colors disabled:opacity-50">
-                                Recalculate Split Pot
+                                Recalculate Global Pot
                             </button>
                         </div>
                         
                         <!-- Recalculate Spin The Wheel Totals (NEW) -->
                         <div id="recalculateRolexTotalsCard" class="border p-4 rounded-lg bg-purple-50 border-purple-200">
-                            <h4 class="font-semibold text-lg text-purple-700 mb-2">Recalculate Spin The Wheel Totals</h4>
-                            <p class="text-sm text-gray-600 mb-3">Resets and sums all Spin tickets to update <code>rolexTicketsTotal</code> (Spin Count) and the combined <code>totalAmount</code> ($).</p>
+                            <h4 class="font-semibold text-lg text-purple-700 mb-2">Recalculate Spin The Wheel Totals (Global)</h4>
+                            <p class="text-sm text-gray-600 mb-3">Resets and sums all Spin tickets to update **Global** <code>rolexTicketsTotal</code> (Spin Count) and the combined <code>totalAmount</code> ($).</p>
                             <button id="recalculateRolexTotalsButton" class="px-4 py-2 bg-purple-500 text-white font-semibold rounded-lg hover:bg-purple-600 transition-colors disabled:opacity-50">
-                                Recalculate Spin Wheel
+                                Recalculate Global Wheel
                             </button>
                         </div>
                     </div>
@@ -540,7 +549,7 @@
         } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
         import { 
             getFirestore, 
-            setLogLevel
+            setLogLevel 
         } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
         import { 
             getFunctions, 
@@ -561,7 +570,7 @@
         let filteredRaffleSales = []; 
         let selectedRaffleSaleIds = new Set(); 
         let targetRaffleRefId = null; 
-        let targetRaffleRefName = null;
+        let targetRaffleRefName = null; 
         
         let allAssignmentRolexSales = [];
         let filteredRolexSales = [];
@@ -602,15 +611,33 @@
         const formatCurrency = (amount) => {
             return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(amount);
         };
+
+        /**
+         * Parses a timestamp (can be a Date, string, Firestore Timestamp object from client or server-serialized)
+         * and formats it into a human-readable string.
+         * Fixes "Invalid Date" issue by explicitly checking for server-serialized Firebase Timestamp properties.
+         */
         const formatDate = (timestamp) => {
             if (!timestamp) return 'N/A';
             
             let date;
             
-            if (typeof timestamp === 'object' && (timestamp.toDate || timestamp.seconds)) {
-                 date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp.seconds * 1000);
-            }
-            else {
+            if (typeof timestamp === 'object') {
+                // Check for standard Firestore Timestamp object methods
+                if (timestamp.toDate && typeof timestamp.toDate === 'function') {
+                    date = timestamp.toDate();
+                } else {
+                    // Check for server-serialized raw seconds/nanoseconds (common from callable functions)
+                    const seconds = timestamp.seconds || timestamp._seconds;
+                    if (typeof seconds === 'number') {
+                        date = new Date(seconds * 1000);
+                    } else {
+                        // Fallback: try converting the object itself (if it contains an ISO string, etc.)
+                        date = new Date(timestamp);
+                    }
+                }
+            } else {
+                // Primitive value (string, number)
                 date = new Date(timestamp);
             }
 
@@ -620,6 +647,7 @@
 
             return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
         };
+        
         const showGlobalLoading = (message = "Loading dashboard data...") => {
             document.getElementById('globalSpinnerText').textContent = message;
             document.getElementById('globalLoadingOverlay').classList.remove('hidden');
@@ -690,21 +718,28 @@
          */
         const getTimestampValue = (val) => {
             if (!val) return 0;
-            // Handle Firebase Timestamp object from Cloud Function
-            if (typeof val.seconds === 'number') {
-                return val.seconds * 1000;
+            
+            let seconds = val.seconds || val._seconds;
+
+            if (val.toDate && typeof val.toDate === 'function') {
+                // Client SDK Timestamp
+                return val.toDate().getTime();
+            } else if (typeof seconds === 'number') {
+                // Server-serialized Timestamp
+                return seconds * 1000;
+            } else {
+                // Handle Date object or parsable value (string/number)
+                let date = new Date(val);
+                if (isNaN(date.getTime())) {
+                    return 0;
+                }
+                return date.getTime();
             }
-            // Handle Date object or parsable value
-            let date = new Date(val);
-            if (isNaN(date.getTime())) {
-                return 0;
-            }
-            return date.getTime();
         };
 
         const sortEntries = (data, sortConfig) => {
-             // 1. Sort
-             if (sortConfig.key) {
+            // 1. Sort
+            if (sortConfig.key) {
                 data.sort((a, b) => {
                     let aVal = a[sortConfig.key];
                     let bVal = b[sortConfig.key];
@@ -718,9 +753,9 @@
                         return 0;
                     } else if (sortConfig.key === 'timestamp') {
                         // Date comparison
-                         const aTime = getTimestampValue(aVal);
-                         const bTime = getTimestampValue(bVal);
-                         return sortConfig.direction === 'asc' ? aTime - bTime : bTime - aTime;
+                        const aTime = getTimestampValue(aVal);
+                        const bTime = getTimestampValue(bVal);
+                        return sortConfig.direction === 'asc' ? aTime - bTime : bTime - aTime;
                     } 
                     else {
                         // Numeric comparison
@@ -742,16 +777,16 @@
                        (r.refId || '').toLowerCase().includes(searchLower) ||
                        (r.email || '').toLowerCase().includes(searchLower);
             });
-             return sortEntries(filtered, referrerSortConfig);
+            return sortEntries(filtered, referrerSortConfig);
         };
         
         const filterSalesEntries = (data, filterType) => {
             let filtered = [...data];
             
             if (filterType === 'assigned') {
-                 filtered = filtered.filter(e => e.referrerRefId && e.referrerRefId !== null);
+                filtered = filtered.filter(e => e.referrerRefId && e.referrerRefId !== null && e.referrerRefId !== "");
             } else if (filterType === 'unassigned') {
-                 filtered = filtered.filter(e => !e.referrerRefId || e.referrerRefId === null || e.referrerRefId === "");
+                filtered = filtered.filter(e => !e.referrerRefId || e.referrerRefId === null || e.referrerRefId === "");
             }
             return filtered;
         }
@@ -807,7 +842,7 @@
             renderRaffleTable(dashboardData.raffleEntries);
             
             if (isReferrer && !isSuperAdmin) {
-                 renderRolexTable(dashboardData.rolexEntries);
+                renderRolexTable(dashboardData.rolexEntries);
             }
         };
 
@@ -854,6 +889,7 @@
                     document.getElementById('manual-referrer-container').classList.remove('hidden'); 
                     document.getElementById('recalculateRaffleTotalsCard').classList.remove('hidden');
                     document.getElementById('recalculateRolexTotalsCard').classList.remove('hidden');
+                    document.getElementById('recalculateAllTotalsCard').classList.remove('hidden'); // Show NEW card
                     overviewCard.classList.remove('hidden');
                     
                     currentTab = currentTab || 'referrers';
@@ -918,21 +954,21 @@
         
         // --- Sorting Indicator Logic ---
         const updateSortIndicators = (table, config) => {
-             document.querySelectorAll(`[data-table="${table}"]`).forEach(header => {
-                 header.classList.remove('active', 'text-yellow-700', 'text-purple-700', 'font-semibold');
-                 const icon = header.querySelector('.sort-icon');
-                 if (icon) icon.classList.add('hidden');
-             });
-             
-             const activeHeader = document.querySelector(`[data-table="${table}"][data-sort-key="${config.key}"]`);
-             if (activeHeader) {
-                 activeHeader.classList.add('active', 'font-semibold', (table === 'rolex' ? 'text-purple-700' : 'text-yellow-700'));
-                 const icon = activeHeader.querySelector('.sort-icon');
-                 if (icon) {
-                     icon.classList.remove('hidden');
-                     icon.innerHTML = config.direction === 'asc' ? '&#9650;' : '&#9660;'; // Up or Down Triangle
-                 }
-             }
+            document.querySelectorAll(`[data-table="${table}"]`).forEach(header => {
+                header.classList.remove('active', 'text-yellow-700', 'text-purple-700', 'font-semibold');
+                const icon = header.querySelector('.sort-icon');
+                if (icon) icon.classList.add('hidden');
+            });
+            
+            const activeHeader = document.querySelector(`[data-table="${table}"][data-sort-key="${config.key}"]`);
+            if (activeHeader) {
+                activeHeader.classList.add('active', 'font-semibold', (table === 'rolex' ? 'text-purple-700' : 'text-yellow-700'));
+                const icon = activeHeader.querySelector('.sort-icon');
+                if (icon) {
+                    icon.classList.remove('hidden');
+                    icon.innerHTML = config.direction === 'asc' ? '&#9650;' : '&#9660;'; // Up or Down Triangle
+                }
+            }
         };
 
         // --- Render Functions ---
@@ -956,32 +992,32 @@
 
                 if (isSuperAdmin) {
                     nameCellContent = `<span 
-                                            class="text-gray-800 font-semibold cursor-pointer hover:underline" 
-                                            data-action="view-referrer-sales" 
-                                            data-refid="${r.refId}" 
-                                            data-refname="${r.name}"
-                                           >${r.name}</span>`;
+                                         class="text-gray-800 font-semibold cursor-pointer hover:underline" 
+                                         data-action="view-referrer-sales" 
+                                         data-refid="${r.refId}" 
+                                         data-refname="${r.name}"
+                                         >${r.name}</span>`;
                     
                     if (r.uid !== auth.currentUser?.uid) {
                         upgradeButton = `
                             <button class="px-2 py-1 text-xs bg-red-500 text-white font-semibold rounded-lg shadow-md hover:bg-red-600 transition-colors mb-1"
-                                    data-action="promote-sa"
-                                    data-uid="${r.uid}"
-                                    data-refid="${r.refId}"
-                                    data-refname="${r.name}">Promote to SA</button>
+                                         data-action="promote-sa"
+                                         data-uid="${r.uid}"
+                                         data-refid="${r.refId}"
+                                         data-refname="${r.name}">Promote to SA</button>
                         `;
                     }
                     
                     actionCellContent = `
                         ${upgradeButton}
                         <button class="px-2 py-1 text-xs bg-purple-500 text-white font-semibold rounded-lg shadow-md hover:bg-purple-600 transition-colors mb-1"
-                                data-action="assign-rolex-tickets"
-                                data-refid="${r.refId}"
-                                data-refname="${r.name}">Assign Spin</button>
+                                         data-action="assign-rolex-tickets"
+                                         data-refid="${r.refId}"
+                                         data-refname="${r.name}">Assign Spin</button>
                         <button class="px-2 py-1 text-xs bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 transition-colors"
-                                data-action="assign-raffle-tickets"
-                                data-refid="${r.refId}"
-                                data-refname="${r.name}">Assign Raffle</button>
+                                         data-action="assign-raffle-tickets"
+                                         data-refid="${r.refId}"
+                                         data-refname="${r.name}">Assign Raffle</button>
                     `;
                 }
 
@@ -1016,9 +1052,9 @@
                 displayEntries = displayEntries.filter(e => e.referrerRefId === raffleFilterRefId);
                 header.innerHTML += ` <button id="clearRaffleFilter" class="ml-4 px-2 py-1 text-sm text-white bg-red-500 rounded-lg hover:bg-red-600">Clear Filter</button>`;
             } else if (isReferrer && !isSuperAdmin) {
-                 header.textContent = "Your Split The Pot Sales";
+                header.textContent = "Your Split The Pot Sales";
             } else {
-                 header.textContent = "All Split The Pot Sales";
+                header.textContent = "All Split The Pot Sales";
             }
 
             // 2. Sort the display entries
@@ -1115,8 +1151,8 @@
                     <td>${customerName}</td>
                     <td>${e.email || 'N/A'}</td>
                     <td>${e.phone || 'N/A'}</td>
-                    <td class="text-right font-medium">${formatCurrency(e.amountPaid || 0)}</td>
-                    <td><span class="text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-800">${e.status.toUpperCase()}</span></td>
+                    <td class="text-right font-medium">${formatCurrency(e.amount || e.amountPaid || 0)}</td>
+                    <td><span class="text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-800">${(e.status || 'N/A').toUpperCase()}</span></td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -1309,10 +1345,27 @@
             }
         };
         
+        const handleRecalculateAllReferrerTotals = async () => {
+            if (!isSuperAdmin) return;
+            
+            showGlobalLoading("Recalculating ALL Referrer totals...");
+            try {
+                const recalculateAllReferrerTotalsCallable = httpsCallable(functions, 'recalculateAllReferrerTotals');
+                const response = await recalculateAllReferrerTotalsCallable({});
+                showCustomPopup('Recalculation Complete', response.data.message);
+                await fetchDashboardData(); 
+            } catch (error) {
+                console.error("Error recalculating all referrer totals:", error);
+                showCustomPopup('Recalculation Failed', `Error: ${error.message}`);
+            } finally {
+                hideGlobalLoading();
+            }
+        };
+        
         const handleRecalculateRaffleTotals = async () => {
             if (!isSuperAdmin) return;
             
-            showGlobalLoading("Recalculating Split The Pot totals...");
+            showGlobalLoading("Recalculating Split The Pot totals (Global Counter)...");
             try {
                 const recalculateRaffleTotalsCallable = httpsCallable(functions, 'recalculateRaffleTotals');
                 const response = await recalculateRaffleTotalsCallable({});
@@ -1329,7 +1382,7 @@
         const handleRecalculateRolexTotals = async () => {
             if (!isSuperAdmin) return;
             
-            showGlobalLoading("Recalculating Spin The Wheel totals...");
+            showGlobalLoading("Recalculating Spin The Wheel totals (Global Counter)...");
             try {
                 const recalculateRolexTotalsCallable = httpsCallable(functions, 'recalculateRolexTotals');
                 const response = await recalculateRolexTotalsCallable({});
@@ -1915,6 +1968,10 @@
                 
                 // Admin Tools listeners
                 document.getElementById('deleteExpiredTicketsButton').addEventListener('click', handleCleanupClick);
+                
+                // NEW: Recalculate ALL Referrer Totals Button (This is the requested button)
+                document.getElementById('recalculateAllReferrerTotalsButton').addEventListener('click', handleRecalculateAllReferrerTotals);
+                
                 document.getElementById('recalculateTotalsButton').addEventListener('click', handleRecalculateRaffleTotals);
                 document.getElementById('recalculateRolexTotalsButton').addEventListener('click', handleRecalculateRolexTotals); 
 
@@ -1964,7 +2021,7 @@
                         } else if (action === 'view-referrer-sales') { 
                             openReferrerSalesModal(refId, refName);
                         } else if (action === 'promote-sa') {
-                             openUpgradeAdminModal(uid, refName, refId);
+                            openUpgradeAdminModal(uid, refName, refId);
                         }
                     }
                 });

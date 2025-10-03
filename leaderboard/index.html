@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -94,7 +93,7 @@
             transform: scale(1);
         }
 
-        /* Mobile-first adjustment for header navigation */
+        /* Mobile-first adjustment for fixed header navigation */
         @media (max-width: 767px) {
             #main-menu {
                 /* When menu is active, ensure it takes full width below the logo/toggle */
@@ -136,12 +135,11 @@
         </div>
     </div>
 
-    <!-- Updated Header with Image Logo -->
-    <header class="bg-black/40 py-4 px-4 md:px-12 w-full top-0 z-50 shadow-2xl backdrop-blur-sm">
+    <!-- Header (Fixed Position) -->
+    <header class="bg-black/40 py-4 px-4 md:px-12 fixed w-full top-0 z-50 shadow-2xl backdrop-blur-sm">
         <nav class="container mx-auto flex justify-between items-center flex-wrap md:flex-nowrap">
             <div class="flex items-center justify-between w-full md:w-auto">
                 <a href="/" class="flex items-center space-x-2">
-                    <!-- Image Logo added here -->
                     <img src="https://raw.githubusercontent.com/ToratYosef/ToratYosef..github.io/refs/heads/main/assets/logos.jpeg" alt="YDE Logo" class="h-14 sm:h-16 md:h-20 w-auto rounded-full ring-2 ring-yellow-400 p-1">
                 </a>
                 <button id="menu-toggle" class="md:hidden text-white focus:outline-none" aria-label="Toggle menu">
@@ -149,8 +147,9 @@
                 </button>
             </div>
             <ul id="main-menu" class="hidden md:flex flex-col md:flex-row items-center space-y-2 md:space-y-0 md:space-x-8 text-base font-semibold w-full md:w-auto mt-4 md:mt-0">
-                <li><a href="/split-the-pot/" class="text-white hover:text-yellow-400 transition-colors duration-300">Split the Pot</a></li>
-                <li><a href="/spin-the-wheel/" class="text-white hover:text-yellow-400 transition-colors duration-300">Spin the Wheel</a></li>
+                <li><a href="/split-the-pot/" class="text-white hover:text-yellow-400 transition-colors duration-300 block">Split the Pot</a></li>
+                <li><a href="/spin-the-wheel/" class="text-white hover:text-yellow-400 transition-colors duration-300 block">Spin the Wheel</a></li>
+                <li><a href="/leaderboard/" class="text-white hover:text-yellow-400 transition-colors duration-300 block">Leaderboard</a></li>
                 <li><a href="/donate/" class="py-2 px-4 rounded-full bg-yellow-400 text-black hover:bg-yellow-500 transition-colors duration-300 font-bold block">Donate Now</a></li>
             </ul>
         </nav>
@@ -158,11 +157,14 @@
     <!-- End Updated Header -->
 
     <!-- Main Content Container -->
-    <main class="flex-grow pt-[100px]"> <!-- Adjusted pt to accommodate larger header -->
+    <main class="flex-grow pt-[100px]"> <!-- Adjusted pt to accommodate fixed header -->
         <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
             
             <!-- Sub-Header and Search Section -->
             <div class="mb-8 p-6 rounded-2xl">
+                <h1 class="font-title text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-4 text-center">
+                    YDE Fundraising Leaderboard
+                </h1>
                 <p class="text-center text-gray-400 mb-6 text-lg">
                     See who's leading the charge for the Senior Fund! Data updates in real-time.
                 </p>
@@ -266,6 +268,26 @@
         
         // Set log level to Debug
         setLogLevel('Debug');
+
+        // --- REFERRER LINK HANDLERS (New) ---
+        function getQueryParam(param) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(param);
+        }
+
+        function updateNavLinks(refId) {
+            if (!refId) return;
+            const navLinks = document.querySelectorAll('header a');
+            navLinks.forEach(link => {
+                const currentHref = link.getAttribute('href');
+                if (currentHref && currentHref.startsWith('/') && !currentHref.includes('ref=')) {
+                    const separator = currentHref.includes('?') ? '&' : '?';
+                    link.setAttribute('href', `${currentHref}${separator}ref=${refId}`);
+                }
+            });
+        }
+        // --- END REFERRER LINK HANDLERS ---
+
 
         /**
          * Initializes Firebase and authenticates anonymously.
@@ -579,7 +601,7 @@
 
                 // Collect data for the eventual database write if the rank changed since last update
                 // or if it's a first run and rank is null
-                if (newRank !== oldRankInDB || item.rank === null) {
+                if (queueSave && (newRank !== oldRankInDB || item.rank === null)) {
                     ranksToWrite.push({
                         uid: item.uid,
                         newRank: newRank,
@@ -749,7 +771,6 @@
             
             if (menuToggle && mainMenu) {
                 menuToggle.addEventListener('click', () => { 
-                    // Toggles 'hidden' class based on current state
                     mainMenu.classList.toggle('hidden'); 
                 });
             }
@@ -759,6 +780,15 @@
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('search-input').addEventListener('input', handleSearch);
             setupMenuToggle();
+            
+            // --- Referrer Logic Initialization ---
+            const referrerRefId = getQueryParam('ref');
+            if (referrerRefId) {
+                console.log('Referrer ID found:', referrerRefId);
+                updateNavLinks(referrerRefId);
+            }
+            // --- END Referrer Logic Initialization ---
+            
             // Start the application
             initializeFirebase();
         });

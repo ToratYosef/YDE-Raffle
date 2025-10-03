@@ -7,16 +7,26 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f8f9fa; }
+        /* Define the core dark color scheme for consistency */
+        .primary-dark { background-color: #0d1222; }
+        .accent-yellow { color: #facc15; }
+        .card-dark { background-color: #1f2937; }
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            color: #ffffff; /* Default text white */
+            background-color: #0d1222;
+            background-image: linear-gradient(135deg, #0d1222 0%, #151a2d 100%);
+        }
         .dashboard-card {
-            background-color: #ffffff;
+            background-color: #1f2937; /* Dark card color */
             border-radius: 0.75rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+            box-shadow: 0 8px 16px -4px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05); /* Darker shadow, subtle white border */
             transition: all 0.3s ease;
         }
         .tab-button.active {
             border-bottom: 3px solid #facc15; /* Tailwind yellow-400 */
-            color: #1f2937; /* Tailwind gray-800 */
+            color: #facc15; /* Active text is yellow */
             font-weight: 600;
         }
         .data-table th {
@@ -25,24 +35,25 @@
             font-size: 0.75rem;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            color: #6b7280;
-            background-color: #f3f4f6;
-            border-bottom: 2px solid #e5e7eb;
-            cursor: pointer; /* Ensure sortable headers are clickable */
+            color: #9ca3af; /* Light gray text */
+            background-color: #374151; /* Darker header background */
+            border-bottom: 2px solid #4b5563; /* Dark border */
+            cursor: pointer;
         }
         .data-table td {
             padding: 0.75rem 1rem;
             font-size: 0.875rem;
-            border-bottom: 1px solid #f3f4f6;
+            border-bottom: 1px solid #374151; /* Dark border */
+            color: #d1d5db; /* Light gray text for data */
         }
         .modal-overlay {
-            background-color: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(5px);
+            background-color: rgba(0, 0, 0, 0.75); /* Darker overlay */
+            backdrop-filter: blur(8px);
         }
         /* Custom scrollbar for better appearance on table containers */
         .overflow-x-auto::-webkit-scrollbar { height: 8px; }
-        .overflow-x-auto::-webkit-scrollbar-thumb { background-color: #d1d5db; border-radius: 4px; }
-        .overflow-x-auto::-webkit-scrollbar-track { background-color: #f3f4f6; }
+        .overflow-x-auto::-webkit-scrollbar-thumb { background-color: #4b5563; border-radius: 4px; }
+        .overflow-x-auto::-webkit-scrollbar-track { background-color: #1f2937; }
         .referrer-sort-header { user-select: none; }
         .sort-icon { display: none; }
         .sort-header.active .sort-icon { display: inline-block; }
@@ -51,62 +62,119 @@
 <body class="min-h-screen">
 
     <!-- Global Loading Overlay -->
-    <div id="globalLoadingOverlay" class="fixed inset-0 z-50 bg-white/70 backdrop-blur-sm flex flex-col items-center justify-center gap-4 hidden">
-        <div class="animate-spin w-10 h-10 border-4 border-t-4 border-yellow-500 border-opacity-20 rounded-full"></div>
-        <p id="globalSpinnerText" class="text-gray-700 font-semibold">Checking authorization...</p>
+    <div id="globalLoadingOverlay" class="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center gap-4 hidden">
+        <div class="animate-spin w-10 h-10 border-4 border-t-4 border-yellow-400 border-opacity-20 rounded-full"></div>
+        <p id="globalSpinnerText" class="text-white font-semibold">Checking authorization...</p>
     </div>
 
     <!-- Custom Popup Modal -->
     <div id="customPopupOverlay" class="fixed inset-0 z-[101] modal-overlay flex items-center justify-center p-4 hidden">
-        <div id="customPopup" class="bg-white p-6 rounded-lg shadow-2xl max-w-sm w-full text-center scale-95 transition-all duration-300">
-            <h2 id="popupTitle" class="text-2xl font-bold text-yellow-600 mb-3"></h2>
-            <p id="popupMessage" class="text-gray-600 mb-5"></p>
-            <button id="popupCloseButton" class="w-full py-2 rounded-lg bg-yellow-500 text-white font-semibold hover:bg-yellow-600 transition-colors">OK</button>
+        <div id="customPopup" class="bg-gray-800 p-6 rounded-lg shadow-2xl max-w-sm w-full text-center scale-95 transition-all duration-300">
+            <h2 id="popupTitle" class="text-2xl font-bold text-yellow-400 mb-3"></h2>
+            <p id="popupMessage" class="text-gray-300 mb-5"></p>
+            <button id="popupCloseButton" class="w-full py-2 rounded-lg bg-yellow-500 text-black font-semibold hover:bg-yellow-600 transition-colors">OK</button>
+        </div>
+    </div>
+    
+    <!-- Batch Password Reset Modal (Super Admin Only) -->
+    <div id="batchResetModalOverlay" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4 hidden">
+        <div class="bg-gray-800 p-6 rounded-lg shadow-2xl max-w-md w-full">
+            <h2 class="text-2xl font-bold text-red-400 mb-4">Batch Password Reset</h2>
+            <p class="text-gray-300 mb-4">
+                You are about to reset the password for <span id="selectedUserCount" class="font-bold text-red-400">0</span> user(s).
+            </p>
+            <form id="batchResetForm" class="space-y-4">
+                <div>
+                    <label for="batch-new-password" class="block text-sm font-medium text-gray-300">Temporary New Password (min 6 chars)</label>
+                    <input type="password" id="batch-new-password" placeholder="Enter new password" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-red-500 focus:border-red-500 bg-gray-700 text-white" required minlength="6">
+                </div>
+                <div class="pt-4 flex justify-end space-x-3">
+                    <button type="button" id="closeBatchResetModal" class="px-4 py-2 text-gray-300 bg-gray-600 rounded-lg hover:bg-gray-500 transition-colors">Cancel</button>
+                    <button type="submit" id="submitBatchReset" class="px-4 py-2 text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50">
+                        Confirm Reset
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
-    <!-- Manual Sale Modal (Super Admin Only) -->
+    <!-- MISSING MODAL: Manual Sale Modal (Super Admin Only) -->
     <div id="manualSaleModalOverlay" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4 hidden">
-        <div class="bg-white p-6 rounded-lg shadow-2xl max-w-md w-full">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4">Add Manual Raffle Sale (SA Only)</h2>
+        <div class="bg-gray-800 p-6 rounded-lg shadow-2xl max-w-md w-full">
+            <h2 class="text-2xl font-bold text-white mb-4">Add Manual Raffle Sale (SA Only)</h2>
             <form id="manualSaleForm" class="space-y-4">
                 <div>
-                    <input type="text" id="manual-name" placeholder="Customer Full Name" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500" required>
+                    <input type="text" id="manual-name" placeholder="Customer Full Name" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white" required>
                 </div>
                 <div>
-                    <input type="email" id="manual-email" placeholder="Customer Email (Optional)" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500">
+                    <input type="email" id="manual-email" placeholder="Customer Email (Optional)" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white">
                 </div>
                 <div>
-                    <input type="tel" id="manual-phone" placeholder="Customer Phone (Optional)" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500">
+                    <input type="tel" id="manual-phone" placeholder="Customer Phone (Optional)" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white">
                 </div>
                 <div class="flex space-x-4">
-                    <input type="number" id="manual-tickets" placeholder="Tickets Bought" min="1" class="w-1/2 p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500" required>
-                    <input type="number" id="manual-amount" placeholder="Amount Paid ($)" step="0.01" min="0.01" class="w-1/2 p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500" required>
+                    <input type="number" id="manual-tickets" placeholder="Tickets Bought" min="1" class="w-1/2 p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white" required>
+                    <input type="number" id="manual-amount" placeholder="Amount Paid ($)" step="0.01" min="0.01" class="w-1/2 p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white" required>
                 </div>
                 <div id="manual-referrer-container" class="hidden">
-                    <input type="text" id="manual-refId" placeholder="Referrer ID (e.g., A1B2C3)" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500">
-                    <p class="text-xs text-gray-500 mt-1">Credited to this Ref ID.</p>
+                    <input type="text" id="manual-refId" placeholder="Referrer ID (e.g., A1B2C3)" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white">
+                    <p class="text-xs text-gray-400 mt-1">Credited to this Ref ID.</p>
                 </div>
                 <div class="pt-4 flex justify-end space-x-3">
-                    <button type="button" id="closeManualSaleModal" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors">Cancel</button>
-                    <button type="submit" id="submitManualSale" class="px-4 py-2 text-white bg-yellow-500 rounded-lg hover:bg-yellow-600 transition-colors">Add Sale</button>
+                    <button type="button" id="closeManualSaleModal" class="px-4 py-2 text-gray-300 bg-gray-600 rounded-lg hover:bg-gray-500 transition-colors">Cancel</button>
+                    <button type="submit" id="submitManualSale" class="px-4 py-2 text-black bg-yellow-500 rounded-lg hover:bg-yellow-600 transition-colors font-semibold">Add Sale</button>
                 </div>
             </form>
         </div>
     </div>
     
-    <!-- Apply Raffle Tickets Modal (Split the Pot) - Super Admin Only -->
+    <!-- MISSING MODAL: Edit Raffle Sale Modal (Super Admin Only) -->
+    <div id="editSaleModalOverlay" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4 hidden">
+        <div class="bg-gray-800 p-6 rounded-lg shadow-2xl max-w-md w-full">
+            <h2 class="text-2xl font-bold text-white mb-4">Edit Raffle Sale Entry</h2>
+            <form id="editSaleForm" class="space-y-4">
+                <input type="hidden" id="edit-sale-id">
+                <div>
+                    <label for="edit-name" class="block text-sm font-medium text-gray-300">Customer Full Name</label>
+                    <input type="text" id="edit-name" placeholder="Full Name" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white" required>
+                </div>
+                <div>
+                    <label for="edit-email" class="block text-sm font-medium text-gray-300">Email</label>
+                    <input type="email" id="edit-email" placeholder="Email (Optional)" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white">
+                </div>
+                <div>
+                    <label for="edit-phone" class="block text-sm font-medium text-gray-300">Phone</label>
+                    <input type="tel" id="edit-phone" placeholder="Phone (Optional)" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white">
+                </div>
+                <div class="flex space-x-4">
+                    <div class="w-1/2">
+                        <label for="edit-tickets" class="block text-sm font-medium text-gray-300">Tickets Bought</label>
+                        <input type="number" id="edit-tickets" placeholder="Tickets Bought" min="1" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white" required>
+                    </div>
+                    <div class="w-1/2">
+                        <label for="edit-amount" class="block text-sm font-medium text-gray-300">Amount Paid ($)</label>
+                        <input type="number" id="edit-amount" placeholder="Amount Paid ($)" step="0.01" min="0.01" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white" required>
+                    </div>
+                </div>
+                <div class="pt-4 flex justify-end space-x-3">
+                    <button type="button" id="closeEditSaleModal" class="px-4 py-2 text-gray-300 bg-gray-600 rounded-lg hover:bg-gray-500 transition-colors">Cancel</button>
+                    <button type="submit" id="submitEditSale" class="px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MISSING MODAL: Apply Raffle Tickets Modal (Split the Pot) - Super Admin Only -->
     <div id="applyTicketsModalOverlay" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4 hidden">
-        <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <h2 class="text-2xl font-bold text-gray-800 mb-2">Assign/Transfer Split The Pot Tickets to: <span id="targetReferrerName" class="text-blue-600"></span></h2>
-            <p class="text-sm text-gray-500 mb-4">Select sales below to assign (if unassigned) or transfer (if already assigned) them to this referrer's ID (<span id="targetReferrerId"></span>).</p>
+        <div class="bg-gray-800 p-8 rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <h2 class="text-2xl font-bold text-white mb-2">Assign/Transfer Split The Pot Tickets to: <span id="targetReferrerName" class="text-blue-400"></span></h2>
+            <p class="text-sm text-gray-400 mb-4">Select sales below to assign (if unassigned) or transfer (if already assigned) them to this referrer's ID (<span id="targetReferrerId"></span>).</p>
 
             <!-- Search and Action Bar -->
             <div class="flex flex-col md:flex-row gap-3 md:items-center mb-4">
-                <!-- Search now searches by customer or current referrer -->
-                <input type="text" id="unassignedSearchInput" placeholder="Search customer, phone, email, or current referrer ID..." class="w-full md:w-1/2 p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500">
+                <input type="text" id="unassignedSearchInput" placeholder="Search customer, phone, email, or current referrer ID..." class="w-full md:w-1/2 p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white">
                 <div class="flex-grow"></div>
-                <span id="selectedCountDisplay" class="text-sm font-medium text-gray-600">0 sales selected</span>
+                <span id="selectedCountDisplay" class="text-sm font-medium text-gray-400">0 sales selected</span>
                 <button id="applyReferrerButton" class="px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 transition-colors disabled:opacity-50" disabled>
                     Apply Referrer to Selected
                 </button>
@@ -118,39 +186,39 @@
                     <thead>
                         <tr>
                             <th class="w-12 text-center">
-                                <input type="checkbox" id="selectAllUnassigned" class="rounded text-blue-600 focus:ring-blue-500">
+                                <input type="checkbox" id="selectAllUnassigned" class="rounded text-blue-400 focus:ring-blue-400 bg-gray-700 border-gray-600">
                             </th>
                             <th>Date</th>
                             <th>Full Name</th>
                             <th>Phone/Email</th>
                             <th>Tickets</th>
                             <th class="text-right">Amount Paid</th>
-                            <th>Current Referrer</th> <!-- NEW/UPDATED COLUMN -->
+                            <th>Current Referrer</th>
                         </tr>
                     </thead>
                     <tbody id="unassignedSalesTableBody">
-                        <tr><td colspan="7" class="text-center py-4 text-gray-500">Loading sales data...</td></tr>
+                        <tr><td colspan="7" class="text-center py-4 text-gray-400">Loading sales data...</td></tr>
                     </tbody>
                 </table>
             </div>
 
             <div class="pt-6 flex justify-end">
-                <button type="button" id="closeApplyTicketsModal" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors">Close</button>
+                <button type="button" id="closeApplyTicketsModal" class="px-4 py-2 text-gray-300 bg-gray-600 rounded-lg hover:bg-gray-500 transition-colors">Close</button>
             </div>
         </div>
     </div>
     
-    <!-- Apply Rolex Tickets Modal (Spin the Wheel) - Super Admin Only -->
+    <!-- MISSING MODAL: Apply Rolex Tickets Modal (Spin the Wheel) - Super Admin Only -->
     <div id="applyRolexTicketsModalOverlay" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4 hidden">
-        <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <h2 class="text-2xl font-bold text-gray-800 mb-2">Assign/Transfer Spin The Wheel Tickets to: <span id="targetRolexReferrerName" class="text-purple-600"></span></h2>
-            <p class="text-sm text-gray-500 mb-4">Select tickets below to assign or transfer them to this referrer's ID (<span id="targetRolexReferrerId"></span>). Tickets must be Paid or Claimed.</p>
+        <div class="bg-gray-800 p-8 rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <h2 class="text-2xl font-bold text-white mb-2">Assign/Transfer Spin The Wheel Tickets to: <span id="targetRolexReferrerName" class="text-purple-400"></span></h2>
+            <p class="text-sm text-gray-400 mb-4">Select tickets below to assign or transfer them to this referrer's ID (<span id="targetRolexReferrerId"></span>). Tickets must be Paid or Claimed.</p>
 
             <!-- Search and Action Bar -->
             <div class="flex flex-col md:flex-row gap-3 md:items-center mb-4">
-                <input type="text" id="rolexSearchInput" placeholder="Search customer, email, or current referrer ID..." class="w-full md:w-1/2 p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500">
+                <input type="text" id="rolexSearchInput" placeholder="Search customer, email, or current referrer ID..." class="w-full md:w-1/2 p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white">
                 <div class="flex-grow"></div>
-                <span id="selectedRolexCountDisplay" class="text-sm font-medium text-gray-600">0 tickets selected</span>
+                <span id="selectedRolexCountDisplay" class="text-sm font-medium text-gray-400">0 tickets selected</span>
                 <button id="applyRolexReferrerButton" class="px-4 py-2 bg-purple-500 text-white font-semibold rounded-lg shadow-md hover:bg-purple-600 transition-colors disabled:opacity-50" disabled>
                     Apply Referrer to Selected
                 </button>
@@ -162,78 +230,42 @@
                     <thead>
                         <tr>
                             <th class="w-12 text-center">
-                                <input type="checkbox" id="selectAllRolex" class="rounded text-purple-600 focus:ring-purple-500">
+                                <input type="checkbox" id="selectAllRolex" class="rounded text-purple-400 focus:ring-purple-400 bg-gray-700 border-gray-600">
                             </th>
                             <th>Ticket #</th>
                             <th>Date</th>
                             <th>Full Name</th>
                             <th>Email/Phone</th>
                             <th class="text-right">Amount Paid</th>
-                            <th>Current Referrer</th> 
+                            <th>Current Referrer</th>
                         </tr>
                     </thead>
                     <tbody id="rolexAssignmentTableBody">
-                        <tr><td colspan="7" class="text-center py-4 text-gray-500">Loading Spin The Wheel data...</td></tr>
+                        <tr><td colspan="7" class="text-center py-4 text-gray-400">Loading Spin The Wheel data...</td></tr>
                     </tbody>
                 </table>
             </div>
 
             <div class="pt-6 flex justify-end">
-                <button type="button" id="closeApplyRolexTicketsModal" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors">Close</button>
+                <button type="button" id="closeApplyRolexTicketsModal" class="px-4 py-2 text-gray-300 bg-gray-600 rounded-lg hover:bg-gray-500 transition-colors">Close</button>
             </div>
         </div>
     </div>
     
-    <!-- NEW: Edit Raffle Sale Modal (Super Admin Only) -->
-    <div id="editSaleModalOverlay" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4 hidden">
-        <div class="bg-white p-6 rounded-lg shadow-2xl max-w-md w-full">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4">Edit Raffle Sale Entry</h2>
-            <form id="editSaleForm" class="space-y-4">
-                <input type="hidden" id="edit-sale-id">
-                <div>
-                    <label for="edit-name" class="block text-sm font-medium text-gray-700">Customer Full Name</label>
-                    <input type="text" id="edit-name" placeholder="Full Name" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500" required>
-                </div>
-                <div>
-                    <label for="edit-email" class="block text-sm font-medium text-gray-700">Email</label>
-                    <input type="email" id="edit-email" placeholder="Email (Optional)" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500">
-                </div>
-                <div>
-                    <label for="edit-phone" class="block text-sm font-medium text-gray-700">Phone</label>
-                    <input type="tel" id="edit-phone" placeholder="Phone (Optional)" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500">
-                </div>
-                <div class="flex space-x-4">
-                    <div class="w-1/2">
-                        <label for="edit-tickets" class="block text-sm font-medium text-gray-700">Tickets Bought</label>
-                        <input type="number" id="edit-tickets" placeholder="Tickets Bought" min="1" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500" required>
-                    </div>
-                    <div class="w-1/2">
-                        <label for="edit-amount" class="block text-sm font-medium text-gray-700">Amount Paid ($)</label>
-                        <input type="number" id="edit-amount" placeholder="Amount Paid ($)" step="0.01" min="0.01" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500" required>
-                    </div>
-                </div>
-                <div class="pt-4 flex justify-end space-x-3">
-                    <button type="button" id="closeEditSaleModal" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors">Cancel</button>
-                    <button type="submit" id="submitEditSale" class="px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors">Save Changes</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- NEW: Upgrade Admin Confirmation Modal (Super Admin Only) -->
+    <!-- MISSING MODAL: Upgrade Admin Confirmation Modal (Super Admin Only) -->
     <div id="upgradeAdminModalOverlay" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4 hidden">
-        <div class="bg-white p-6 rounded-lg shadow-2xl max-w-sm w-full">
-            <h2 class="text-2xl font-bold text-red-600 mb-4">Confirm Role Change</h2>
-            <p class="text-gray-700 mb-6">
-                Are you sure you want to promote <span id="upgrade-referrer-name" class="font-bold text-gray-900"></span> 
-                (<span id="upgrade-referrer-refid" class="font-mono text-xs bg-gray-100 p-1 rounded"></span>) 
+        <div class="bg-gray-800 p-6 rounded-lg shadow-2xl max-w-sm w-full">
+            <h2 class="text-2xl font-bold text-red-400 mb-4">Confirm Role Change</h2>
+            <p class="text-gray-300 mb-6">
+                Are you sure you want to promote <span id="upgrade-referrer-name" class="font-bold text-white"></span> 
+                (<span id="upgrade-referrer-refid" class="font-mono text-xs bg-gray-700 p-1 rounded"></span>) 
                 to a **Super Admin**?
             </p>
-            <p class="text-sm text-red-500 mb-4">This action grants full system access and requires them to re-login.</p>
+            <p class="text-sm text-red-400 mb-4">This action grants full system access and requires them to re-login.</p>
             <input type="hidden" id="upgrade-referrer-uid">
             
             <div class="pt-4 flex justify-end space-x-3">
-                <button type="button" id="closeUpgradeAdminModal" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors">Cancel</button>
+                <button type="button" id="closeUpgradeAdminModal" class="px-4 py-2 text-gray-300 bg-gray-600 rounded-lg hover:bg-gray-500 transition-colors">Cancel</button>
                 <button type="button" id="confirmUpgradeAdmin" class="px-4 py-2 text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors">Confirm Promote</button>
             </div>
         </div>
@@ -243,14 +275,19 @@
     <!-- Main Dashboard Container -->
     <div id="dashboardContainer" class="hidden max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
         
-        <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b pb-4">
-            <h1 class="text-3xl font-bold text-gray-800 mb-2 md:mb-0">
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b border-gray-700 pb-4">
+            <h1 class="text-3xl font-bold text-white mb-2 md:mb-0">
                 Admin Dashboard 
-                <span id="userRoleDisplay" class="text-base font-normal text-yellow-600"></span>
+                <span id="userRoleDisplay" class="text-base font-normal text-yellow-400"></span>
             </h1>
             <div class="flex items-center space-x-3">
-                <!-- NEW REFRESH BUTTON -->
-                <button id="refreshDataButton" class="flex items-center px-4 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg shadow-md hover:bg-gray-300 transition-colors">
+                <!-- EXPORT BUTTON (New) -->
+                <button id="exportDataButton" class="flex items-center px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 transition-colors hidden" title="Export current table view to CSV">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    Export CSV
+                </button>
+                <!-- REFRESH BUTTON -->
+                <button id="refreshDataButton" class="flex items-center px-4 py-2 bg-gray-700 text-white font-semibold rounded-lg shadow-md hover:bg-gray-600 transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.76 2.82"></path><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.76-2.82"></path><path d="M3 3v4h4M21 21v-4h-4"></path></svg>
                     Refresh Data
                 </button>
@@ -258,7 +295,7 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
                     Add Manual Sale
                 </button>
-                <button id="logoutButton" class="px-3 py-2 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">Logout</button>
+                <button id="logoutButton" class="px-3 py-2 text-sm text-gray-300 bg-gray-600 rounded-lg hover:bg-gray-500 transition-colors">Logout</button>
             </div>
         </header>
 
@@ -266,60 +303,102 @@
         <div id="referrerOverview" class="dashboard-card p-6 mb-6 hidden">
             <!-- New Referral Link Section -->
             <div id="referrerLinkContainer" class="mb-4">
-                <p class="text-sm font-medium text-gray-500 mb-1">Your Referral Link:</p>
-                <div class="flex items-center bg-gray-100 p-2 rounded-lg border border-gray-200">
-                    <span id="referralLink" class="text-base font-mono text-blue-600 truncate mr-3 select-all"></span>
+                <p class="text-sm font-medium text-gray-400 mb-1">Your Referral Link:</p>
+                <div class="flex items-center bg-gray-700 p-2 rounded-lg border border-gray-600">
+                    <span id="referralLink" class="text-base font-mono text-blue-400 truncate mr-3 select-all"></span>
                     <button id="copyLinkButton" class="ml-auto p-1 text-gray-400 hover:text-blue-500 transition-colors" title="Copy Link">
                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M7.75 3.75a.75.75 0 0 1 1.5 0v3.5h3.5a.75.75 0 0 1 0 1.5h-3.5v3.5a.75.75 0 0 1-1.5 0v-3.5h-3.5a.75.75 0 0 1 0-1.5h3.5v-3.5Z" clip-rule="evenodd" /></svg>
                     </button>
                 </div>
             </div>
             
-            <h2 class="text-2xl font-bold text-gray-800 mb-4">Your Performance</h2>
+            <h2 class="text-2xl font-bold text-white mb-4">Your Performance</h2>
             <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
                 <!-- NEW: Total Clicks Card -->
-                <div class="p-4 bg-purple-50 border-l-4 border-purple-500 rounded-lg">
-                    <p class="text-sm font-medium text-gray-500">Total Clicks</p>
-                    <p id="overviewTotalClicks" class="text-xl font-bold text-gray-900 mt-1">0</p>
+                <div class="p-4 bg-purple-900/50 border-l-4 border-purple-500 rounded-lg">
+                    <p class="text-sm font-medium text-gray-400">Total Clicks</p>
+                    <p id="overviewTotalClicks" class="text-xl font-bold text-white mt-1">0</p>
                 </div>
                 
-                <div class="p-4 bg-yellow-50 border-l-4 border-yellow-500 rounded-lg">
-                    <p class="text-sm font-medium text-gray-500">Ref ID</p>
-                    <p id="overviewRefId" class="text-xl font-bold text-gray-900 mt-1">Loading...</p>
+                <div class="p-4 bg-yellow-900/50 border-l-4 border-yellow-500 rounded-lg">
+                    <p class="text-sm font-medium text-gray-400">Ref ID</p>
+                    <p id="overviewRefId" class="text-xl font-bold text-white mt-1">Loading...</p>
                 </div>
-                <div class="p-4 bg-blue-50 border-l-4 border-blue-500 rounded-lg">
-                    <p class="text-sm font-medium text-gray-500">Total Tickets (Split + Spin)</p>
-                    <p id="overviewTotalTickets" class="text-xl font-bold text-gray-900 mt-1">0</p>
+                <div class="p-4 bg-blue-900/50 border-l-4 border-blue-500 rounded-lg">
+                    <p class="text-sm font-medium text-gray-400">Total Tickets (Split + Spin)</p>
+                    <p id="overviewTotalTickets" class="text-xl font-bold text-white mt-1">0</p>
                 </div>
-                <div class="p-4 bg-green-50 border-l-4 border-green-500 rounded-lg">
-                    <p class="text-sm font-medium text-gray-500">Total Sales Amount</p>
-                    <p id="overviewTotalAmount" class="text-xl font-bold text-gray-900 mt-1">$0.00</p>
+                <div class="p-4 bg-green-900/50 border-l-4 border-green-500 rounded-lg">
+                    <p class="text-sm font-medium text-gray-400">Total Sales Amount</p>
+                    <p id="overviewTotalAmount" class="text-xl font-bold text-white mt-1">$0.00</p>
                 </div>
             </div>
         </div>
 
         <!-- Tab Navigation -->
-        <nav class="flex space-x-4 mb-6 border-b border-gray-200">
-            <button data-tab="referrers" class="tab-button py-3 px-4 text-gray-500 hover:text-gray-800 transition-colors hidden">Referrers</button>
-            <button data-tab="raffle" class="tab-button py-3 px-4 text-gray-500 hover:text-gray-800 transition-colors">Split The Pot Sales</button>
-            <button data-tab="rolex" class="tab-button py-3 px-4 text-gray-500 hover:text-gray-800 transition-colors hidden">Spin The Wheel Sales</button>
-            <button data-tab="donations" class="tab-button py-3 px-4 text-gray-500 hover:text-gray-800 transition-colors hidden">Donations</button>
-            <button data-tab="tools" class="tab-button py-3 px-4 text-gray-500 hover:text-gray-800 transition-colors hidden">Admin Tools</button>
+        <nav class="flex space-x-4 mb-6 border-b border-gray-700">
+            <button data-tab="referrers" class="tab-button py-3 px-4 text-gray-400 hover:text-white transition-colors hidden">Referrers</button>
+            <button data-tab="raffle" class="tab-button py-3 px-4 text-gray-400 hover:text-white transition-colors">Split The Pot Sales</button>
+            <button data-tab="rolex" class="tab-button py-3 px-4 text-gray-400 hover:text-white transition-colors hidden">Spin The Wheel Sales</button>
+            <button data-tab="donations" class="tab-button py-3 px-4 text-gray-400 hover:text-white transition-colors hidden">Donations</button>
+            <!-- User Management tab was removed from the nav in the provided HTML. Since the user fixed the batch reset modal, I assume they want the functionality. Restoring it. -->
+            <button data-tab="users" class="tab-button py-3 px-4 text-gray-400 hover:text-white transition-colors hidden">User Management</button>
+            <button data-tab="tools" class="tab-button py-3 px-4 text-gray-400 hover:text-white transition-colors hidden">Admin Tools</button>
         </nav>
 
         <!-- Tab Content Containers -->
         <div id="tab-content" class="space-y-6">
+        
+            <!-- NEW: User Management Tab (Super Admin Only) -->
+            <div id="tab-users" class="tab-pane hidden">
+                <div class="dashboard-card p-4">
+                    <h3 class="text-xl font-semibold mb-3 text-white">All Firebase Users</h3>
+                    
+                    <!-- Controls -->
+                    <div class="flex flex-col sm:flex-row gap-4 mb-4 items-center">
+                        <input type="text" id="userSearchInput" placeholder="Search by Name, Email, or UID..." class="w-full sm:w-1/3 p-2 pl-3 border border-gray-600 rounded-lg focus:ring-red-500 focus:border-red-500 bg-gray-700 text-white">
+                        <div class="flex-grow"></div>
+                        <div class="flex items-center space-x-3">
+                            <span id="usersSelectedCount" class="text-sm font-medium text-gray-400">0 selected</span>
+                            <button id="openBatchResetModalButton" class="px-4 py-2 bg-red-500 text-white font-semibold rounded-lg shadow-md hover:bg-red-600 transition-colors disabled:opacity-50" disabled>
+                                Batch Reset Passwords
+                            </button>
+                        </div>
+                    </div>
 
+                    <div class="overflow-x-auto">
+                        <table class="data-table w-full whitespace-nowrap">
+                            <thead>
+                                <tr>
+                                    <th class="w-12 text-center">
+                                        <input type="checkbox" id="selectAllUsers" class="rounded text-red-500 focus:ring-red-500 bg-gray-700 border-gray-600">
+                                    </th>
+                                    <th class="user-sort-header cursor-pointer" data-sort-key="displayName" data-table="users">Name</th>
+                                    <th class="user-sort-header cursor-pointer" data-sort-key="email" data-table="users">Email</th>
+                                    <th>UID</th>
+                                    <th class="user-sort-header cursor-pointer" data-sort-key="createdAt" data-table="users">Created</th>
+                                    <th>Roles</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTableBody">
+                                <tr><td colspan="7" class="text-center py-4 text-gray-400">Loading user list...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
             <!-- Referrers Tab Content (Super Admin Only) -->
             <div id="tab-referrers" class="tab-pane hidden">
                 <div class="dashboard-card p-4">
-                    <h3 class="text-xl font-semibold mb-3 text-gray-800">All Referrers</h3>
+                    <h3 class="text-xl font-semibold mb-3 text-white">All Referrers</h3>
                     
                     <!-- Search and Sort Controls -->
                     <div class="flex flex-col sm:flex-row gap-4 mb-4">
                         <!-- Search Input -->
                         <div class="relative flex-grow">
-                            <input type="text" id="referrerSearchInput" placeholder="Search by Name, ID, or Email..." class="w-full p-2 pl-10 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500">
+                            <input type="text" id="referrerSearchInput" placeholder="Search by Name, ID, or Email..." class="w-full p-2 pl-10 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.197 5.197a7.5 7.5 0 0010.607 10.607z" /></svg>
                         </div>
                     </div>
@@ -328,34 +407,34 @@
                         <table class="data-table w-full whitespace-nowrap">
                             <thead>
                                 <tr>
-                                    <th class="referrer-sort-header cursor-pointer group hover:bg-gray-200" data-sort-key="name">
+                                    <th class="referrer-sort-header cursor-pointer group hover:bg-gray-700" data-sort-key="name">
                                         <div class="flex items-center justify-between">Name
                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 ml-1 hidden text-yellow-500"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
                                         </div>
                                     </th>
-                                    <th class="referrer-sort-header cursor-pointer group hover:bg-gray-200" data-sort-key="refId">
+                                    <th class="referrer-sort-header cursor-pointer group hover:bg-gray-700" data-sort-key="refId">
                                         <div class="flex items-center justify-between">Ref ID
                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 ml-1 hidden text-yellow-500"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
                                         </div>
                                     </th>
                                     <th>Email</th>
-                                    <th class="referrer-sort-header cursor-pointer group hover:bg-gray-200 text-right" data-sort-key="raffleTickets">
+                                    <th class="referrer-sort-header cursor-pointer group hover:bg-gray-700 text-right" data-sort-key="raffleTickets">
                                         <div class="flex items-center justify-end">Split Pot Tickets
                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 ml-1 hidden text-yellow-500"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
                                         </div>
                                     </th>
-                                    <th class="referrer-sort-header cursor-pointer group hover:bg-gray-200 text-right" data-sort-key="rolexTickets">
+                                    <th class="referrer-sort-header cursor-pointer group hover:bg-gray-700 text-right" data-sort-key="rolexTickets">
                                         <div class="flex items-center justify-end">Spin Wheel Tickets
                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 ml-1 hidden text-yellow-500"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
                                         </div>
                                     </th>
-                                    <th class="referrer-sort-header cursor-pointer group hover:bg-gray-200 text-right" data-sort-key="combinedTotalAmount">
+                                    <th class="referrer-sort-header cursor-pointer group hover:bg-gray-700 text-right" data-sort-key="combinedTotalAmount">
                                         <div class="flex items-center justify-end">Total Amount
                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 ml-1 hidden text-yellow-500"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
                                         </div>
                                     </th>
                                     <th>Goal</th>
-                                    <th class="referrer-sort-header cursor-pointer group hover:bg-gray-200 text-right" data-sort-key="clickCount">
+                                    <th class="referrer-sort-header cursor-pointer group hover:bg-gray-700 text-right" data-sort-key="clickCount">
                                         <div class="flex items-center justify-end">Clicks
                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 ml-1 hidden text-yellow-500"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
                                         </div>
@@ -364,7 +443,7 @@
                                 </tr>
                             </thead>
                             <tbody id="referrersTableBody">
-                                <tr><td colspan="9" class="text-center py-4 text-gray-500">Loading referrer data...</td></tr>
+                                <tr><td colspan="9" class="text-center py-4 text-gray-400">Loading referrer data...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -376,11 +455,11 @@
                 <div class="dashboard-card p-4 overflow-x-auto">
                     <!-- Filter and Header Controls -->
                     <div class="flex justify-between items-center mb-3">
-                        <h3 class="text-xl font-semibold text-gray-800" id="raffleSalesHeader">Split The Pot Sales</h3>
+                        <h3 class="text-xl font-semibold text-white" id="raffleSalesHeader">Split The Pot Sales</h3>
                         <!-- NEW FILTER DROPDOWN -->
                         <div class="flex items-center space-x-2">
-                            <label for="raffleFilter" class="text-sm font-medium text-gray-600">Filter:</label>
-                            <select id="raffleFilter" class="p-2 border border-gray-300 rounded-lg text-sm focus:ring-yellow-500 focus:border-yellow-500">
+                            <label for="raffleFilter" class="text-sm font-medium text-gray-400">Filter:</label>
+                            <select id="raffleFilter" class="p-2 border border-gray-600 rounded-lg text-sm focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white">
                                 <option value="all">All Sales</option>
                                 <option value="assigned">Assigned</option>
                                 <option value="unassigned">Unassigned</option>
@@ -402,7 +481,7 @@
                             </tr>
                         </thead>
                         <tbody id="raffleTableBody">
-                            <tr><td colspan="7" class="text-center py-4 text-gray-500">Loading raffle sales data...</td></tr>
+                            <tr><td colspan="7" class="text-center py-4 text-gray-400">Loading raffle sales data...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -413,11 +492,11 @@
                 <div class="dashboard-card p-4 overflow-x-auto">
                     <!-- Filter and Header Controls -->
                     <div class="flex justify-between items-center mb-3">
-                        <h3 class="text-xl font-semibold text-gray-800" id="rolexSalesHeader">Spin The Wheel Sales (SA Only)</h3>
+                        <h3 class="text-xl font-semibold text-white" id="rolexSalesHeader">Spin The Wheel Sales (SA Only)</h3>
                         <!-- NEW FILTER DROPDOWN -->
                         <div class="flex items-center space-x-2">
-                            <label for="rolexFilter" class="text-sm font-medium text-gray-600">Filter:</label>
-                            <select id="rolexFilter" class="p-2 border border-gray-300 rounded-lg text-sm focus:ring-purple-500 focus:border-purple-500">
+                            <label for="rolexFilter" class="text-sm font-medium text-gray-400">Filter:</label>
+                            <select id="rolexFilter" class="p-2 border border-gray-600 rounded-lg text-sm focus:ring-purple-500 focus:border-purple-500 bg-gray-700 text-white">
                                 <option value="all">All Tickets</option>
                                 <option value="assigned">Assigned</option>
                                 <option value="unassigned">Unassigned</option>
@@ -438,7 +517,7 @@
                             </tr>
                         </thead>
                         <tbody id="rolexTableBody">
-                            <tr><td colspan="7" class="text-center py-4 text-gray-500">No Spin The Wheel sales found.</td></tr>
+                            <tr><td colspan="7" class="text-center py-4 text-gray-400">No Spin The Wheel sales found.</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -447,7 +526,7 @@
             <!-- Donations Tab Content (Super Admin Only) -->
             <div id="tab-donations" class="tab-pane hidden">
                 <div class="dashboard-card p-4 overflow-x-auto">
-                    <h3 class="text-xl font-semibold mb-3 text-gray-800">All Donations (SA Only)</h3>
+                    <h3 class="text-xl font-semibold mb-3 text-white">All Donations (SA Only)</h3>
                     <table class="data-table w-full whitespace-nowrap">
                         <thead>
                             <tr>
@@ -460,7 +539,7 @@
                             </tr>
                         </thead>
                         <tbody id="donationsTableBody">
-                            <tr><td colspan="6" class="text-center py-4 text-gray-500">No donations found.</td></tr>
+                            <tr><td colspan="6" class="text-center py-4 text-gray-400">No donations found.</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -469,12 +548,12 @@
             <!-- Admin Tools Tab Content (Super Admin Only) -->
             <div id="tab-tools" class="tab-pane hidden">
                 <div class="dashboard-card p-6 space-y-4">
-                    <h3 class="text-2xl font-bold text-gray-800">System Tools (SA Only)</h3>
+                    <h3 class="text-2xl font-bold text-white">System Tools (SA Only)</h3>
                     
                     <!-- Reserved Ticket Cleanup -->
-                    <div class="border p-4 rounded-lg bg-red-50 border-red-200">
-                        <h4 class="font-semibold text-lg text-red-700 mb-2">Reserved Ticket Cleanup (Spin The Wheel)</h4>
-                        <div id="reservedTicketInfo" class="text-sm text-gray-600 mb-3">Loading counts...</div>
+                    <div class="border p-4 rounded-lg bg-red-900/50 border-red-700">
+                        <h4 class="font-semibold text-lg text-red-400 mb-2">Reserved Ticket Cleanup (Spin The Wheel)</h4>
+                        <div id="reservedTicketInfo" class="text-sm text-gray-300 mb-3">Loading counts...</div>
                         <button id="deleteExpiredTicketsButton" class="px-4 py-2 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50">
                             Manually Run Cleanup
                         </button>
@@ -484,27 +563,27 @@
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         
                         <!-- NEW: Recalculate ALL Referrer Totals (The requested feature) -->
-                        <div id="recalculateAllTotalsCard" class="border p-4 rounded-lg bg-red-100 border-red-300">
-                            <h4 class="font-semibold text-lg text-red-700 mb-2">Recalculate ALL Referrer Totals</h4>
-                            <p class="text-sm text-gray-600 mb-3">Rebuilds all ticket counts (Split/Spin) and combined sales amount for **every** referrer from all sales data.</p>
+                        <div id="recalculateAllTotalsCard" class="border p-4 rounded-lg bg-red-900/50 border-red-700">
+                            <h4 class="font-semibold text-lg text-red-400 mb-2">Recalculate ALL Referrer Totals</h4>
+                            <p class="text-sm text-gray-300 mb-3">Rebuilds all ticket counts (Split/Spin) and combined sales amount for **every** referrer from all sales data.</p>
                             <button id="recalculateAllReferrerTotalsButton" class="px-4 py-2 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50">
                                 Rebuild All Totals
                             </button>
                         </div>
                         
                         <!-- Recalculate Split The Pot Totals (Original) -->
-                        <div id="recalculateRaffleTotalsCard" class="border p-4 rounded-lg bg-indigo-50 border-indigo-200">
-                            <h4 class="font-semibold text-lg text-indigo-700 mb-2">Recalculate Split The Pot Totals (Global)</h4>
-                            <p class="text-sm text-gray-600 mb-3">Resets and sums all Split the Pot entries to update **Global** <code>totalTickets</code> (Split Count) and <code>totalAmount</code> (Split $).</p>
+                        <div id="recalculateRaffleTotalsCard" class="border p-4 rounded-lg bg-indigo-900/50 border-indigo-700">
+                            <h4 class="font-semibold text-lg text-indigo-400 mb-2">Recalculate Split The Pot Totals (Global)</h4>
+                            <p class="text-sm text-gray-300 mb-3">Resets and sums all Split the Pot entries to update **Global** <code>totalTickets</code> (Split Count) and <code>totalAmount</code> (Split $).</p>
                             <button id="recalculateTotalsButton" class="px-4 py-2 bg-indigo-500 text-white font-semibold rounded-lg hover:bg-indigo-600 transition-colors disabled:opacity-50">
                                 Recalculate Global Pot
                             </button>
                         </div>
                         
                         <!-- Recalculate Spin The Wheel Totals (NEW) -->
-                        <div id="recalculateRolexTotalsCard" class="border p-4 rounded-lg bg-purple-50 border-purple-200">
-                            <h4 class="font-semibold text-lg text-purple-700 mb-2">Recalculate Spin The Wheel Totals (Global)</h4>
-                            <p class="text-sm text-gray-600 mb-3">Resets and sums all Spin tickets to update **Global** <code>rolexTicketsTotal</code> (Spin Count) and the combined <code>totalAmount</code> ($).</p>
+                        <div id="recalculateRolexTotalsCard" class="border p-4 rounded-lg bg-purple-900/50 border-purple-700">
+                            <h4 class="font-semibold text-lg text-purple-400 mb-2">Recalculate Spin The Wheel Totals (Global)</h4>
+                            <p class="text-sm text-gray-300 mb-3">Resets and sums all Spin tickets to update **Global** <code>rolexTicketsTotal</code> (Spin Count) and the combined <code>totalAmount</code> ($).</p>
                             <button id="recalculateRolexTotalsButton" class="px-4 py-2 bg-purple-500 text-white font-semibold rounded-lg hover:bg-purple-600 transition-colors disabled:opacity-50">
                                 Recalculate Global Wheel
                             </button>
@@ -515,25 +594,25 @@
             </div>
         </div>
 
-        <p id="authErrorDisplay" class="text-red-500 text-center mt-8 hidden">
+        <p id="authErrorDisplay" class="text-red-400 text-center mt-8 hidden">
             Authentication Error: You must sign in with a valid Admin, Super Admin, or Referrer account.
         </p>
     </div>
     
     <!-- Login Modal -->
     <div id="loginModalOverlay" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4">
-        <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-sm">
-            <h2 class="text-3xl font-bold text-gray-800 mb-6 text-center">Admin Login</h2>
+        <div class="bg-gray-800 p-8 rounded-lg shadow-2xl w-full max-w-sm">
+            <h2 class="text-3xl font-bold text-white mb-6 text-center">Admin Login</h2>
             <form id="loginForm" class="space-y-4">
                 <div>
-                    <input type="email" id="loginEmail" placeholder="Email" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500" required>
+                    <input type="email" id="loginEmail" placeholder="Email" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white" required>
                 </div>
                 <div>
-                    <input type="password" id="loginPassword" placeholder="Password" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500" required>
+                    <input type="password" id="loginPassword" placeholder="Password" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white" required>
                 </div>
-                <button type="submit" id="loginButton" class="w-full py-3 text-white bg-yellow-500 rounded-lg font-semibold hover:bg-yellow-600 transition-colors">Sign In</button>
+                <button type="submit" id="loginButton" class="w-full py-3 text-black bg-yellow-500 rounded-lg font-semibold hover:bg-yellow-600 transition-colors">Sign In</button>
             </form>
-            <p id="loginError" class="text-red-500 text-sm mt-3 text-center hidden"></p>
+            <p id="loginError" class="text-red-400 text-sm mt-3 text-center hidden"></p>
         </div>
     </div>
 
@@ -566,6 +645,9 @@
         let isLoggedInAdmin = false; 
 
         // --- GLOBAL STATE ---
+        let allAuthUsers = []; // New array to hold all users from Firebase Auth
+        let filteredAuthUsers = [];
+        let selectedUserUids = new Set(); // New Set for multi-select UIDs
         let allAssignmentRaffleSales = []; 
         let filteredRaffleSales = []; 
         let selectedRaffleSaleIds = new Set(); 
@@ -578,9 +660,9 @@
         let targetRolexRefId = null;
         let targetRolexRefName = null;
         
-        // State for filtering the Raffle Sales tab for a specific referrer
-        let raffleFilterRefId = null;
-        let raffleFilterRefName = null;
+        // Unified state for filtering sales tables by specific referrer
+        let activeRefIdFilter = null;
+        let activeRefNameFilter = null;
 
         // State for sorting and filtering the sales tables
         let raffleSortConfig = { key: 'timestamp', direction: 'desc' };
@@ -591,7 +673,11 @@
         
         // State for sorting the Referrers table
         let referrerSortConfig = { key: 'combinedTotalAmount', direction: 'desc' };
+        let userSortConfig = { key: 'createdAt', direction: 'desc' }; // Default sort for users
         let searchTerm = '';
+        let userSearchTerm = '';
+        let currentTab = ''; // Tracks the currently active tab
+
         // ---------------------------------------------
 
         // Configuration and App ID (MUST be present in Canvas environment)
@@ -615,7 +701,6 @@
         /**
          * Parses a timestamp (can be a Date, string, Firestore Timestamp object from client or server-serialized)
          * and formats it into a human-readable string.
-         * Fixes "Invalid Date" issue by explicitly checking for server-serialized Firebase Timestamp properties.
          */
         const formatDate = (timestamp) => {
             if (!timestamp) return 'N/A';
@@ -648,6 +733,30 @@
             return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
         };
         
+        /**
+         * Safely converts a value (Firebase Timestamp, Date object, string, or number) to milliseconds.
+         */
+        const getTimestampValue = (val) => {
+            if (!val) return 0;
+            
+            let seconds = val.seconds || val._seconds;
+
+            if (val.toDate && typeof val.toDate === 'function') {
+                // Client SDK Timestamp
+                return val.toDate().getTime();
+            } else if (typeof seconds === 'number') {
+                // Server-serialized Timestamp
+                return seconds * 1000;
+            } else {
+                // Handle Date object or parsable value (string/number)
+                let date = new Date(val);
+                if (isNaN(date.getTime())) {
+                    return 0;
+                }
+                return date.getTime();
+            }
+        };
+
         const showGlobalLoading = (message = "Loading dashboard data...") => {
             document.getElementById('globalSpinnerText').textContent = message;
             document.getElementById('globalLoadingOverlay').classList.remove('hidden');
@@ -712,31 +821,6 @@
         
         // --- Client-Side Sorting and Filtering Logic ---
         
-        /**
-         * Safely converts a value (Firebase Timestamp, Date object, string, or number) to milliseconds.
-         * Returns 0 for null/undefined/invalid dates.
-         */
-        const getTimestampValue = (val) => {
-            if (!val) return 0;
-            
-            let seconds = val.seconds || val._seconds;
-
-            if (val.toDate && typeof val.toDate === 'function') {
-                // Client SDK Timestamp
-                return val.toDate().getTime();
-            } else if (typeof seconds === 'number') {
-                // Server-serialized Timestamp
-                return seconds * 1000;
-            } else {
-                // Handle Date object or parsable value (string/number)
-                let date = new Date(val);
-                if (isNaN(date.getTime())) {
-                    return 0;
-                }
-                return date.getTime();
-            }
-        };
-
         const sortEntries = (data, sortConfig) => {
             // 1. Sort
             if (sortConfig.key) {
@@ -744,14 +828,14 @@
                     let aVal = a[sortConfig.key];
                     let bVal = b[sortConfig.key];
                     
-                    if (sortConfig.key === 'name' || sortConfig.key === 'fullName' || sortConfig.key === 'referrerRefId') {
+                    if (sortConfig.key === 'name' || sortConfig.key === 'fullName' || sortConfig.key === 'referrerRefId' || sortConfig.key === 'id' || sortConfig.key === 'email' || sortConfig.key === 'displayName') {
                         // String comparison
                         aVal = String(aVal || '').toLowerCase();
                         bVal = String(bVal || '').toLowerCase();
                         if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
                         if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
                         return 0;
-                    } else if (sortConfig.key === 'timestamp') {
+                    } else if (sortConfig.key === 'timestamp' || sortConfig.key === 'createdAt' || sortConfig.key === 'lastSignInTime') {
                         // Date comparison
                         const aTime = getTimestampValue(aVal);
                         const bTime = getTimestampValue(bVal);
@@ -778,6 +862,16 @@
                        (r.email || '').toLowerCase().includes(searchLower);
             });
             return sortEntries(filtered, referrerSortConfig);
+        };
+
+        const filterAuthUsers = (data) => {
+            let filtered = data.filter(u => {
+                const searchLower = userSearchTerm.toLowerCase();
+                return (u.displayName || '').toLowerCase().includes(searchLower) ||
+                       (u.email || '').toLowerCase().includes(searchLower) ||
+                       (u.uid || '').toLowerCase().includes(searchLower);
+            });
+            return sortEntries(filtered, userSortConfig);
         };
         
         const filterSalesEntries = (data, filterType) => {
@@ -831,20 +925,37 @@
             donationEntries: [],
             userData: {}
         };
-        let currentTab = '';
 
         const renderTables = () => {
             if (isSuperAdmin) {
+                renderAuthUsersTable(allAuthUsers); // New User Management Table
                 renderReferrersTable(dashboardData.referrers);
                 renderRolexTable(dashboardData.rolexEntries); 
                 renderDonationsTable(dashboardData.donationEntries);
             }
+            // Render Raffle table always (as it's the default or main referrer view)
             renderRaffleTable(dashboardData.raffleEntries);
             
             if (isReferrer && !isSuperAdmin) {
                 renderRolexTable(dashboardData.rolexEntries);
             }
         };
+
+        const fetchAllUsers = async () => {
+            if (!isSuperAdmin) return;
+            showGlobalLoading("Fetching all users...");
+            try {
+                const getAllAuthUsersCallable = httpsCallable(functions, 'getAllAuthUsers');
+                const response = await getAllAuthUsersCallable({});
+                allAuthUsers = response.data.users;
+                renderAuthUsersTable(allAuthUsers);
+            } catch (error) {
+                console.error("Error fetching all users:", error);
+                showCustomPopup('User Fetch Error', `Failed to load user list: ${error.message}`);
+            } finally {
+                // Keep the global spinner open until all dashboard data is loaded later
+            }
+        }
 
         const fetchDashboardData = async () => {
             showGlobalLoading("Fetching dashboard data...");
@@ -857,6 +968,12 @@
                 isReferrer = dashboardData.isReferrer;
                 isLoggedInAdmin = dashboardData.isSuperAdmin || dashboardData.isReferrer || (auth.currentUser && auth.currentUser.customClaims.admin);
 
+                // Fetch all users ONLY for Super Admin
+                if (isSuperAdmin) {
+                    // This call will set allAuthUsers and call renderAuthUsersTable
+                    await fetchAllUsers();
+                }
+
                 dashboardData = calculateReferrerMetrics(dashboardData); 
 
                 let roleText = 'Admin';
@@ -868,8 +985,10 @@
                 const donationTab = document.querySelector('[data-tab="donations"]');
                 const toolsTab = document.querySelector('[data-tab="tools"]');
                 const rolexTab = document.querySelector('[data-tab="rolex"]');
+                const usersTab = document.querySelector('[data-tab="users"]');
                 const addManualSaleButton = document.getElementById('addManualSaleButton');
                 const overviewCard = document.getElementById('referrerOverview');
+                const exportButton = document.getElementById('exportDataButton');
 
                 // --- Access Control Logic ---
                 
@@ -877,28 +996,34 @@
                 donationTab.classList.add('hidden');
                 toolsTab.classList.add('hidden');
                 rolexTab.classList.add('hidden');
+                usersTab.classList.add('hidden'); // Default hide new tab
                 addManualSaleButton.classList.add('hidden');
                 overviewCard.classList.add('hidden');
+                exportButton.classList.add('hidden'); // Default hide
+
                 
                 if (isSuperAdmin) {
                     referrerTab.classList.remove('hidden');
                     donationTab.classList.remove('hidden');
                     toolsTab.classList.remove('hidden');
                     rolexTab.classList.remove('hidden'); 
+                    usersTab.classList.remove('hidden'); // Show new tab
                     addManualSaleButton.classList.remove('hidden');
-                    document.getElementById('manual-referrer-container').classList.remove('hidden'); 
+                    // The manual-referrer-container is inside the manual sale modal, so it doesn't need to be accessed here, but the check for its visibility is kept below.
+                    // document.getElementById('manual-referrer-container').classList.remove('hidden'); 
                     document.getElementById('recalculateRaffleTotalsCard').classList.remove('hidden');
                     document.getElementById('recalculateRolexTotalsCard').classList.remove('hidden');
-                    document.getElementById('recalculateAllTotalsCard').classList.remove('hidden'); // Show NEW card
+                    document.getElementById('recalculateAllTotalsCard').classList.remove('hidden');
                     overviewCard.classList.remove('hidden');
+                    exportButton.classList.remove('hidden'); // Show export button
                     
-                    currentTab = currentTab || 'referrers';
+                    currentTab = currentTab || 'referrers'; // Set referrers tab as default for SA
 
                 } else if (isReferrer) {
                     overviewCard.classList.remove('hidden');
                     document.querySelector('[data-tab="raffle"]').classList.remove('hidden');
                     rolexTab.classList.add('hidden'); 
-                    document.getElementById('manual-referrer-container').classList.add('hidden'); 
+                    // document.getElementById('manual-referrer-container').classList.add('hidden'); 
 
                     currentTab = currentTab || 'raffle';
                     
@@ -931,6 +1056,7 @@
                 
                 renderTables();
                 updateSortIndicators('referrer', referrerSortConfig); 
+                updateSortIndicators('users', userSortConfig);
                 
                 if (isSuperAdmin || isLoggedInAdmin) {
                     await updateReservedTicketCounts();
@@ -954,24 +1080,202 @@
         
         // --- Sorting Indicator Logic ---
         const updateSortIndicators = (table, config) => {
-            document.querySelectorAll(`[data-table="${table}"]`).forEach(header => {
-                header.classList.remove('active', 'text-yellow-700', 'text-purple-700', 'font-semibold');
-                const icon = header.querySelector('.sort-icon');
-                if (icon) icon.classList.add('hidden');
+            // Find all headers associated with the table
+            document.querySelectorAll(`.sort-header[data-table="${table}"], .referrer-sort-header[data-sort-key], .user-sort-header[data-sort-key]`).forEach(header => {
+                // Determine if this header belongs to the current table context based on class or attribute
+                const tableContext = header.dataset.table || (header.classList.contains('referrer-sort-header') ? 'referrer' : (header.classList.contains('user-sort-header') ? 'users' : ''));
+                if (tableContext === table) {
+                    header.classList.remove('active', 'text-yellow-400', 'text-purple-400', 'text-red-400', 'font-semibold');
+                    
+                    // Specific handling for referrer table header icons (using the nested SVG)
+                    if (header.classList.contains('referrer-sort-header')) {
+                        header.querySelectorAll('svg').forEach(svg => svg.classList.add('hidden'));
+                    }
+                    
+                    // Specific handling for non-referrer/user sales table icons (using the inner span)
+                    const icon = header.querySelector('.sort-icon');
+                    if (icon) icon.classList.add('hidden');
+                }
             });
             
-            const activeHeader = document.querySelector(`[data-table="${table}"][data-sort-key="${config.key}"]`);
+            // Highlight the active header
+            const activeHeader = document.querySelector(`[data-table="${table}"][data-sort-key="${config.key}"], .referrer-sort-header[data-sort-key="${config.key}"], .user-sort-header[data-sort-key="${config.key}"]`);
             if (activeHeader) {
-                activeHeader.classList.add('active', 'font-semibold', (table === 'rolex' ? 'text-purple-700' : 'text-yellow-700'));
-                const icon = activeHeader.querySelector('.sort-icon');
-                if (icon) {
-                    icon.classList.remove('hidden');
-                    icon.innerHTML = config.direction === 'asc' ? '&#9650;' : '&#9660;'; // Up or Down Triangle
+                activeHeader.classList.add('active', 'font-semibold');
+
+                // Determine color based on table type
+                let colorClass = 'text-yellow-400'; // Default for raffle/referrer
+                if (table === 'rolex') colorClass = 'text-purple-400';
+                else if (table === 'users') colorClass = 'text-red-400';
+
+                activeHeader.classList.add(colorClass);
+
+                // Handle icon display
+                if (activeHeader.classList.contains('referrer-sort-header')) {
+                    // Handle nested SVG for referrer table
+                    const svg = activeHeader.querySelector('svg');
+                    if (svg) {
+                        svg.classList.remove('hidden');
+                        // Rotate SVG for direction
+                        svg.style.transform = config.direction === 'asc' ? 'rotate(180deg)' : 'rotate(0deg)';
+                    }
+                } else {
+                    // Handle inner span for sales tables
+                    const icon = activeHeader.querySelector('.sort-icon');
+                    if (icon) {
+                        icon.classList.remove('hidden');
+                        icon.innerHTML = config.direction === 'asc' ? '&#9650;' : '&#9660;'; // Up or Down Triangle
+                    }
                 }
             }
         };
 
         // --- Render Functions ---
+        
+        const renderAuthUsersTable = (users) => {
+            const tbody = document.getElementById('usersTableBody');
+            tbody.innerHTML = '';
+            
+            filteredAuthUsers = filterAuthUsers(users);
+
+            // 1. Reset Select All and count
+            const selectAllCheckbox = document.getElementById('selectAllUsers');
+            selectAllCheckbox.checked = false;
+            selectedUserUids.clear();
+            document.getElementById('usersSelectedCount').textContent = `0 selected`;
+            document.getElementById('openBatchResetModalButton').disabled = true;
+
+            if (filteredAuthUsers.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-400">No users found matching search criteria.</td></tr>';
+                return;
+            }
+            
+            filteredAuthUsers.forEach(u => {
+                const tr = document.createElement('tr');
+                
+                const isSelected = selectedUserUids.has(u.uid);
+                
+                const statusContent = u.disabled 
+                    ? '<span class="text-xs font-medium px-2 py-1 rounded-full bg-red-900/50 text-red-400">DISABLED</span>'
+                    : '<span class="text-xs font-medium px-2 py-1 rounded-full bg-green-900/50 text-green-400">ACTIVE</span>';
+
+                const roles = [];
+                if (u.isSuperAdmin) roles.push('SA');
+                if (u.isReferrer) roles.push('Ref');
+                if (u.isAdmin && !u.isSuperAdmin && !u.isReferrer) roles.push('Admin');
+                if (roles.length === 0) roles.push('User');
+
+                tr.innerHTML = `
+                    <td class="text-center">
+                        <input type="checkbox" data-uid="${u.uid}" class="user-select-checkbox rounded text-red-500 focus:ring-red-500 bg-gray-700 border-gray-600" ${isSelected ? 'checked' : ''}>
+                    </td>
+                    <td>${u.displayName}</td>
+                    <td><span class="${u.emailVerified ? 'text-green-400' : 'text-orange-400'}" title="${u.emailVerified ? 'Verified' : 'Unverified'}">${u.email}</span></td>
+                    <td class="font-mono text-xs text-gray-400 truncate max-w-[150px]">${u.uid}</td>
+                    <td>${formatDate(u.createdAt)}</td>
+                    <td>${roles.map(r => `<span class="text-xs font-medium px-2 py-1 rounded-full bg-gray-600 text-gray-300">${r}</span>`).join(' ')}</td>
+                    <td>${statusContent}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+            updateSortIndicators('users', userSortConfig);
+        };
+        
+        const handleUserCheckboxChange = (e) => {
+            const uid = e.target.dataset.uid;
+            if (e.target.checked) {
+                selectedUserUids.add(uid);
+            } else {
+                selectedUserUids.delete(uid);
+            }
+            
+            // Update UI elements
+            document.getElementById('usersSelectedCount').textContent = `${selectedUserUids.size} selected`;
+            document.getElementById('openBatchResetModalButton').disabled = selectedUserUids.size === 0;
+
+            const selectAllCheckbox = document.getElementById('selectAllUsers');
+            if (selectedUserUids.size === filteredAuthUsers.length && filteredAuthUsers.length > 0) {
+                selectAllCheckbox.checked = true;
+            } else {
+                selectAllCheckbox.checked = false;
+            }
+        };
+
+        const handleUserSelectAllChange = (e) => {
+            selectedUserUids.clear();
+            const isChecked = e.target.checked;
+
+            document.querySelectorAll('.user-select-checkbox').forEach(checkbox => {
+                checkbox.checked = isChecked;
+                const uid = checkbox.dataset.uid;
+                if (isChecked) {
+                    selectedUserUids.add(uid);
+                }
+            });
+
+            document.getElementById('usersSelectedCount').textContent = `${selectedUserUids.size} selected`;
+            document.getElementById('openBatchResetModalButton').disabled = selectedUserUids.size === 0;
+        };
+
+        const handleUserSearchChange = (e) => {
+            userSearchTerm = e.target.value;
+            renderAuthUsersTable(allAuthUsers);
+        };
+        
+        const openBatchResetModal = () => {
+            if (selectedUserUids.size === 0) {
+                showCustomPopup('Selection Required', 'Please select at least one user to reset the password.');
+                return;
+            }
+            document.getElementById('selectedUserCount').textContent = selectedUserUids.size;
+            document.getElementById('batchResetForm').reset();
+            document.getElementById('submitBatchReset').disabled = false;
+            document.getElementById('batchResetModalOverlay').classList.remove('hidden');
+        };
+
+        const closeBatchResetModal = () => {
+            document.getElementById('batchResetModalOverlay').classList.add('hidden');
+        };
+
+        const handleBatchResetSubmit = async (e) => {
+            e.preventDefault();
+            
+            const newPassword = document.getElementById('batch-new-password').value;
+            const uidsToReset = Array.from(selectedUserUids);
+
+            if (newPassword.length < 6) {
+                showCustomPopup('Invalid Password', 'The new password must be at least 6 characters long.');
+                return;
+            }
+
+            closeBatchResetModal();
+            showGlobalLoading(`Resetting passwords for ${uidsToReset.length} users...`);
+
+            try {
+                const adminResetMultiPasswordCallable = httpsCallable(functions, 'adminResetMultiPassword');
+                const response = await adminResetMultiPasswordCallable({ uids: uidsToReset, newPassword });
+
+                const { successfulResets, failedResets } = response.data;
+
+                if (failedResets.length === 0) {
+                    showCustomPopup('Batch Reset Complete', `Successfully reset ${successfulResets.length} password(s). All users must now use the new temporary password.`);
+                } else {
+                    showCustomPopup('Batch Reset Complete (With Errors)', 
+                        `Successfully reset ${successfulResets.length} password(s). Failed to reset ${failedResets.length} user(s). Check console for failure details.`);
+                }
+                
+                // Clear selection and refresh user list
+                selectedUserUids.clear();
+                await fetchDashboardData(); 
+
+            } catch (error) {
+                console.error("Batch Reset Failed:", error);
+                showCustomPopup('Batch Reset Failed', `Error: ${error.message}`);
+            } finally {
+                hideGlobalLoading();
+            }
+        };
+
 
         const renderReferrersTable = (referrers) => {
             const tbody = document.getElementById('referrersTableBody');
@@ -980,7 +1284,7 @@
             const sortedReferrers = filterReferrers(referrers);
 
             if (sortedReferrers.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-gray-500">No referrers found matching search criteria.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-gray-400">No referrers found matching search criteria.</td></tr>';
                 return;
             }
             sortedReferrers.forEach(r => {
@@ -991,45 +1295,46 @@
                 let upgradeButton = '';
 
                 if (isSuperAdmin) {
+                    // Update: Clicking the name now applies the combined filter and shows sales.
                     nameCellContent = `<span 
-                                         class="text-gray-800 font-semibold cursor-pointer hover:underline" 
-                                         data-action="view-referrer-sales" 
-                                         data-refid="${r.refId}" 
-                                         data-refname="${r.name}"
-                                         >${r.name}</span>`;
+                                                class="text-white font-semibold cursor-pointer hover:underline" 
+                                                data-action="view-referrer-sales" 
+                                                data-refid="${r.refId}" 
+                                                data-refname="${r.name}"
+                                                >${r.name}</span>`;
                     
                     if (r.uid !== auth.currentUser?.uid) {
                         upgradeButton = `
                             <button class="px-2 py-1 text-xs bg-red-500 text-white font-semibold rounded-lg shadow-md hover:bg-red-600 transition-colors mb-1"
-                                         data-action="promote-sa"
-                                         data-uid="${r.uid}"
-                                         data-refid="${r.refId}"
-                                         data-refname="${r.name}">Promote to SA</button>
+                                                data-action="promote-sa"
+                                                data-uid="${r.uid}"
+                                                data-refid="${r.refId}"
+                                                data-refname="${r.name}">Promote to SA</button>
                         `;
                     }
                     
                     actionCellContent = `
                         ${upgradeButton}
                         <button class="px-2 py-1 text-xs bg-purple-500 text-white font-semibold rounded-lg shadow-md hover:bg-purple-600 transition-colors mb-1"
-                                         data-action="assign-rolex-tickets"
-                                         data-refid="${r.refId}"
-                                         data-refname="${r.name}">Assign Spin</button>
+                                                data-action="assign-rolex-tickets"
+                                                data-refid="${r.refId}"
+                                                data-refname="${r.name}">Assign Spin</button>
                         <button class="px-2 py-1 text-xs bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 transition-colors"
-                                         data-action="assign-raffle-tickets"
-                                         data-refid="${r.refId}"
-                                         data-refname="${r.name}">Assign Raffle</button>
+                                                data-action="assign-raffle-tickets"
+                                                data-refid="${r.refId}"
+                                                data-refname="${r.name}">Assign Raffle</button>
                     `;
                 }
 
                 tr.innerHTML = `
                     <td>${nameCellContent}</td>
-                    <td><span class="font-mono text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded">${r.refId}</span></td>
+                    <td><span class="font-mono text-xs px-2 py-1 bg-yellow-400/20 text-yellow-300 rounded">${r.refId}</span></td>
                     <td>${r.email}</td>
                     <td class="text-right">${(r.raffleTickets || 0).toLocaleString()}</td>
                     <td class="text-right">${(r.rolexTickets || 0).toLocaleString()}</td>
                     <td class="text-right font-semibold">${formatCurrency(r.combinedTotalAmount || 0)}</td>
                     <td class="text-right">${formatCurrency(r.goal || 0)}</td>
-                    <td class="text-right font-bold text-purple-700">${(r.clickCount || 0).toLocaleString()}</td>
+                    <td class="text-right font-bold text-purple-400">${(r.clickCount || 0).toLocaleString()}</td>
                     <td class="text-center flex flex-col items-center justify-center space-y-1">${actionCellContent}</td>
                 `;
                 tbody.appendChild(tr);
@@ -1046,10 +1351,10 @@
             // 1. Filter based on current filter state ('all', 'assigned', 'unassigned') and referrer filter
             let displayEntries = filterSalesEntries(entries, raffleFilter);
 
-            // Apply direct referrer filter (if active, overrides 'all' filter but works on 'assigned'/'unassigned')
-            if (raffleFilterRefId) {
-                header.textContent = `Split The Pot Sales for ${raffleFilterRefName}`;
-                displayEntries = displayEntries.filter(e => e.referrerRefId === raffleFilterRefId);
+            // Apply direct referrer filter
+            if (activeRefIdFilter) {
+                header.textContent = `Split The Pot Sales for ${activeRefNameFilter}`;
+                displayEntries = displayEntries.filter(e => e.referrerRefId === activeRefIdFilter);
                 header.innerHTML += ` <button id="clearRaffleFilter" class="ml-4 px-2 py-1 text-sm text-white bg-red-500 rounded-lg hover:bg-red-600">Clear Filter</button>`;
             } else if (isReferrer && !isSuperAdmin) {
                 header.textContent = "Your Split The Pot Sales";
@@ -1069,17 +1374,17 @@
 
             // 4. Render rows
             if (displayEntries.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="${isSuperAdmin ? 8 : 7}" class="text-center py-4 text-gray-500">No Split The Pot sales found matching current criteria.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="${isSuperAdmin ? 8 : 7}" class="text-center py-4 text-gray-400">No Split The Pot sales found matching current criteria.</td></tr>`;
                 return;
             }
             displayEntries.forEach(e => {
-                const referrerInfo = e.referrerName ? `${e.referrerName} (${e.referrerRefId})` : '<span class="text-red-500 font-medium">None</span>';
+                const referrerInfo = e.referrerName ? `<span class="text-gray-300">${e.referrerName}</span> (<span class="font-mono text-xs px-1 bg-yellow-400/20 text-yellow-300 rounded">${e.referrerRefId}</span>)` : '<span class="text-red-400 font-medium">None</span>';
                 const customerName = e.fullName || e.name || e.firstName || 'N/A';
                 
                 let actionCell = '';
                 if (isSuperAdmin) {
                     actionCell = `
-                        <button class="px-2 py-1 text-xs bg-yellow-500 text-white font-semibold rounded-lg hover:bg-yellow-600 transition-colors"
+                        <button class="px-2 py-1 text-xs bg-yellow-500 text-black font-semibold rounded-lg hover:bg-yellow-600 transition-colors"
                             data-action="edit-sale"
                             data-entry-id="${e.id}">Edit</button>
                     `;
@@ -1103,21 +1408,35 @@
 
         const renderRolexTable = (entries) => {
             const tbody = document.getElementById('rolexTableBody');
-            tbody.innerHTML = '';
-            
+            const header = document.getElementById('rolexSalesHeader');
+
             // 1. Filter based on current filter state
             let displayEntries = filterSalesEntries(entries, rolexFilter);
             
+            // Apply direct referrer filter (Rolex must also be filtered by the active referrer if set)
+            if (activeRefIdFilter) {
+                displayEntries = displayEntries.filter(e => e.referrerRefId === activeRefIdFilter);
+                header.textContent = `Spin The Wheel Sales for ${activeRefNameFilter}`;
+                header.innerHTML += ` <button id="clearRolexFilter" class="ml-4 px-2 py-1 text-sm text-white bg-red-500 rounded-lg hover:bg-red-600">Clear Filter</button>`;
+            } else if (!isSuperAdmin) {
+                    // Regular referrer view (only shows their own if it's not SuperAdmin) - but only applies if it's the right tab
+                header.textContent = "Your Spin The Wheel Sales";
+            } else {
+                header.textContent = "Spin The Wheel Sales (SA Only)";
+            }
+
             // 2. Sort the display entries
             displayEntries = sortEntries(displayEntries, rolexSortConfig);
+            tbody.innerHTML = '';
+
 
             if (displayEntries.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-500">No Spin The Wheel sales found matching current criteria.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-400">No Spin The Wheel sales found matching current criteria.</td></tr>';
                 return;
             }
             displayEntries.forEach(e => {
-                const referrerInfo = e.referrerRefId ? `${e.referrerRefId}` : 'None';
-                const statusClass = e.status === 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
+                const referrerInfo = e.referrerRefId ? `<span class="font-mono text-xs px-1 bg-yellow-400/20 text-yellow-300 rounded">${e.referrerRefId}</span>` : 'None';
+                const statusClass = e.status === 'paid' ? 'bg-green-700/50 text-green-300' : 'bg-yellow-700/50 text-yellow-300';
                 
                 const customerName = e.fullName || e.name || e.firstName || 'N/A';
                 
@@ -1139,11 +1458,14 @@
         const renderDonationsTable = (entries) => {
             const tbody = document.getElementById('donationsTableBody');
             tbody.innerHTML = '';
+            // Donations always sort by creation date descending
+            const sortedEntries = entries.sort((a, b) => getTimestampValue(b.createdAt) - getTimestampValue(a.createdAt));
+
             if (entries.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-500">No donations found.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-400">No donations found.</td></tr>';
                 return;
             }
-            entries.forEach(e => {
+            sortedEntries.forEach(e => {
                 const customerName = e.fullName || e.name || 'N/A';
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -1152,7 +1474,7 @@
                     <td>${e.email || 'N/A'}</td>
                     <td>${e.phone || 'N/A'}</td>
                     <td class="text-right font-medium">${formatCurrency(e.amount || e.amountPaid || 0)}</td>
-                    <td><span class="text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-800">${(e.status || 'N/A').toUpperCase()}</span></td>
+                    <td><span class="text-xs font-medium px-2 py-1 rounded-full bg-green-700/50 text-green-300">${(e.status || 'N/A').toUpperCase()}</span></td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -1167,17 +1489,23 @@
             document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.add('hidden'));
             const activePane = document.getElementById(`tab-${tabName}`);
             if (activePane) activePane.classList.remove('hidden');
+
+            // Re-render tables on tab switch in case a filter is active
+            if (activeRefIdFilter) {
+                renderRaffleTable(dashboardData.raffleEntries);
+                renderRolexTable(dashboardData.rolexEntries);
+            }
         };
 
         // --- NEW: Refresh Feature ---
         const handleRefreshClick = async () => {
-            if (raffleFilterRefId) {
-                clearRaffleFilter(); 
+            if (activeRefIdFilter) {
+                clearRefIdFilter(); 
             }
             await fetchDashboardData();
         };
 
-        // --- Referrer Sales View Feature Functions ---
+        // --- Referrer Sales View Feature Functions (Combined Filter) ---
         
         const openReferrerSalesModal = (refId, refName) => {
             if (!isSuperAdmin) {
@@ -1185,19 +1513,31 @@
                 return;
             }
             
-            raffleFilterRefId = refId;
-            raffleFilterRefName = refName;
-            raffleFilter = 'all'; // Default to show all sales for that referrer
+            // Set the unified filter state
+            activeRefIdFilter = refId;
+            activeRefNameFilter = refName;
+            
+            // Reset the internal sales filter to 'all' so we see all sales types
+            raffleFilter = 'all'; 
             document.getElementById('raffleFilter').value = 'all';
+
+            // Re-render both sales tables (Raffle and Rolex) to apply the combined filter
             renderRaffleTable(dashboardData.raffleEntries); 
-            switchTab('raffle'); 
+            renderRolexTable(dashboardData.rolexEntries); 
+            
+            switchTab('raffle'); // Switch to the Raffle tab, where the filter starts
         };
         
-        const clearRaffleFilter = () => {
-            raffleFilterRefId = null;
-            raffleFilterRefName = null;
-            document.getElementById('raffleFilter').value = raffleFilter; // Restore the main filter setting
+        const clearRefIdFilter = () => {
+            activeRefIdFilter = null;
+            activeRefNameFilter = null;
+            
+            // Restore the main filter setting and remove the clear button
+            document.getElementById('raffleFilter').value = raffleFilter; 
+            
+            // Re-render both sales tables to clear filters
             renderRaffleTable(dashboardData.raffleEntries); 
+            renderRolexTable(dashboardData.rolexEntries); 
         };
         
         // --- Edit Order Feature Functions ---
@@ -1253,7 +1593,7 @@
             }
         };
 
-        // --- Promote to Super Admin Logic ---
+        // --- Promote to Super Admin Logic (unchanged) ---
 
         const upgradeToSuperAdmin = async (uid) => {
             try {
@@ -1295,7 +1635,7 @@
                 
                 showCustomPopup('Success', `${name} has been promoted to Super Admin. They must sign out and sign back in to see their new permissions.`);
                 
-                await fetchDashboardData();
+                await fetchDashboardData(); 
                 
             } catch (error) {
                 console.error("Promotion Failed:", error);
@@ -1305,7 +1645,7 @@
             }
         }
         
-        // --- Admin Tools Logic (SA Only) ---
+        // --- Admin Tools Logic (SA Only - unchanged logic) ---
         
         const updateReservedTicketCounts = async () => {
             if (!isSuperAdmin && !isLoggedInAdmin) return;
@@ -1319,8 +1659,8 @@
                 
                 infoDiv.innerHTML = `
                     <p>Total Reserved Tickets: <span class="font-bold">${totalReserved}</span></p>
-                    <p>Reserved > 5 Min (Expired by Cron): <span class="font-bold text-red-600">${expired5Min}</span></p>
-                    <p>Reserved > 10 Min: <span class="font-bold text-red-600">${expired10Min}</span></p>
+                    <p>Reserved > 5 Min (Expired by Cron): <span class="font-bold text-red-400">${expired5Min}</span></p>
+                    <p>Reserved > 10 Min: <span class="font-bold text-red-400">${expired10Min}</span></p>
                 `;
             } catch (error) {
                 infoDiv.textContent = 'Failed to load ticket counts.';
@@ -1396,7 +1736,121 @@
             }
         };
 
-        // --- Manual Sale Logic (Super Admin Only) ---
+        // --- Export to CSV Logic (New Feature) ---
+
+        const downloadCSV = (data, filename) => {
+            // Generate CSV content
+            if (!data || data.length === 0) {
+                showCustomPopup('No Data', 'No data to export based on current view/filters.');
+                return;
+            }
+
+            // Ensure all data items have the same fields for consistent header row
+            const headers = Object.keys(data[0]);
+            const csvContent = [
+                headers.join(','),
+                ...data.map(row => headers.map(fieldName => {
+                    let value = row[fieldName] === null || row[fieldName] === undefined ? '' : row[fieldName];
+
+                    // Special handling for nested objects (e.g., Timestamps) and commas
+                    if (typeof value === 'object') {
+                        if (fieldName.toLowerCase().includes('date') || fieldName.toLowerCase().includes('timestamp') || fieldName.toLowerCase().includes('createdat')) {
+                            // Use existing date formatter, remove internal commas
+                            value = formatDate(value).replace(/,/g, ''); 
+                        } else {
+                            // Serialize object, replace internal commas with semicolons
+                            value = JSON.stringify(value).replace(/,/g, ';'); 
+                        }
+                    } else if (typeof value === 'string') {
+                        value = value.replace(/"/g, '""'); // Escape double quotes
+                        if (value.includes(',')) {
+                            value = `"${value}"`; // Enclose strings with commas in quotes
+                        }
+                    }
+                    return value;
+                }).join(','))
+            ].join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            if (link.download !== undefined) { 
+                link.setAttribute("href", URL.createObjectURL(blob));
+                link.setAttribute("download", filename);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                showCustomPopup('Export Success', `Downloaded ${filename}`);
+            } else {
+                showCustomPopup('Export Error', 'Your browser does not support automatic CSV download.');
+            }
+        };
+
+
+        const handleExportClick = () => {
+            let dataToExport = [];
+            let filename = `export_${currentTab}_${new Date().toISOString().slice(0, 10)}.csv`;
+
+            // Function to clone and clean data for export (remove internal IDs/UIDs)
+            const cleanData = (data) => data.map(item => {
+                // Deep clone to safely modify nested objects for display
+                const cleaned = JSON.parse(JSON.stringify(item)); 
+                delete cleaned.uid; 
+                delete cleaned.referrerUid; 
+                return cleaned;
+            });
+
+            switch (currentTab) {
+                case 'users':
+                    // User data includes special properties we need to clean up
+                    dataToExport = filteredAuthUsers.map(u => ({
+                        UID: u.uid,
+                        Email: u.email,
+                        DisplayName: u.displayName,
+                        Is_Super_Admin: u.isSuperAdmin,
+                        Is_Referrer: u.isReferrer,
+                        Is_Disabled: u.disabled,
+                        Email_Verified: u.emailVerified,
+                        Created_At: u.createdAt,
+                        Last_Sign_In: u.lastSignInTime
+                    }));
+                    break;
+                case 'referrers':
+                    dataToExport = cleanData(filterReferrers(dashboardData.referrers));
+                    break;
+                case 'raffle':
+                    let filteredRaffle = filterSalesEntries(dashboardData.raffleEntries, raffleFilter);
+                    if (activeRefIdFilter) {
+                        filteredRaffle = filteredRaffle.filter(e => e.referrerRefId === activeRefIdFilter);
+                    }
+                    dataToExport = cleanData(sortEntries(filteredRaffle, raffleSortConfig));
+                    break;
+                case 'rolex':
+                    let filteredRolex = filterSalesEntries(dashboardData.rolexEntries, rolexFilter);
+                    if (activeRefIdFilter) {
+                        filteredRolex = filteredRolex.filter(e => e.referrerRefId === activeRefIdFilter);
+                    }
+                    dataToExport = cleanData(sortEntries(filteredRolex, rolexSortConfig));
+                    break;
+                case 'donations':
+                    // Donations respect the default sort (latest first)
+                    dataToExport = cleanData(dashboardData.donationEntries);
+                    dataToExport.sort((a, b) => getTimestampValue(b.createdAt) - getTimestampValue(a.createdAt));
+                    break;
+                default:
+                    showCustomPopup('Export Failed', 'Please select a valid data tab to export.');
+                    return;
+            }
+            
+            if (dataToExport.length > 0) {
+                downloadCSV(dataToExport, filename);
+            } else {
+                showCustomPopup('Export Failed', 'No data found based on current filters.');
+            }
+        };
+
+
+        // --- Other Modal and Form Handlers (unchanged) ---
 
         const openManualSaleModal = () => {
             if (!isSuperAdmin) {
@@ -1446,7 +1900,8 @@
             }
         };
 
-        // --- Split the Pot Assignment Logic ---
+
+        // --- Split the Pot Assignment Logic (unchanged) ---
 
         const fetchAssignmentRaffleSales = async () => {
             showGlobalLoading("Fetching all Split the Pot sales...");
@@ -1505,7 +1960,7 @@
             selectAllCheckbox.checked = false;
             
             if (filteredRaffleSales.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-500">No Split the Pot sales found matching the criteria.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-400">No Split the Pot sales found matching the criteria.</td></tr>';
                 applyButton.disabled = true;
                 selectedCountDisplay.textContent = '0 sales selected';
                 return;
@@ -1517,14 +1972,14 @@
                 const contact = sale.email || sale.phoneNumber || 'N/A';
 
                 const currentReferrerContent = sale.referrerRefId 
-                    ? `<span class="font-mono text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded">${sale.referrerRefId}</span>`
-                    : '<span class="text-red-500">None</span>';
+                    ? `<span class="font-mono text-xs px-2 py-1 bg-yellow-400/20 text-yellow-300 rounded">${sale.referrerRefId}</span>`
+                    : '<span class="text-red-400">None</span>';
 
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td class="text-center">
-                        <input type="checkbox" data-sale-id="${sale.id}" class="raffle-sale-checkbox rounded text-blue-600 focus:ring-blue-500" ${isSelected ? 'checked' : ''}>
+                        <input type="checkbox" data-sale-id="${sale.id}" class="raffle-sale-checkbox rounded text-blue-400 focus:ring-blue-400 bg-gray-700 border-gray-600" ${isSelected ? 'checked' : ''}>
                     </td>
                     <td>${formatDate(sale.timestamp)}</td>
                     <td>${customerName}</td>
@@ -1623,7 +2078,7 @@
             }
         };
         
-        // --- Spin the Wheel (Rolex) Assignment Logic ---
+        // --- Spin the Wheel (Rolex) Assignment Logic (unchanged) ---
         
         const fetchAssignmentRolexSales = async () => {
             showGlobalLoading("Fetching all Spin The Wheel tickets...");
@@ -1682,7 +2137,7 @@
             selectAllCheckbox.checked = false;
 
             if (filteredRolexSales.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-500">No Paid or Claimed Spin The Wheel tickets found matching the criteria.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-400">No Paid or Claimed Spin The Wheel tickets found matching the criteria.</td></tr>';
                 applyButton.disabled = true;
                 selectedCountDisplay.textContent = '0 tickets selected';
                 return;
@@ -1693,13 +2148,13 @@
                 const customerName = ticket.fullName || ticket.name || ticket.firstName || 'N/A';
                 const contact = ticket.email || ticket.phoneNumber || 'N/A';
                 const currentReferrerContent = ticket.referrerRefId 
-                    ? `<span class="font-mono text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded">${ticket.referrerRefId}</span>`
-                    : '<span class="text-red-500">None</span>';
+                    ? `<span class="font-mono text-xs px-2 py-1 bg-yellow-400/20 text-yellow-300 rounded">${ticket.referrerRefId}</span>`
+                    : '<span class="text-red-400">None</span>';
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td class="text-center">
-                        <input type="checkbox" data-ticket-id="${ticket.id}" class="rolex-ticket-checkbox rounded text-purple-600 focus:ring-purple-500" ${isSelected ? 'checked' : ''}>
+                        <input type="checkbox" data-ticket-id="${ticket.id}" class="rolex-ticket-checkbox rounded text-purple-400 focus:ring-purple-400 bg-gray-700 border-gray-600" ${isSelected ? 'checked' : ''}>
                     </td>
                     <td class="font-bold">${ticket.id}</td>
                     <td>${formatDate(ticket.timestamp)}</td>
@@ -1799,7 +2254,7 @@
         };
 
 
-        // --- Authentication and Initialization ---
+        // --- Authentication and Initialization (unchanged login/logout) ---
 
         const setupAuthListeners = () => {
             onAuthStateChanged(auth, async (user) => {
@@ -1875,6 +2330,26 @@
                 });
             }
 
+            // User Table Search
+            const userSearchInput = document.getElementById('userSearchInput');
+            if (userSearchInput) {
+                userSearchInput.addEventListener('input', handleUserSearchChange);
+            }
+
+            // User Table Sort
+            document.querySelectorAll('.user-sort-header').forEach(header => {
+                header.addEventListener('click', (e) => {
+                    const key = e.currentTarget.dataset.sortKey;
+                    if (userSortConfig.key === key) {
+                        userSortConfig.direction = userSortConfig.direction === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        userSortConfig.key = key;
+                        userSortConfig.direction = (key === 'email' || key === 'displayName') ? 'asc' : 'desc';
+                    }
+                    renderAuthUsersTable(allAuthUsers);
+                });
+            });
+
             // Referrer Table Sort
             document.querySelectorAll('.referrer-sort-header').forEach(header => {
                 header.addEventListener('click', (e) => {
@@ -1910,16 +2385,27 @@
             });
             
             // Sales Table Filtering (Raffle)
-            document.getElementById('raffleFilter').addEventListener('change', (e) => {
-                raffleFilter = e.target.value;
-                clearRaffleFilter(); // Clears direct referrer filter, then re-renders
-            });
+            const raffleFilterElement = document.getElementById('raffleFilter');
+            if (raffleFilterElement) {
+                raffleFilterElement.addEventListener('change', (e) => {
+                    raffleFilter = e.target.value;
+                    // If a referrer filter is active, only update the raffle table, otherwise clear all filters.
+                    if (!activeRefIdFilter) {
+                        clearRefIdFilter(); 
+                    } else {
+                        renderRaffleTable(dashboardData.raffleEntries);
+                    }
+                });
+            }
             
             // Sales Table Filtering (Rolex)
-            document.getElementById('rolexFilter').addEventListener('change', (e) => {
-                rolexFilter = e.target.value;
-                renderRolexTable(dashboardData.rolexEntries);
-            });
+            const rolexFilterElement = document.getElementById('rolexFilter');
+            if (rolexFilterElement) {
+                rolexFilterElement.addEventListener('change', (e) => {
+                    rolexFilter = e.target.value;
+                    renderRolexTable(dashboardData.rolexEntries);
+                });
+            }
         };
 
 
@@ -1946,6 +2432,9 @@
                 document.getElementById('logoutButton').addEventListener('click', handleLogout);
                 document.getElementById('popupCloseButton').addEventListener('click', hideCustomPopup);
                 
+                // NEW: Export Data Button
+                document.getElementById('exportDataButton').addEventListener('click', handleExportClick);
+                
                 // NEW: Refresh Data Button
                 document.getElementById('refreshDataButton').addEventListener('click', handleRefreshClick);
 
@@ -1958,83 +2447,161 @@
                 attachSortAndSearchListeners();
                 
                 // Manual Sale Modal listeners
-                document.getElementById('addManualSaleButton').addEventListener('click', openManualSaleModal);
-                document.getElementById('closeManualSaleModal').addEventListener('click', closeManualSaleModal);
-                document.getElementById('manualSaleForm').addEventListener('submit', handleManualSaleSubmit);
+                // Wrapping in an existence check for safety, though the HTML elements are now restored
+                if (document.getElementById('addManualSaleButton')) {
+                    document.getElementById('addManualSaleButton').addEventListener('click', openManualSaleModal);
+                }
+                if (document.getElementById('closeManualSaleModal')) {
+                    document.getElementById('closeManualSaleModal').addEventListener('click', closeManualSaleModal);
+                }
+                if (document.getElementById('manualSaleForm')) {
+                    document.getElementById('manualSaleForm').addEventListener('submit', handleManualSaleSubmit);
+                }
                 
                 // Edit Sale Modal listeners
-                document.getElementById('closeEditSaleModal').addEventListener('click', closeEditSaleModal);
-                document.getElementById('editSaleForm').addEventListener('submit', handleEditSaleSubmit);
+                if (document.getElementById('closeEditSaleModal')) {
+                    document.getElementById('closeEditSaleModal').addEventListener('click', closeEditSaleModal);
+                }
+                if (document.getElementById('editSaleForm')) {
+                    document.getElementById('editSaleForm').addEventListener('submit', handleEditSaleSubmit);
+                }
                 
                 // Admin Tools listeners
-                document.getElementById('deleteExpiredTicketsButton').addEventListener('click', handleCleanupClick);
+                if (document.getElementById('deleteExpiredTicketsButton')) {
+                    document.getElementById('deleteExpiredTicketsButton').addEventListener('click', handleCleanupClick);
+                }
                 
-                // NEW: Recalculate ALL Referrer Totals Button (This is the requested button)
-                document.getElementById('recalculateAllReferrerTotalsButton').addEventListener('click', handleRecalculateAllReferrerTotals);
-                
-                document.getElementById('recalculateTotalsButton').addEventListener('click', handleRecalculateRaffleTotals);
-                document.getElementById('recalculateRolexTotalsButton').addEventListener('click', handleRecalculateRolexTotals); 
+                if (document.getElementById('recalculateAllReferrerTotalsButton')) {
+                    document.getElementById('recalculateAllReferrerTotalsButton').addEventListener('click', handleRecalculateAllReferrerTotals);
+                }
+                if (document.getElementById('recalculateTotalsButton')) {
+                    document.getElementById('recalculateTotalsButton').addEventListener('click', handleRecalculateRaffleTotals);
+                }
+                if (document.getElementById('recalculateRolexTotalsButton')) {
+                    document.getElementById('recalculateRolexTotalsButton').addEventListener('click', handleRecalculateRolexTotals); 
+                }
 
                 // --- Split the Pot Assignment Modal listeners ---
-                document.getElementById('closeApplyTicketsModal').addEventListener('click', closeApplyRaffleTicketsModal);
-                document.getElementById('applyReferrerButton').addEventListener('click', applyReferrerToRaffleSales);
-                document.getElementById('unassignedSearchInput').addEventListener('input', handleRaffleSearchChange);
-                document.getElementById('selectAllUnassigned').addEventListener('change', handleRaffleSelectAllChange);
+                if (document.getElementById('closeApplyTicketsModal')) {
+                    document.getElementById('closeApplyTicketsModal').addEventListener('click', closeApplyRaffleTicketsModal);
+                }
+                if (document.getElementById('applyReferrerButton')) {
+                    document.getElementById('applyReferrerButton').addEventListener('click', applyReferrerToRaffleSales);
+                }
+                if (document.getElementById('unassignedSearchInput')) {
+                    document.getElementById('unassignedSearchInput').addEventListener('input', handleRaffleSearchChange);
+                }
+                if (document.getElementById('selectAllUnassigned')) {
+                    document.getElementById('selectAllUnassigned').addEventListener('change', handleRaffleSelectAllChange);
+                }
                 
-                document.getElementById('unassignedSalesTableBody').addEventListener('change', (e) => {
-                    if (e.target.classList.contains('raffle-sale-checkbox')) {
-                        handleRaffleCheckboxChange(e);
-                    }
-                });
+                if (document.getElementById('unassignedSalesTableBody')) {
+                    document.getElementById('unassignedSalesTableBody').addEventListener('change', (e) => {
+                        if (e.target.classList.contains('raffle-sale-checkbox')) {
+                            handleRaffleCheckboxChange(e);
+                        }
+                    });
+                }
+
 
                 // --- Spin the Wheel (Rolex) Assignment Modal listeners ---
-                document.getElementById('closeApplyRolexTicketsModal').addEventListener('click', closeApplyRolexTicketsModal);
-                document.getElementById('applyRolexReferrerButton').addEventListener('click', applyReferrerToRolexTickets);
-                document.getElementById('rolexSearchInput').addEventListener('input', handleRolexSearchChange);
-                document.getElementById('selectAllRolex').addEventListener('change', handleRolexSelectAllChange);
+                if (document.getElementById('closeApplyRolexTicketsModal')) {
+                    document.getElementById('closeApplyRolexTicketsModal').addEventListener('click', closeApplyRolexTicketsModal);
+                }
+                if (document.getElementById('applyRolexReferrerButton')) {
+                    document.getElementById('applyRolexReferrerButton').addEventListener('click', applyReferrerToRolexTickets);
+                }
+                if (document.getElementById('rolexSearchInput')) {
+                    document.getElementById('rolexSearchInput').addEventListener('input', handleRolexSearchChange);
+                }
+                if (document.getElementById('selectAllRolex')) {
+                    document.getElementById('selectAllRolex').addEventListener('change', handleRolexSelectAllChange);
+                }
                 
-                document.getElementById('rolexAssignmentTableBody').addEventListener('change', (e) => {
-                    if (e.target.classList.contains('rolex-ticket-checkbox')) {
-                        handleRolexCheckboxChange(e);
-                    }
-                });
+                if (document.getElementById('rolexAssignmentTableBody')) {
+                    document.getElementById('rolexAssignmentTableBody').addEventListener('change', (e) => {
+                        if (e.target.classList.contains('rolex-ticket-checkbox')) {
+                            handleRolexCheckboxChange(e);
+                        }
+                    });
+                }
 
                 // Upgrade Admin Modal listeners
-                document.getElementById('closeUpgradeAdminModal').addEventListener('click', closeUpgradeAdminModal);
-                document.getElementById('confirmUpgradeAdmin').addEventListener('click', handleUpgradeAdmin);
+                if (document.getElementById('closeUpgradeAdminModal')) {
+                    document.getElementById('closeUpgradeAdminModal').addEventListener('click', closeUpgradeAdminModal);
+                }
+                if (document.getElementById('confirmUpgradeAdmin')) {
+                    document.getElementById('confirmUpgradeAdmin').addEventListener('click', handleUpgradeAdmin);
+                }
 
+                // --- NEW USER MANAGEMENT LISTENERS ---
+                if (document.getElementById('usersTableBody')) {
+                    document.getElementById('usersTableBody').addEventListener('change', (e) => {
+                        if (e.target.classList.contains('user-select-checkbox')) {
+                            handleUserCheckboxChange(e);
+                        }
+                    });
+                }
+                if (document.getElementById('selectAllUsers')) {
+                    document.getElementById('selectAllUsers').addEventListener('change', handleUserSelectAllChange);
+                }
+                if (document.getElementById('openBatchResetModalButton')) {
+                    document.getElementById('openBatchResetModalButton').addEventListener('click', openBatchResetModal);
+                }
+                if (document.getElementById('closeBatchResetModal')) {
+                    document.getElementById('closeBatchResetModal').addEventListener('click', closeBatchResetModal);
+                }
+                if (document.getElementById('batchResetForm')) {
+                    document.getElementById('batchResetForm').addEventListener('submit', handleBatchResetSubmit);
+                }
+                // END NEW USER MANAGEMENT LISTENERS
 
                 // Event delegation for Referrers Table clicks (Handles View Sales, Assign Raffle/Rolex, and Promote to SA)
-                document.getElementById('referrersTableBody').addEventListener('click', (e) => {
-                    const target = e.target;
-                    const action = target.dataset.action;
-                    
-                    if (isSuperAdmin) {
-                        const refId = target.dataset.refid;
-                        const refName = target.dataset.refname;
-                        const uid = target.dataset.uid;
+                if (document.getElementById('referrersTableBody')) {
+                    document.getElementById('referrersTableBody').addEventListener('click', (e) => {
+                        const target = e.target;
+                        const action = target.dataset.action;
                         
-                        if (action === 'assign-raffle-tickets') {
-                            openApplyRaffleTicketsModal(refId, refName);
-                        } else if (action === 'assign-rolex-tickets') {
-                            openApplyRolexTicketsModal(refId, refName);
-                        } else if (action === 'view-referrer-sales') { 
-                            openReferrerSalesModal(refId, refName);
-                        } else if (action === 'promote-sa') {
-                            openUpgradeAdminModal(uid, refName, refId);
+                        if (isSuperAdmin) {
+                            const refId = target.dataset.refid;
+                            const refName = target.dataset.refname;
+                            const uid = target.dataset.uid;
+                            
+                            if (action === 'assign-raffle-tickets') {
+                                openApplyRaffleTicketsModal(refId, refName);
+                            } else if (action === 'assign-rolex-tickets') {
+                                openApplyRolexTicketsModal(refId, refName);
+                            } else if (action === 'view-referrer-sales') { 
+                                // Unified filter for both Raffle and Rolex
+                                openReferrerSalesModal(refId, refName);
+                            } else if (action === 'promote-sa') {
+                                openUpgradeAdminModal(uid, refName, refId);
+                            }
                         }
-                    }
-                });
+                    });
+                }
 
                 // Event delegation for Raffle Sales Table clicks (for Edit button and Clear Filter button)
-                document.getElementById('raffleTableBody').addEventListener('click', (e) => {
-                    const target = e.target;
-                    if (target.dataset.action === 'edit-sale' && isSuperAdmin) {
-                        openEditSaleModal(target.dataset.entryId);
-                    } else if (target.id === 'clearRaffleFilter') {
-                        clearRaffleFilter();
-                    }
-                });
+                if (document.getElementById('raffleTableBody')) {
+                    document.getElementById('raffleTableBody').addEventListener('click', (e) => {
+                        const target = e.target;
+                        if (target.dataset.action === 'edit-sale' && isSuperAdmin) {
+                            openEditSaleModal(target.dataset.entryId);
+                        } else if (target.id === 'clearRaffleFilter') {
+                            clearRefIdFilter();
+                        }
+                    });
+                }
+                
+                // Event delegation for Rolex Sales Table clicks (for Clear Filter button)
+                if (document.getElementById('rolexTableBody')) {
+                    document.getElementById('rolexTableBody').addEventListener('click', (e) => {
+                        const target = e.target;
+                        if (target.id === 'clearRolexFilter') {
+                            clearRefIdFilter();
+                        }
+                    });
+                }
 
 
             } catch (error) {

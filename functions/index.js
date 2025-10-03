@@ -36,6 +36,106 @@ function isAdmin(context) {
     );
 }
 
+// --- USER MANAGEMENT FUNCTIONS (NEW) ---
+
+/**
+ * Callable function to fetch all users from Firebase Auth, excluding anonymous users.
+ * Only fetches users with an email address (email/password or federated identity users).
+ * Requires Super Admin role. This uses the listUsers method with pagination.
+ */
+exports.getAllAuthUsers = functions.https.onCall(async (data, context) => {
+    if (!isSuperAdmin(context)) { 
+        throw new functions.https.HttpsError('permission-denied', 'Access denied. Requires Super Admin role.');
+    }
+
+    let users = [];
+    let nextPageToken;
+    let totalUsersFetched = 0;
+
+    try {
+        // Fetch users in batches of 1000
+        do {
+            const listUsersResult = await admin.auth().listUsers(1000, nextPageToken);
+            
+            listUsersResult.users.forEach(userRecord => {
+                
+                // --- FIX: Exclude Anonymous Users by requiring an email ---
+                // Anonymous users, unlike email/password or OAuth users, do not have an email address.
+                if (!userRecord.email) {
+                    return; // Skip this user
+                }
+                // --- END FIX ---
+                
+                const claims = userRecord.customClaims || {};
+                
+                // Construct a lighter object with useful fields
+                users.push({
+                    uid: userRecord.uid,
+                    email: userRecord.email, // Guaranteed to exist by the filter
+                    displayName: userRecord.displayName || 'N/A',
+                    disabled: userRecord.disabled,
+                    emailVerified: userRecord.emailVerified,
+                    createdAt: userRecord.metadata.creationTime,
+                    lastSignInTime: userRecord.metadata.lastSignInTime,
+                    isSuperAdmin: claims.superAdmin || false,
+                    isReferrer: claims.referrer || false,
+                    isAdmin: claims.admin || false,
+                });
+            });
+
+            nextPageToken = listUsersResult.pageToken;
+            totalUsersFetched = users.length;
+
+        } while (nextPageToken && totalUsersFetched < 10000); // Stop after 10000 identifiable users for safety
+
+        return { users };
+
+    } catch (error) {
+        console.error('Error fetching all users:', error);
+        throw new functions.https.HttpsError('internal', 'Failed to fetch user list.', error.message);
+    }
+});
+
+/**
+ * Callable function to batch reset passwords for multiple users.
+ * Requires Super Admin role.
+ */
+exports.adminResetMultiPassword = functions.https.onCall(async (data, context) => {
+    if (!isSuperAdmin(context)) { 
+        throw new functions.https.HttpsError('permission-denied', 'Access denied. Requires Super Admin role.');
+    }
+
+    const { uids, newPassword } = data;
+
+    if (!uids || !Array.isArray(uids) || uids.length === 0 || !newPassword || newPassword.length < 6) {
+        throw new functions.https.HttpsError('invalid-argument', 'Missing or invalid UIDs array or new password (min 6 chars).');
+    }
+
+    let successfulResets = [];
+    let failedResets = [];
+
+    // Use Promise.all to reset passwords concurrently
+    const resetPromises = uids.map(uid => 
+        admin.auth().updateUser(uid, { password: newPassword })
+            .then(() => {
+                successfulResets.push(uid);
+            })
+            .catch(error => {
+                console.error(`Failed to reset password for UID ${uid}: ${error.message}`);
+                failedResets.push({ uid, error: error.message });
+            })
+    );
+
+    await Promise.all(resetPromises);
+
+    return {
+        success: true,
+        message: `Successfully reset ${successfulResets.length} password(s). Failed: ${failedResets.length}.`,
+        successfulResets,
+        failedResets
+    };
+});
+
 // --- NEW CLICK TRACKING FUNCTION ---
 
 /**
@@ -195,6 +295,117 @@ exports.deleteExpiredReservedTickets = functions.https.onCall(async (data, conte
         console.error('Error during manual reserved ticket cleanup:', error);
         throw new functions.https.HttpsError('internal', 'Failed to perform manual cleanup.', error.message);
     }
+});
+
+// --- CORE ADMIN PASSWORD RESET LOGIC ---
+
+/**
+ * Retrieves a user's unique UID from their email address.
+ * @param {string} email The user's registered email.
+ * @returns {Promise<string|null>} The user's UID or null if not found/error.
+ */
+async function getUidByEmail(email) {
+    try {
+        // Uses the globally initialized admin SDK
+        const userRecord = await admin.auth().getUserByEmail(email);
+        return userRecord.uid;
+    } catch (error) {
+        if (error.code === 'auth/user-not-found') {
+            console.warn(`User not found for email: ${email}`);
+        } else {
+            console.error(`Error retrieving user by email: ${error.message}`);
+        }
+        return null;
+    }
+}
+
+/**
+ * Directly resets a user's password using the Firebase Admin SDK.
+ * @param {string} uid The unique ID of the user.
+ * @param {string} newPassword The temporary new password to assign.
+ * @returns {Promise<boolean>} True if successful, false otherwise.
+ */
+async function adminResetPassword(uid, newPassword) {
+    try {
+        // Uses the globally initialized admin SDK
+        await admin.auth().updateUser(uid, {
+            password: newPassword
+        });
+        console.log(`Password reset success for UID: ${uid}`);
+        return true;
+    } catch (error) {
+        console.error(`Error resetting password for UID ${uid}:`, error.message);
+        return false;
+    }
+}
+
+
+// --- NEW ADMIN PASSWORD RESET ENDPOINT ---
+
+/**
+ * HTTP Function endpoint for Super Admins to directly reset a user's password 
+ * based on their email, bypassing the password reset email requirement.
+ * This function MUST be secured against public access (e.g., using API keys, 
+ * App Check, or custom token validation).
+ */
+exports.adminResetPasswordByEmail = functions.https.onRequest((req, res) => {
+    // NOTE: This uses the existing corsHandler defined in the file
+    corsHandler(req, res, async () => {
+        
+        // !!! SECURITY WARNING !!!
+        // You MUST implement a strong authentication check here (e.g., validating 
+        // a session cookie or a SuperAdmin API key in the request headers) to 
+        // prevent unauthorized public access to this high-privilege endpoint.
+
+        if (req.method !== 'POST') {
+            return res.status(405).send({ message: 'Method Not Allowed. Use POST.' });
+        }
+
+        const { email, newPassword } = req.body;
+
+        if (!email || !newPassword) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Email and newPassword are required in the request body.' 
+            });
+        }
+
+        try {
+            // 1. Find the UID using the provided email
+            const uid = await getUidByEmail(email);
+
+            if (!uid) {
+                return res.status(404).json({ 
+                    success: false, 
+                    message: `User not found for email: ${email}.` 
+                });
+            }
+
+            // 2. Directly reset the password using the Admin SDK
+            const success = await adminResetPassword(uid, newPassword);
+
+            if (success) {
+                // Success response back to the admin client
+                return res.status(200).json({ 
+                    success: true, 
+                    message: `Password for user ${email} successfully reset. Communicate securely to the user.` 
+                });
+            } else {
+                // Failure during the password update process
+                return res.status(500).json({ 
+                    success: false, 
+                    message: 'Internal server error during password update.' 
+                });
+            }
+
+        } catch (error) {
+            console.error("Admin Reset Endpoint execution error:", error.message);
+            return res.status(500).json({ 
+                success: false, 
+                message: 'A general server error occurred.' 
+            });
+        }
+    });
 });
 
 
@@ -966,7 +1177,7 @@ exports.assignReferrerToRolexTickets = functions.https.onCall(async (data, conte
         // 4.1 Decrement Old Referrers
         for (const [oldRefId, totals] of oldReferrerDecrementMap.entries()) {
             if (oldRefId !== refId) { 
-                 // Need to look up UID for the old referrer since the Rolex ticket only stores RefId
+                // Need to look up UID for the old referrer since the Rolex ticket only stores RefId
                 const oldReferrerQuerySnapshot = await db.collection('referrers')
                     .where('refId', '==', oldRefId)
                     .limit(1)

@@ -37,6 +37,7 @@
             border-color: #FBBF24;
             box-shadow: 0 0 15px rgba(251, 191, 36, 0.5);
         }
+        /* Mobile-first adjustment for header navigation (Fixed Header CSS) */
         @media (max-width: 767px) {
             #main-menu li { width: 100%; }
             #main-menu li a {
@@ -65,8 +66,8 @@
         </div>
     </div>
 
-    <!-- Header for navigation -->
-    <header class="bg-black/40 py-4 px-4 md:px-12 w-full top-0 z-50 shadow-2xl backdrop-blur-sm">
+    <!-- Header for navigation (Fixed Position) -->
+    <header class="bg-black/40 py-4 px-4 md:px-12 fixed w-full top-0 z-50 shadow-2xl backdrop-blur-sm">
         <nav class="container mx-auto flex justify-between items-center flex-wrap md:flex-nowrap">
             <div class="flex items-center justify-between w-full md:w-auto">
                 <a href="/" class="flex items-center space-x-2">
@@ -77,14 +78,15 @@
                 </button>
             </div>
             <ul id="main-menu" class="hidden md:flex flex-col md:flex-row items-center space-y-2 md:space-y-0 md:space-x-8 text-base font-semibold w-full md:w-auto mt-4 md:mt-0">
-                <li><a href="/split-the-pot/" class="text-white hover:text-yellow-400 transition-colors duration-300">Split the Pot</a></li>
-                <li><a href="/spin-the-wheel/" class="text-white hover:text-yellow-400 transition-colors duration-300">Spin the Wheel</a></li>
+                <li><a href="/split-the-pot/" class="text-white hover:text-yellow-400 transition-colors duration-300 block">Split the Pot</a></li>
+                <li><a href="/spin-the-wheel/" class="text-white hover:text-yellow-400 transition-colors duration-300 block">Spin the Wheel</a></li>
+                <li><a href="/leaderboard/" class="text-white hover:text-yellow-400 transition-colors duration-300 block">Leaderboard</a></li>
                 <li><a href="/donate/" class="py-2 px-4 rounded-full bg-yellow-400 text-black hover:bg-yellow-500 transition-colors duration-300 font-bold block">Donate Now</a></li>
             </ul>
         </nav>
     </header>
 
-    <main class="flex-grow pt-12 sm:pt-20 px-4 md:px-8 lg:px-16">
+    <main class="flex-grow pt-24 sm:pt-28 px-4 md:px-8 lg:px-16">
         <div class="container mx-auto text-center p-4 sm:p-6 md:p-12 glass-panel rounded-2xl shadow-2xl max-w-7xl">
             <h1 class="bebas-neue text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-4 drop-shadow-lg">
                 Support the YDE Senior Fund
@@ -124,7 +126,7 @@
                 </div>
 
                 <div id="other-amount-container" class="mb-6 hidden">
-                    <label for="other-amount" class="text-sm text-gray-400 block mb-2">Please enter your amount:</label>
+                    <label for="other-amount" class="text-sm text-gray-400 block mb-2 text-left">Please enter your amount:</label>
                     <input type="number" id="other-amount" placeholder="Enter Amount" min="1" class="w-full py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300">
                 </div>
                 
@@ -189,7 +191,7 @@
     <script src="https://js.stripe.com/v3/"></script>
 
     <script>
-        // --- Referrer Helper Functions (NEW) ---
+        // --- Referrer Helper Functions (COPIED) ---
         function getQueryParam(param) {
             const urlParams = new URLSearchParams(window.location.search);
             return urlParams.get(param);
@@ -214,13 +216,13 @@
 
 
         document.addEventListener('DOMContentLoaded', () => {
-            // --- Referral Logic Initialization (NEW) ---
+            // --- Referral Logic Initialization ---
             const referrerRefId = getQueryParam('ref');
             if (referrerRefId) {
                 console.log('Referrer ID found:', referrerRefId);
                 updateNavLinks(referrerRefId); // Update all navigation links
             }
-            // --- END Referral Logic Initialization ---
+            // --- END Referrer Logic Initialization ---
 
             // UI Elements
             const donationOptions = document.querySelectorAll('.donation-option-card');
@@ -298,14 +300,19 @@
 
             // Event Listeners
             popupCloseButton.addEventListener('click', hideCustomPopup);
-            menuToggle.addEventListener('click', () => {
-                mainMenu.classList.toggle('hidden');
+            
+            // Toggle mobile menu visibility
+            menuToggle.addEventListener('click', () => { 
+                mainMenu.classList.toggle('hidden'); 
+                document.body.classList.toggle('overflow-hidden');
             });
             document.addEventListener('click', (event) => {
                 if (!mainMenu.contains(event.target) && !menuToggle.contains(event.target) && !mainMenu.classList.contains('hidden')) {
                     mainMenu.classList.add('hidden');
+                    document.body.classList.remove('overflow-hidden');
                 }
             });
+
 
             donationOptions.forEach(card => {
                 const amount = card.dataset.amount;
@@ -363,8 +370,7 @@
                     // Toggle visibility to show Stripe form
                     document.getElementById('user-info-form').classList.add('hidden');
                     document.getElementById('donation-options').classList.add('hidden');
-                    document.querySelector('#donation-form .bebas-neue.text-3xl').textContent = "Confirm Details";
-                    document.querySelector('#donation-form .bebas-neue.text-2xl').classList.remove('hidden'); // Show total
+                    document.querySelector('#donation-form h2').textContent = "Confirm Payment";
                     document.getElementById('cover-fees-checkbox').parentElement.classList.add('hidden');
                     donationProceedToPaymentButton.classList.add('hidden');
                     

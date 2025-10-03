@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin: Direct Password Reset</title>
+    <!-- Load Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .warning-box {
+            border-left: 4px solid #f97316; /* Orange border */
+        }
+    </style>
+    <script>
+        // NOTE: This client-side script only handles the form submission and display.
+        // The actual password reset logic MUST be on a secure backend server.
+
+        /**
+         * Dummy function to simulate a secure submission.
+         * In a real app, this function would make a POST request to a secure backend endpoint.
+         */
+        window.handleAdminReset = async function(event) {
+            event.preventDefault(); // Stop the default form submission
+
+            const form = event.target;
+            const uid = form.uid.value.trim();
+            const newPassword = form.newPassword.value;
+            const messageBox = document.getElementById('message-box');
+            const submitBtn = document.getElementById('submit-btn');
+
+            messageBox.innerHTML = '';
+            messageBox.classList.add('hidden');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Processing...';
+
+            if (!uid || !newPassword) {
+                displayMessage("Please provide the User UID and a new password.", 'error');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Reset Password';
+                return;
+            }
+
+            // --- THIS IS THE CRITICAL SIMULATION STEP ---
+            // In a real application, replace this block with a secure AJAX call 
+            // to your Cloud Function or API endpoint.
+            
+            try {
+                // Simulate network delay and backend processing
+                await new Promise(resolve => setTimeout(resolve, 1500)); 
+
+                // Simulate success (assuming the backend code executed adminResetPassword successfully)
+                displayMessage(`Success! UID ${uid.substring(0, 10)}... has been assigned a new password.`, 'success');
+
+                // Clear the form fields upon successful submission
+                form.reset();
+
+            } catch (error) {
+                // Handle potential network or backend errors here
+                displayMessage(`Failed to connect to backend: ${error.message}`, 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Reset Password';
+            }
+        }
+
+        /**
+         * Displays status or error messages.
+         */
+        function displayMessage(message, type) {
+            const messageBox = document.getElementById('message-box');
+            messageBox.textContent = message;
+            messageBox.classList.remove('hidden', 'bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800');
+            
+            if (type === 'error') {
+                messageBox.classList.add('bg-red-100', 'text-red-800');
+            } else if (type === 'success') {
+                messageBox.classList.add('bg-green-100', 'text-green-800');
+            }
+            
+            // Clear message after 8 seconds
+            setTimeout(() => {
+                messageBox.classList.add('hidden');
+            }, 8000);
+        }
+    </script>
+</head>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center p-4">
+
+    <!-- Admin Panel Card -->
+    <div class="w-full max-w-lg bg-white p-8 md:p-10 shadow-2xl rounded-xl border border-gray-100">
+        <h1 class="text-3xl font-extrabold text-gray-900 mb-2 text-center">
+            Admin Password Reset
+        </h1>
+        <p class="text-sm text-gray-500 mb-6 text-center">
+            Directly set a new temporary password for a verified user (bypasses email).
+        </p>
+        
+        <!-- Security Warning Box -->
+        <div class="warning-box bg-orange-50 p-4 mb-6 rounded-lg text-sm text-gray-700">
+            <p class="font-bold text-orange-600 mb-1">SECURITY WARNING</p>
+            <p>This form must submit data to a secure backend (like a Cloud Function) to execute the Firebase Admin SDK. Never run Admin SDK code in the browser.</p>
+        </div>
+
+
+        <!-- Message Box (Hidden by default) -->
+        <div id="message-box" class="hidden p-3 mb-6 text-sm font-medium rounded-lg transition duration-300 ease-in-out" role="alert">
+            <!-- Messages will be displayed here -->
+        </div>
+
+        <form id="admin-reset-form" onsubmit="handleAdminReset(event)" class="space-y-6">
+            <!-- User UID Input -->
+            <div>
+                <label for="uid" class="block text-sm font-medium text-gray-700 mb-1">User UID</label>
+                <input type="text" id="uid" name="uid" class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out" placeholder="e.g., UqN6gR3pYxV0kL7wFzB8jH..." required>
+                <p class="text-xs text-gray-500 mt-1">Get this UID from the Firebase Auth console after verifying the user's identity.</p>
+            </div>
+
+            <!-- New Password Input -->
+            <div>
+                <label for="newPassword" class="block text-sm font-medium text-gray-700 mb-1">Temporary New Password</label>
+                <input type="password" id="newPassword" name="newPassword" class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out" placeholder="e.g., TempPwd123!" required>
+                <p class="text-xs text-gray-500 mt-1">This password will be communicated securely to the user.</p>
+            </div>
+
+            <!-- Reset Button -->
+            <button id="submit-btn" type="submit" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-md text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition duration-200 ease-in-out transform hover:scale-[1.01]">
+                Reset Password
+            </button>
+
+            <p class="text-xs text-center text-gray-400 pt-2">
+                Simulated submission to backend endpoint: `/admin-reset-endpoint`
+            </p>
+        </form>
+    </div>
+</body>
+</html>

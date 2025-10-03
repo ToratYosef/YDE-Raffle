@@ -8,11 +8,41 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <!-- Stripe CSS for payment element -->
+    <!-- Stripe CSS for payment element is handled by Stripe JS -->
     
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        .bebas-neue { font-family: 'Bebas Neue', sans-serif; }
+        /* --- General & Global Styles (Merged) --- */
+        body { 
+            font-family: 'Inter', sans-serif;
+            background-color: #0d1222;
+            background-image: linear-gradient(135deg, #0d1222 0%, #151a2d 100%);
+        }
+        .bebas-neue { 
+            font-family: 'Bebas Neue', sans-serif; 
+        }
+
+        /* --- Header Specific Mobile Styles --- */
+        @media (max-width: 767px) {
+            #main-menu li {
+                width: 100%; /* Make list items take full width on mobile */
+            }
+            #main-menu li a {
+                display: block;
+                text-align: center;
+                padding: 0.75rem 1rem; /* Added padding for touch targets */
+            }
+            #main-menu li:last-child a {
+                margin-top: 0.5rem; /* Separates the Donate button slightly */
+            }
+        }
+
+        /* --- Spin Page Specific Styles --- */
+        .glass-panel {
+            background: rgba(43, 49, 63, 0.4);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
@@ -20,30 +50,8 @@
         .spinner {
           animation: spin 0.8s linear infinite;
         }
-        body {
-            background-color: #0d1222;
-            background-image: linear-gradient(135deg, #0d1222 0%, #151a2d 100%);
-        }
-        .glass-panel {
-            background: rgba(43, 49, 63, 0.4);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        @media (max-width: 767px) {
-            #main-menu li {
-                width: 100%;
-            }
-            #main-menu li a {
-                display: block;
-                text-align: center;
-                padding: 0.75rem 1rem;
-            }
-            #main-menu li:last-child a {
-                margin-top: 0.5rem;
-            }
-        }
-        /* Continuous Flashing for Spin (Re-added) */
+
+        /* Continuous Flashing for Spin */
         .flashing-text {
             animation: flash 0.1s linear infinite alternate;
         }
@@ -71,10 +79,7 @@
             transform: translate(-50%, -50%);
             z-index: 20; /* Ensure spinner is on top */
         }
-        .absolute-form {
-            position: relative;
-            z-index: 10;
-        }
+        
         /* Modal-specific styles */
         .modal-overlay {
             position: fixed;
@@ -104,10 +109,10 @@
 
         /* Prize Modal Overrides */
         #prize-modal {
-            z-index: 110; /* Higher than the spin modal */
+            z-index: 110; 
         }
 
-        /* --- STATIC SCOREBOARD STYLES (NEW) --- */
+        /* --- STATIC SCOREBOARD STYLES --- */
         .digit-box {
             /* The dimensions remain the same for the visual style */
             width: 60px;
@@ -119,7 +124,7 @@
             align-items: center;
             justify-content: center;
             overflow: hidden;
-            position: relative; /* Needed for z-index context if we ever add transition */
+            position: relative; 
         }
         @media (min-width: 768px) {
             .digit-box {
@@ -142,7 +147,6 @@
                 font-size: 7rem;
             }
         }
-        /* --- END STATIC SCOREBOARD STYLES --- */
     </style>
 </head>
 <body class="text-white min-h-screen flex flex-col">
@@ -177,26 +181,34 @@
         </div>
     </div>
 
-    <!-- Header for navigation -->
-    <header class="bg-black/40 py-4 px-4 md:px-12 w-full top-0 z-50 shadow-2xl backdrop-blur-sm">
+    <!-- Header (Fixed to the top, using the extracted content) -->
+    <header class="bg-black/40 py-4 px-4 md:px-12 fixed w-full top-0 z-50 shadow-2xl backdrop-blur-sm">
         <nav class="container mx-auto flex justify-between items-center flex-wrap md:flex-nowrap">
             <div class="flex items-center justify-between w-full md:w-auto">
+                <!-- Logo: Increased touch target and added ring for visual pop -->
                 <a href="/" class="flex items-center space-x-2">
                     <img src="https://raw.githubusercontent.com/ToratYosef/ToratYosef..github.io/refs/heads/main/assets/logos.jpeg" alt="YDE Logo" class="h-14 sm:h-16 md:h-20 w-auto rounded-full ring-2 ring-yellow-400 p-1">
                 </a>
+                <!-- Mobile Menu Toggle Button -->
                 <button id="menu-toggle" class="md:hidden text-white focus:outline-none" aria-label="Toggle menu">
                     <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
                 </button>
             </div>
+
+            <!-- Navigation Links (Toggable on mobile, always visible on desktop) -->
             <ul id="main-menu" class="hidden md:flex flex-col md:flex-row items-center space-y-2 md:space-y-0 md:space-x-8 text-base font-semibold w-full md:w-auto mt-4 md:mt-0">
-                <li><a href="/split-the-pot/" class="text-white hover:text-yellow-400 transition-colors duration-300">Split the Pot</a></li>
-                <li><a href="/spin-the-wheel/" class="text-white hover:text-yellow-400 transition-colors duration-300">Spin the Wheel</a></li>
+                <li><a href="/split-the-pot/" class="text-white hover:text-yellow-400 transition-colors duration-300 block">Split the Pot</a></li>
+                <li><a href="/spin-the-wheel/" class="text-white hover:text-yellow-400 transition-colors duration-300 block">Spin the Wheel</a></li>
+                <!-- NEW Leaderboard Link -->
+                <li><a href="/leaderboard/" class="text-white hover:text-yellow-400 transition-colors duration-300 block">Leaderboard</a></li>
+                <!-- Donate button styling updated for block display on mobile -->
                 <li><a href="/donate/" class="py-2 px-4 rounded-full bg-yellow-400 text-black hover:bg-yellow-500 transition-colors duration-300 font-bold block">Donate Now</a></li>
             </ul>
         </nav>
     </header>
+    <!-- End Header -->
 
-    <main class="flex-grow pt-12 sm:pt-20 px-4 md:px-8 lg:px-16">
+    <main class="flex-grow pt-24 sm:pt-28 px-4 md:px-8 lg:px-16"> <!-- Increased padding top to account for fixed header -->
         <section id="spin-to-win-section">
             <div class="container mx-auto text-center p-4 sm:p-6 md:p-12 glass-panel rounded-2xl shadow-2xl">
                 <h1 class="bebas-neue text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-4 drop-shadow-lg">
@@ -559,20 +571,15 @@
                 const digits = countString.split('');
 
                 // Update the text content of the three digit boxes
-                document.getElementById(digitHundredsId).textContent = digits[0];
-                document.getElementById(digitTensId).textContent = digits[1];
-                document.getElementById(digitOnesId).textContent = digits[2];
+                // We use innerHTML and span to ensure the `digit-text` class is always applied correctly for styling.
+                document.getElementById(digitHundredsId).innerHTML = `<span class="digit-text">${digits[0]}</span>`;
+                document.getElementById(digitTensId).innerHTML = `<span class="digit-text">${digits[1]}</span>`;
+                document.getElementById(digitOnesId).innerHTML = `<span class="digit-text">${digits[2]}</span>`;
             }
             
             // Function to initialize the scoreboard look and initial count
             function initializeScoreboard() {
-                const digitIds = [digitHundredsId, digitTensId, digitOnesId];
-                digitIds.forEach(id => {
-                    const unit = document.getElementById(id);
-                    // Add the text styling to the unit itself
-                    unit.classList.add('digit-text');
-                });
-                // Set initial count to 650
+                // Initialize with the maximum ticket count
                 updateScoreboardDisplay(TOTAL_ROLEX_TICKETS);
             }
             // --- END NEW STATIC SCOREBOARD LOGIC ---
@@ -746,6 +753,9 @@
                 if (user) {
                     console.log('User signed in with UID:', user.uid);
                     
+                    // Wait for anonymous sign-in or actual user to be ready before querying Firestore
+                    if (user.isAnonymous && !user.uid) return; // Ensure UID is available after anonymous sign-in
+
                     db.collection('rolex_tickets').onSnapshot((querySnapshot) => { 
                         let paidOrClaimedCount = 0;
                         querySnapshot.forEach(doc => {
@@ -764,6 +774,7 @@
                     }, (error) => { console.error("Error listening to tickets:", error); });
                 } else {
                     try {
+                        // Sign in anonymously if no user is signed in
                         await auth.signInAnonymously();
                     } catch (error) {
                         console.error('Anonymous sign-in failed:', error);

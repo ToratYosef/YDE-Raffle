@@ -29,10 +29,11 @@
             color: #facc15; /* Active text is yellow */
             font-weight: 600;
         }
+        /* Make table text slightly smaller on mobile for density */
         .data-table th {
             text-align: left;
-            padding: 0.75rem 1rem;
-            font-size: 0.75rem;
+            padding: 0.5rem 0.5rem; /* Reduced padding for mobile */
+            font-size: 0.65rem; /* Smaller font size */
             text-transform: uppercase;
             letter-spacing: 0.05em;
             color: #9ca3af; /* Light gray text */
@@ -41,8 +42,8 @@
             cursor: pointer;
         }
         .data-table td {
-            padding: 0.75rem 1rem;
-            font-size: 0.875rem;
+            padding: 0.75rem 0.5rem; /* Reduced padding for mobile */
+            font-size: 0.75rem; /* Smaller font size */
             border-bottom: 1px solid #374151; /* Dark border */
             color: #d1d5db; /* Light gray text for data */
         }
@@ -55,6 +56,7 @@
         .overflow-x-auto::-webkit-scrollbar-thumb { background-color: #4b5563; border-radius: 4px; }
         .overflow-x-auto::-webkit-scrollbar-track { background-color: #1f2937; }
         .referrer-sort-header { user-select: none; }
+        /* Adjusted sort icon logic for consistency */
         .sort-icon { display: none; }
         .sort-header.active .sort-icon { display: inline-block; }
     </style>
@@ -69,18 +71,18 @@
 
     <!-- Custom Popup Modal -->
     <div id="customPopupOverlay" class="fixed inset-0 z-[101] modal-overlay flex items-center justify-center p-4 hidden">
-        <div id="customPopup" class="bg-gray-800 p-6 rounded-lg shadow-2xl max-w-sm w-full text-center scale-95 transition-all duration-300">
-            <h2 id="popupTitle" class="text-2xl font-bold text-yellow-400 mb-3"></h2>
-            <p id="popupMessage" class="text-gray-300 mb-5"></p>
+        <div id="customPopup" class="bg-gray-800 p-6 rounded-lg shadow-2xl max-w-xs sm:max-w-sm w-full text-center scale-95 transition-all duration-300">
+            <h2 id="popupTitle" class="text-xl sm:text-2xl font-bold text-yellow-400 mb-3"></h2>
+            <p id="popupMessage" class="text-gray-300 mb-5 text-sm sm:text-base"></p>
             <button id="popupCloseButton" class="w-full py-2 rounded-lg bg-yellow-500 text-black font-semibold hover:bg-yellow-600 transition-colors">OK</button>
         </div>
     </div>
     
     <!-- Batch Password Reset Modal (Super Admin Only) -->
     <div id="batchResetModalOverlay" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4 hidden">
-        <div class="bg-gray-800 p-6 rounded-lg shadow-2xl max-w-md w-full">
-            <h2 class="text-2xl font-bold text-red-400 mb-4">Batch Password Reset</h2>
-            <p class="text-gray-300 mb-4">
+        <div class="bg-gray-800 p-6 rounded-lg shadow-2xl max-w-xs sm:max-w-md w-full">
+            <h2 class="text-xl sm:text-2xl font-bold text-red-400 mb-4">Batch Password Reset</h2>
+            <p class="text-gray-300 mb-4 text-sm sm:text-base">
                 You are about to reset the password for <span id="selectedUserCount" class="font-bold text-red-400">0</span> user(s).
             </p>
             <form id="batchResetForm" class="space-y-4">
@@ -98,10 +100,10 @@
         </div>
     </div>
 
-    <!-- MISSING MODAL: Manual Sale Modal (Super Admin Only) -->
+    <!-- Manual Sale Modal (Super Admin Only) -->
     <div id="manualSaleModalOverlay" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4 hidden">
-        <div class="bg-gray-800 p-6 rounded-lg shadow-2xl max-w-md w-full">
-            <h2 class="text-2xl font-bold text-white mb-4">Add Manual Raffle Sale (SA Only)</h2>
+        <div class="bg-gray-800 p-6 rounded-lg shadow-2xl max-w-xs sm:max-w-md w-full">
+            <h2 class="text-xl sm:text-2xl font-bold text-white mb-4">Add Manual Raffle Sale (SA Only)</h2>
             <form id="manualSaleForm" class="space-y-4">
                 <div>
                     <input type="text" id="manual-name" placeholder="Customer Full Name" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white" required>
@@ -112,7 +114,7 @@
                 <div>
                     <input type="tel" id="manual-phone" placeholder="Customer Phone (Optional)" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white">
                 </div>
-                <div class="flex space-x-4">
+                <div class="flex space-x-2 sm:space-x-4">
                     <input type="number" id="manual-tickets" placeholder="Tickets Bought" min="1" class="w-1/2 p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white" required>
                     <input type="number" id="manual-amount" placeholder="Amount Paid ($)" step="0.01" min="0.01" class="w-1/2 p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white" required>
                 </div>
@@ -128,10 +130,10 @@
         </div>
     </div>
     
-    <!-- MISSING MODAL: Edit Raffle Sale Modal (Super Admin Only) -->
+    <!-- Edit Raffle Sale Modal (Super Admin Only) -->
     <div id="editSaleModalOverlay" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4 hidden">
-        <div class="bg-gray-800 p-6 rounded-lg shadow-2xl max-w-md w-full">
-            <h2 class="text-2xl font-bold text-white mb-4">Edit Raffle Sale Entry </h2>
+        <div class="bg-gray-800 p-6 rounded-lg shadow-2xl max-w-xs sm:max-w-md w-full">
+            <h2 class="text-xl sm:text-2xl font-bold text-white mb-4">Edit Raffle Sale Entry </h2>
             <form id="editSaleForm" class="space-y-4">
                 <input type="hidden" id="edit-sale-id">
                 <div>
@@ -146,7 +148,7 @@
                     <label for="edit-phone" class="block text-sm font-medium text-gray-300">Phone</label>
                     <input type="tel" id="edit-phone" placeholder="Phone (Optional)" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white">
                 </div>
-                <div class="flex space-x-4">
+                <div class="flex space-x-2 sm:space-x-4">
                     <div class="w-1/2">
                         <label for="edit-tickets" class="block text-sm font-medium text-gray-300">Tickets Bought</label>
                         <input type="number" id="edit-tickets" placeholder="Tickets Bought" min="1" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white" required>
@@ -164,11 +166,11 @@
         </div>
     </div>
 
-    <!-- MISSING MODAL: Apply Raffle Tickets Modal (Split the Pot) - Super Admin Only -->
-    <div id="applyTicketsModalOverlay" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4 hidden">
-        <div class="bg-gray-800 p-8 rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <h2 class="text-2xl font-bold text-white mb-2">Assign/Transfer Split The Pot Tickets to: <span id="targetReferrerName" class="text-blue-400"></span></h2>
-            <p class="text-sm text-gray-400 mb-4">Select sales below to assign (if unassigned) or transfer (if already assigned) them to this referrer's ID (<span id="targetReferrerId"></span>).</p>
+    <!-- Apply Raffle Tickets Modal (Split the Pot) - Super Admin Only -->
+    <div id="applyTicketsModalOverlay" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-2 sm:p-4 hidden">
+        <div class="bg-gray-800 p-4 sm:p-8 rounded-lg shadow-2xl w-full max-w-lg md:max-w-4xl max-h-[95vh] overflow-y-auto">
+            <h2 class="text-xl sm:text-2xl font-bold text-white mb-2">Assign/Transfer Split The Pot Tickets to: <span id="targetReferrerName" class="text-blue-400"></span></h2>
+            <p class="text-xs sm:text-sm text-gray-400 mb-4">Select sales below to assign (if unassigned) or transfer (if already assigned) them to this referrer's ID (<span id="targetReferrerId"></span>).</p>
 
             <!-- Search and Action Bar -->
             <div class="flex flex-col md:flex-row gap-3 md:items-center mb-4">
@@ -208,11 +210,11 @@
         </div>
     </div>
     
-    <!-- MISSING MODAL: Apply Rolex Tickets Modal (Spin the Wheel) - Super Admin Only -->
-    <div id="applyRolexTicketsModalOverlay" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4 hidden">
-        <div class="bg-gray-800 p-8 rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <h2 class="text-2xl font-bold text-white mb-2">Assign/Transfer Spin The Wheel Tickets to: <span id="targetRolexReferrerName" class="text-purple-400"></span></h2>
-            <p class="text-sm text-gray-400 mb-4">Select tickets below to assign or transfer them to this referrer's ID (<span id="targetRolexReferrerId"></span>). Tickets must be Paid or Claimed.</p>
+    <!-- Apply Rolex Tickets Modal (Spin the Wheel) - Super Admin Only -->
+    <div id="applyRolexTicketsModalOverlay" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-2 sm:p-4 hidden">
+        <div class="bg-gray-800 p-4 sm:p-8 rounded-lg shadow-2xl w-full max-w-lg md:max-w-4xl max-h-[95vh] overflow-y-auto">
+            <h2 class="text-xl sm:text-2xl font-bold text-white mb-2">Assign/Transfer Spin The Wheel Tickets to: <span id="targetRolexReferrerName" class="text-purple-400"></span></h2>
+            <p class="text-xs sm:text-sm text-gray-400 mb-4">Select tickets below to assign or transfer them to this referrer's ID (<span id="targetRolexReferrerId"></span>). Tickets must be Paid or Claimed.</p>
 
             <!-- Search and Action Bar -->
             <div class="flex flex-col md:flex-row gap-3 md:items-center mb-4">
@@ -253,11 +255,11 @@
         </div>
     </div>
     
-    <!-- MISSING MODAL: Upgrade Admin Confirmation Modal (Super Admin Only) -->
+    <!-- Upgrade Admin Confirmation Modal (Super Admin Only) -->
     <div id="upgradeAdminModalOverlay" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4 hidden">
-        <div class="bg-gray-800 p-6 rounded-lg shadow-2xl max-w-sm w-full">
-            <h2 class="text-2xl font-bold text-red-400 mb-4">Confirm Role Change</h2>
-            <p class="text-gray-300 mb-6">
+        <div class="bg-gray-800 p-6 rounded-lg shadow-2xl max-w-xs sm:max-w-sm w-full">
+            <h2 class="text-xl sm:text-2xl font-bold text-red-400 mb-4">Confirm Role Change</h2>
+            <p class="text-gray-300 mb-6 text-sm sm:text-base">
                 Are you sure you want to promote <span id="upgrade-referrer-name" class="font-bold text-white"></span>
                 (<span id="upgrade-referrer-refid" class="font-mono text-xs bg-gray-700 p-1 rounded"></span>)
                 to a **Super Admin**?
@@ -277,44 +279,49 @@
     <div id="dashboardContainer" class="hidden max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
         
         <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b border-gray-700 pb-4">
-            <h1 class="text-3xl font-bold text-white mb-2 md:mb-0">
+            <h1 class="text-2xl sm:text-3xl font-bold text-white mb-2 md:mb-0">
                 Admin Dashboard 
                 <span id="userRoleDisplay" class="text-base font-normal text-yellow-400"></span>
             </h1>
-            <div class="flex items-center space-x-3">
+            <!-- Added flex-wrap and adjusted spacing for smaller screens -->
+            <div class="flex flex-wrap items-center gap-2 mt-2 md:mt-0">
                 <!-- EXPORT BUTTON (New) -->
-                <button id="exportDataButton" class="flex items-center px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 transition-colors hidden" title="Export current table view to CSV">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                    Export CSV
+                <button id="exportDataButton" class="flex items-center px-3 py-2 text-sm bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 transition-colors hidden" title="Export current table view to CSV">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    <span class="hidden sm:inline">Export CSV</span>
+                    <span class="inline sm:hidden">Export</span>
                 </button>
                 <!-- REFRESH BUTTON -->
-                <button id="refreshDataButton" class="flex items-center px-4 py-2 bg-gray-700 text-white font-semibold rounded-lg shadow-md hover:bg-gray-600 transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.76 2.82"></path><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.76-2.82"></path><path d="M3 3v4h4M21 21v-4h-4"></path></svg>
-                    Refresh Data
+                <button id="refreshDataButton" class="flex items-center px-3 py-2 text-sm bg-gray-700 text-white font-semibold rounded-lg shadow-md hover:bg-gray-600 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.76 2.82"></path><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.76-2.82"></path><path d="M3 3v4h4M21 21v-4h-4"></path></svg>
+                    <span class="hidden sm:inline">Refresh Data</span>
+                    <span class="inline sm:hidden">Refresh</span>
                 </button>
-                <button id="addManualSaleButton" class="flex items-center px-4 py-2 bg-green-500 text-white font-semibold rounded-lg shadow-md hover:bg-green-600 transition-colors hidden">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
-                    Add Manual Sale
+                <button id="addManualSaleButton" class="flex items-center px-3 py-2 text-sm bg-green-500 text-white font-semibold rounded-lg shadow-md hover:bg-green-600 transition-colors hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+                    <span class="hidden sm:inline">Add Manual Sale</span>
+                    <span class="inline sm:hidden">Add Sale</span>
                 </button>
                 <button id="logoutButton" class="px-3 py-2 text-sm text-gray-300 bg-gray-600 rounded-lg hover:bg-gray-500 transition-colors">Logout</button>
             </div>
         </header>
 
         <!-- Referrer Overview (For Referrers and Super Admins) -->
-        <div id="referrerOverview" class="dashboard-card p-6 mb-6 hidden">
+        <div id="referrerOverview" class="dashboard-card p-4 sm:p-6 mb-6 hidden">
             <!-- New Referral Link Section -->
             <div id="referrerLinkContainer" class="mb-4">
                 <p class="text-sm font-medium text-gray-400 mb-1">Your Referral Link:</p>
                 <div class="flex items-center bg-gray-700 p-2 rounded-lg border border-gray-600">
-                    <span id="referralLink" class="text-base font-mono text-blue-400 truncate mr-3 select-all"></span>
+                    <span id="referralLink" class="text-xs sm:text-base font-mono text-blue-400 truncate mr-3 select-all"></span>
                     <button id="copyLinkButton" class="ml-auto p-1 text-gray-400 hover:text-blue-500 transition-colors" title="Copy Link">
                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M7.75 3.75a.75.75 0 0 1 1.5 0v3.5h3.5a.75.75 0 0 1 0 1.5h-3.5v3.5a.75.75 0 0 1-1.5 0v-3.5h-3.5a.75.75 0 0 1 0-1.5h3.5v-3.5Z" clip-rule="evenodd" /></svg>
                     </button>
                 </div>
             </div>
             
-            <h2 class="text-2xl font-bold text-white mb-4">Your Performance</h2>
-            <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <h2 class="text-xl sm:text-2xl font-bold text-white mb-4">Your Performance</h2>
+            <!-- Adjusted grid to collapse better on mobile -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <!-- NEW: Total Clicks Card -->
                 <div class="p-4 bg-purple-900/50 border-l-4 border-purple-500 rounded-lg">
                     <p class="text-sm font-medium text-gray-400">Total Clicks</p>
@@ -336,14 +343,14 @@
             </div>
         </div>
 
-        <!-- Tab Navigation -->
-        <nav class="flex space-x-4 mb-6 border-b border-gray-700">
-            <button data-tab="referrers" class="tab-button py-3 px-4 text-gray-400 hover:text-white transition-colors hidden">Referrers</button>
-            <button data-tab="raffle" class="tab-button py-3 px-4 text-gray-400 hover:text-white transition-colors">Split The Pot Sales</button>
-            <button data-tab="rolex" class="tab-button py-3 px-4 text-gray-400 hover:text-white transition-colors hidden">Spin The Wheel Sales</button>
-            <button data-tab="donations" class="tab-button py-3 px-4 text-gray-400 hover:text-white transition-colors hidden">Donations</button>
-            <button data-tab="users" class="tab-button py-3 px-4 text-gray-400 hover:text-white transition-colors hidden">User Management</button>
-            <button data-tab="tools" class="tab-button py-3 px-4 text-gray-400 hover:text-white transition-colors hidden">Admin Tools</button>
+        <!-- Tab Navigation - Added overflow-x-auto to handle many tabs on mobile -->
+        <nav class="flex space-x-2 sm:space-x-4 mb-6 border-b border-gray-700 overflow-x-auto whitespace-nowrap">
+            <button data-tab="referrers" class="tab-button py-3 px-2 sm:px-4 text-sm sm:text-base text-gray-400 hover:text-white transition-colors hidden">Referrers</button>
+            <button data-tab="raffle" class="tab-button py-3 px-2 sm:px-4 text-sm sm:text-base text-gray-400 hover:text-white transition-colors">Split The Pot Sales</button>
+            <button data-tab="rolex" class="tab-button py-3 px-2 sm:px-4 text-sm sm:text-base text-gray-400 hover:text-white transition-colors hidden">Spin The Wheel Sales</button>
+            <button data-tab="donations" class="tab-button py-3 px-2 sm:px-4 text-sm sm:text-base text-gray-400 hover:text-white transition-colors hidden">Donations</button>
+            <button data-tab="users" class="tab-button py-3 px-2 sm:px-4 text-sm sm:text-base text-gray-400 hover:text-white transition-colors hidden">User Management</button>
+            <button data-tab="tools" class="tab-button py-3 px-2 sm:px-4 text-sm sm:text-base text-gray-400 hover:text-white transition-colors hidden">Admin Tools</button>
         </nav>
 
         <!-- Tab Content Containers -->
@@ -355,12 +362,12 @@
                     <h3 class="text-xl font-semibold mb-3 text-white">All Firebase Users</h3>
                     
                     <!-- Controls -->
-                    <div class="flex flex-col sm:flex-row gap-4 mb-4 items-center">
-                        <input type="text" id="userSearchInput" placeholder="Search by Name, Email, or UID..." class="w-full sm:w-1/3 p-2 pl-3 border border-gray-600 rounded-lg focus:ring-red-500 focus:border-red-500 bg-gray-700 text-white">
+                    <div class="flex flex-col sm:flex-row gap-3 mb-4 items-center">
+                        <input type="text" id="userSearchInput" placeholder="Search by Name, Email, or UID..." class="w-full sm:w-1/3 p-2 pl-3 border border-gray-600 rounded-lg focus:ring-red-500 focus:border-red-500 bg-gray-700 text-white text-sm">
                         <div class="flex-grow"></div>
-                        <div class="flex items-center space-x-3">
+                        <div class="flex items-center space-x-3 w-full sm:w-auto justify-end">
                             <span id="usersSelectedCount" class="text-sm font-medium text-gray-400">0 selected</span>
-                            <button id="openBatchResetModalButton" class="px-4 py-2 bg-red-500 text-white font-semibold rounded-lg shadow-md hover:bg-red-600 transition-colors disabled:opacity-50" disabled>
+                            <button id="openBatchResetModalButton" class="px-3 py-2 text-sm bg-red-500 text-white font-semibold rounded-lg shadow-md hover:bg-red-600 transition-colors disabled:opacity-50" disabled>
                                 Batch Reset Passwords
                             </button>
                         </div>
@@ -373,10 +380,10 @@
                                     <th class="w-12 text-center">
                                         <input type="checkbox" id="selectAllUsers" class="rounded text-red-500 focus:ring-red-500 bg-gray-700 border-gray-600">
                                     </th>
-                                    <th class="user-sort-header cursor-pointer" data-sort-key="displayName" data-table="users">Name</th>
-                                    <th class="user-sort-header cursor-pointer" data-sort-key="email" data-table="users">Email</th>
+                                    <th class="user-sort-header cursor-pointer" data-sort-key="displayName" data-table="users">Name<span class="sort-icon ml-1"></span></th>
+                                    <th class="user-sort-header cursor-pointer" data-sort-key="email" data-table="users">Email<span class="sort-icon ml-1"></span></th>
                                     <th>UID</th>
-                                    <th class="user-sort-header cursor-pointer" data-sort-key="createdAt" data-table="users">Created</th>
+                                    <th class="user-sort-header cursor-pointer" data-sort-key="createdAt" data-table="users">Created<span class="sort-icon ml-1"></span></th>
                                     <th>Roles</th>
                                     <th>Status</th>
                                 </tr>
@@ -398,7 +405,7 @@
                     <div class="flex flex-col sm:flex-row gap-4 mb-4">
                         <!-- Search Input -->
                         <div class="relative flex-grow">
-                            <input type="text" id="referrerSearchInput" placeholder="Search by Name, ID, or Email..." class="w-full p-2 pl-10 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white">
+                            <input type="text" id="referrerSearchInput" placeholder="Search by Name, ID, or Email..." class="w-full p-2 pl-10 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white text-sm">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.197 5.197a7.5 7.5 0 0010.607 10.607z" /></svg>
                         </div>
                     </div>
@@ -454,7 +461,7 @@
             <div id="tab-raffle" class="tab-pane hidden">
                 <div class="dashboard-card p-4 overflow-x-auto">
                     <!-- Filter and Header Controls -->
-                    <div class="flex justify-between items-center mb-3">
+                    <div class="flex flex-wrap justify-between items-center mb-3 gap-3">
                         <h3 class="text-xl font-semibold text-white" id="raffleSalesHeader">Split The Pot Sales</h3>
                         <!-- FILTER DROPDOWN (Hidden for non-SA Referrers) -->
                         <div id="raffleFilterControls" class="flex items-center space-x-2">
@@ -467,23 +474,25 @@
                         </div>
                     </div>
 
-                    <table class="data-table w-full whitespace-nowrap">
-                        <thead>
-                            <tr>
-                                <th class="sort-header" data-table="raffle" data-sort-key="timestamp">Date <span class="sort-icon ml-1"></span></th>
-                                <th class="sort-header" data-table="raffle" data-sort-key="fullName">Full Name <span class="sort-icon ml-1"></span></th>
-                                <th>Phone/Email</th>
-                                <th class="sort-header" data-table="raffle" data-sort-key="ticketCount">Tickets <span class="sort-icon ml-1"></span></th>
-                                <th class="sort-header text-right" data-table="raffle" data-sort-key="amountPaid">Amount Paid <span class="sort-icon ml-1"></span></th>
-                                <th class="sort-header" data-table="raffle" data-sort-key="referrerRefId">Referrer <span class="sort-icon ml-1"></span></th>
-                                <th>Source</th>
-                                <th id="raffleSalesActionHeader" class="hidden">Action</th> <!-- Added for Edit button -->
-                            </tr>
-                        </thead>
-                        <tbody id="raffleTableBody">
-                            <tr><td colspan="7" class="text-center py-4 text-gray-400">Loading raffle sales data...</td></tr>
-                        </tbody>
-                    </table>
+                    <div class="overflow-x-auto">
+                        <table class="data-table w-full whitespace-nowrap">
+                            <thead>
+                                <tr>
+                                    <th class="sort-header" data-table="raffle" data-sort-key="timestamp">Date <span class="sort-icon ml-1"></span></th>
+                                    <th class="sort-header" data-table="raffle" data-sort-key="fullName">Full Name <span class="sort-icon ml-1"></span></th>
+                                    <th>Phone/Email</th>
+                                    <th class="sort-header" data-table="raffle" data-sort-key="ticketCount">Tickets <span class="sort-icon ml-1"></span></th>
+                                    <th class="sort-header text-right" data-table="raffle" data-sort-key="amountPaid">Amount Paid <span class="sort-icon ml-1"></span></th>
+                                    <th class="sort-header" data-table="raffle" data-sort-key="referrerRefId">Referrer <span class="sort-icon ml-1"></span></th>
+                                    <th>Source</th>
+                                    <th id="raffleSalesActionHeader" class="hidden">Action</th> <!-- Added for Edit button -->
+                                </tr>
+                            </thead>
+                            <tbody id="raffleTableBody">
+                                <tr><td colspan="7" class="text-center py-4 text-gray-400">Loading raffle sales data...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -491,10 +500,10 @@
             <div id="tab-rolex" class="tab-pane hidden">
                 <div class="dashboard-card p-4 overflow-x-auto">
                     <!-- Filter and Header Controls -->
-                    <div class="flex justify-between items-center mb-3">
+                    <div class="flex flex-wrap justify-between items-center mb-3 gap-3">
                         <h3 class="text-xl font-semibold text-white" id="rolexSalesHeader">Spin The Wheel Sales (SA Only)</h3>
                         <!-- NEW FILTER DROPDOWN -->
-                        <div class="flex items-center space-x-2">
+                        <div id="rolexFilterControls" class="flex items-center space-x-2">
                             <label for="rolexFilter" class="text-sm font-medium text-gray-400">Filter:</label>
                             <select id="rolexFilter" class="p-2 border border-gray-600 rounded-lg text-sm focus:ring-purple-500 focus:border-purple-500 bg-gray-700 text-white">
                                 <option value="all">All Tickets</option>
@@ -504,22 +513,24 @@
                         </div>
                     </div>
 
-                    <table class="data-table w-full whitespace-nowrap">
-                        <thead>
-                            <tr>
-                                <th class="sort-header" data-table="rolex" data-sort-key="timestamp">Date <span class="sort-icon ml-1"></span></th>
-                                <th class="sort-header" data-table="rolex" data-sort-key="id">Ticket # <span class="sort-icon ml-1"></span></th>
-                                <th class="sort-header" data-table="rolex" data-sort-key="name">Full Name <span class="sort-icon ml-1"></span></th>
-                                <th>Email</th>
-                                <th>Status</th>
-                                <th class="sort-header text-right" data-table="rolex" data-sort-key="amountPaid">Amount Paid <span class="sort-icon ml-1"></span></th>
-                                <th class="sort-header" data-table="rolex" data-sort-key="referrerRefId">Referrer <span class="sort-icon ml-1"></span></th>
-                            </tr>
-                        </thead>
-                        <tbody id="rolexTableBody">
-                            <tr><td colspan="7" class="text-center py-4 text-gray-400">No Spin The Wheel sales found.</td></tr>
-                        </tbody>
-                    </table>
+                    <div class="overflow-x-auto">
+                        <table class="data-table w-full whitespace-nowrap">
+                            <thead>
+                                <tr>
+                                    <th class="sort-header" data-table="rolex" data-sort-key="timestamp">Date <span class="sort-icon ml-1"></span></th>
+                                    <th class="sort-header" data-table="rolex" data-sort-key="id">Ticket # <span class="sort-icon ml-1"></span></th>
+                                    <th class="sort-header" data-table="rolex" data-sort-key="name">Full Name <span class="sort-icon ml-1"></span></th>
+                                    <th>Email</th>
+                                    <th>Status</th>
+                                    <th class="sort-header text-right" data-table="rolex" data-sort-key="amountPaid">Amount Paid <span class="sort-icon ml-1"></span></th>
+                                    <th class="sort-header" data-table="rolex" data-sort-key="referrerRefId">Referrer <span class="sort-icon ml-1"></span></th>
+                                </tr>
+                            </thead>
+                            <tbody id="rolexTableBody">
+                                <tr><td colspan="7" class="text-center py-4 text-gray-400">No Spin The Wheel sales found.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -554,19 +565,19 @@
                     <div class="border p-4 rounded-lg bg-red-900/50 border-red-700">
                         <h4 class="font-semibold text-lg text-red-400 mb-2">Reserved Ticket Cleanup (Spin The Wheel)</h4>
                         <div id="reservedTicketInfo" class="text-sm text-gray-300 mb-3">Loading counts...</div>
-                        <button id="deleteExpiredTicketsButton" class="px-4 py-2 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50">
+                        <button id="deleteExpiredTicketsButton" class="px-4 py-2 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 text-sm">
                             Manually Run Cleanup
                         </button>
                     </div>
 
-                    <!-- Recalculate Totals -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Recalculate Totals - Adjusted to grid-cols-1 on small screens -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
                         
                         <!-- NEW: Recalculate ALL Referrer Totals (The requested feature) -->
                         <div id="recalculateAllTotalsCard" class="border p-4 rounded-lg bg-red-900/50 border-red-700">
                             <h4 class="font-semibold text-lg text-red-400 mb-2">Recalculate ALL Referrer Totals</h4>
                             <p class="text-sm text-gray-300 mb-3">Rebuilds all ticket counts (Split/Spin) and combined sales amount for **every** referrer from all sales data.</p>
-                            <button id="recalculateAllReferrerTotalsButton" class="px-4 py-2 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50">
+                            <button id="recalculateAllReferrerTotalsButton" class="px-4 py-2 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 text-sm">
                                 Rebuild All Totals
                             </button>
                         </div>
@@ -575,7 +586,7 @@
                         <div id="recalculateRaffleTotalsCard" class="border p-4 rounded-lg bg-indigo-900/50 border-indigo-700">
                             <h4 class="font-semibold text-lg text-indigo-400 mb-2">Recalculate Split The Pot Totals (Global)</h4>
                             <p class="text-sm text-gray-300 mb-3">Resets and sums all Split the Pot entries to update **Global** <code>totalTickets</code> (Split Count) and <code>totalAmount</code> (Split $).</p>
-                            <button id="recalculateTotalsButton" class="px-4 py-2 bg-indigo-500 text-white font-semibold rounded-lg hover:bg-indigo-600 transition-colors disabled:opacity-50">
+                            <button id="recalculateTotalsButton" class="px-4 py-2 bg-indigo-500 text-white font-semibold rounded-lg hover:bg-indigo-600 transition-colors disabled:opacity-50 text-sm">
                                 Recalculate Global Pot
                             </button>
                         </div>
@@ -584,7 +595,7 @@
                         <div id="recalculateRolexTotalsCard" class="border p-4 rounded-lg bg-purple-900/50 border-purple-700">
                             <h4 class="font-semibold text-lg text-purple-400 mb-2">Recalculate Spin The Wheel Totals (Global)</h4>
                             <p class="text-sm text-gray-300 mb-3">Resets and sums all Spin tickets to update **Global** <code>rolexTicketsTotal</code> (Spin Count) and the combined <code>totalAmount</code> ($).</p>
-                            <button id="recalculateRolexTotalsButton" class="px-4 py-2 bg-purple-500 text-white font-semibold rounded-lg hover:bg-purple-600 transition-colors disabled:opacity-50">
+                            <button id="recalculateRolexTotalsButton" class="px-4 py-2 bg-purple-500 text-white font-semibold rounded-lg hover:bg-purple-600 transition-colors disabled:opacity-50 text-sm">
                                 Recalculate Global Wheel
                             </button>
                         </div>
@@ -645,9 +656,9 @@
         let isLoggedInAdmin = false; 
 
         // --- GLOBAL STATE ---
-        let allAuthUsers = []; // New array to hold all users from Firebase Auth
+        let allAuthUsers = []; 
         let filteredAuthUsers = [];
-        let selectedUserUids = new Set(); // New Set for multi-select UIDs
+        let selectedUserUids = new Set(); 
         let allAssignmentRaffleSales = []; 
         let filteredRaffleSales = []; 
         let selectedRaffleSaleIds = new Set(); 
@@ -682,6 +693,7 @@
 
         // Configuration and App ID (MUST be present in Canvas environment)
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        // Note: The API Key and other config details are left as placeholders for the user to insert their actual configuration.
         const firebaseConfig = {
             apiKey: "AIzaSyAT539nr_s2OxHPTAmkxwMpaWt-FiDTgQs",
             authDomain: "yderaffle.firebaseapp.com",
@@ -715,6 +727,7 @@
                     // Check for server-serialized raw seconds/nanoseconds (common from callable functions)
                     const seconds = timestamp.seconds || timestamp._seconds;
                     if (typeof seconds === 'number') {
+                        // Use the seconds property for reconstruction
                         date = new Date(seconds * 1000);
                     } else {
                         // Fallback: try converting the object itself (if it contains an ISO string, etc.)
@@ -786,22 +799,33 @@
         
         // Copy to clipboard function
         const copyToClipboard = (text, message = 'Link copied!') => {
-            navigator.clipboard.writeText(text).then(() => {
-                showCustomPopup('Success', message);
-            }, (err) => {
-                console.error('Could not copy text: ', err);
-                try {
-                    const tempInput = document.createElement('input');
-                    tempInput.value = text;
-                    document.body.appendChild(tempInput);
-                    document.execCommand('copy');
-                    document.body.removeChild(tempInput);
+            // navigator.clipboard.writeText is preferred, fall back to document.execCommand('copy')
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
                     showCustomPopup('Success', message);
-                } catch (e) {
-                    showCustomPopup('Error', 'Failed to copy link. Please copy it manually.');
-                }
-            });
+                }, (err) => {
+                    console.error('Could not copy text:', err);
+                    fallbackCopy(text, message);
+                });
+            } else {
+                fallbackCopy(text, message);
+            }
         };
+        
+        const fallbackCopy = (text, message) => {
+             try {
+                 const tempInput = document.createElement('input');
+                 tempInput.value = text;
+                 document.body.appendChild(tempInput);
+                 tempInput.select();
+                 document.execCommand('copy');
+                 document.body.removeChild(tempInput);
+                 showCustomPopup('Success', message);
+             } catch (e) {
+                 console.error('Fallback copy failed:', e);
+                 showCustomPopup('Error', 'Failed to copy link. Please copy it manually.');
+             }
+        }
         
         const getRefIdFromUrl = () => {
             const urlParams = new URLSearchParams(window.location.search);
@@ -827,7 +851,7 @@
                     let aVal = a[sortConfig.key];
                     let bVal = b[sortConfig.key];
                     
-                    if (sortConfig.key === 'name' || sortConfig.key === 'fullName' || sortConfig.key === 'referrerRefId' || sortConfig.key === 'id' || sortConfig.key === 'email' || sortConfig.key === 'displayName') {
+                    if (sortConfig.key === 'name' || sortConfig.key === 'fullName' || sortConfig.key === 'referrerRefId' || sortConfig.key === 'id' || sortConfig.key === 'email' || sortConfig.key === 'displayName' || sortConfig.key === 'refId') {
                         // String comparison
                         aVal = String(aVal || '').toLowerCase();
                         bVal = String(bVal || '').toLowerCase();
@@ -835,7 +859,7 @@
                         if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
                         return 0;
                     } else if (sortConfig.key === 'timestamp' || sortConfig.key === 'createdAt' || sortConfig.key === 'lastSignInTime') {
-                        // Date comparison
+                        // Date comparison (using milliseconds)
                         const aTime = getTimestampValue(aVal);
                         const bTime = getTimestampValue(bVal);
                         return sortConfig.direction === 'asc' ? aTime - bTime : bTime - aTime;
@@ -890,15 +914,12 @@
             let currentUserRefId = data.userData.refId;
 
             data.referrers.forEach(r => {
-                // FIX: Explicitly parse ticket and amount values to ensure they are treated as numbers
+                // Ensure number parsing for safety, though server should send clean data
                 const raffleTickets = parseInt(r.totalTickets) || 0; 
                 const rolexTickets = parseInt(r.rolexTicketsTotal) || 0; 
                 
-                // Use the server-provided amount directly (should be the correct combined revenue)
+                // Use the server-provided combined amount
                 let combinedTotalAmount = parseFloat(r.totalAmount) || 0; 
-
-                // FIX: Remove the faulty estimation logic from the previous step.
-                // We rely on the server's aggregated 'totalAmount' now, which is correct for the list.
 
                 const totalTickets = raffleTickets + rolexTickets;
 
@@ -906,7 +927,7 @@
                     ...r,
                     raffleTickets: raffleTickets,
                     rolexTickets: rolexTickets,
-                    // Use the server's authoritative combined amount
+                    // Use a new field name here for the list view, so we don't confuse it with the raw field.
                     combinedTotalAmount: combinedTotalAmount, 
                     totalTickets: totalTickets, 
                     clickCount: parseInt(r.clickCount) || 0
@@ -916,8 +937,10 @@
             data.referrers = Array.from(referrerMap.values());
             
             // FIX: Ensure data.userData gets the fully calculated/parsed metrics from the map.
-            // This is the key fix to update the overview card.
+            // This is only guaranteed for SA where data.referrers is populated.
             if (currentUserRefId && referrerMap.has(currentUserRefId)) {
+                // If the map has the entry (i.e., we are SA or this referrer was explicitly loaded)
+                // Overwrite the userData with the richer object that contains combinedTotalAmount
                 data.userData = referrerMap.get(currentUserRefId);
             }
             
@@ -944,13 +967,6 @@
             }
             // Render Raffle table is the base view for all authorized users
             renderRaffleTable(dashboardData.raffleEntries);
-            
-            if (isReferrer && !isSuperAdmin) {
-                // If a non-SA referrer logs in, show their personal rolex data
-                // This is hidden by default and only for referrers who have access to their own referral card
-                // The Rolex tab is hidden below, but if we wanted them to see their rolex sales here, we'd add logic.
-                // For now, only Super Admin sees the Rolex Sales tab, so we skip rendering it for the base case.
-            }
         };
 
         const fetchAllUsers = async () => {
@@ -960,12 +976,13 @@
                 const getAllAuthUsersCallable = httpsCallable(functions, 'getAllAuthUsers');
                 const response = await getAllAuthUsersCallable({});
                 allAuthUsers = response.data.users;
-                renderAuthUsersTable(allAuthUsers);
+                // Re-render table after fetch
+                if (currentTab === 'users') {
+                    renderAuthUsersTable(allAuthUsers);
+                }
             } catch (error) {
-                console.error("Error fetching all users:", error);
-                showCustomPopup('User Fetch Error', `Failed to load user list: ${error.message}`);
-            } finally {
-                // Keep the global spinner open until all dashboard data is loaded later
+                console.error("Error fetching all users (SA only):", error);
+                // Non-critical if main dashboard loads
             }
         }
 
@@ -979,12 +996,6 @@
                 isSuperAdmin = dashboardData.isSuperAdmin;
                 isReferrer = dashboardData.isReferrer;
                 isLoggedInAdmin = dashboardData.isSuperAdmin || dashboardData.isReferrer || (auth.currentUser && auth.currentUser.customClaims.admin);
-
-                // Fetch all users ONLY for Super Admin
-                if (isSuperAdmin) {
-                    // This call will set allAuthUsers and call renderAuthUsersTable
-                    await fetchAllUsers();
-                }
 
                 dashboardData = calculateReferrerMetrics(dashboardData); 
 
@@ -1006,7 +1017,7 @@
 
                 // --- Access Control Logic ---
                 
-                // 1. Hide all SA-only sections initially
+                // 1. Hide/show SA-only sections
                 referrerTab.classList.add('hidden');
                 donationTab.classList.add('hidden');
                 toolsTab.classList.add('hidden');
@@ -1015,7 +1026,7 @@
                 addManualSaleButton.classList.add('hidden');
                 overviewCard.classList.add('hidden');
                 exportButton.classList.add('hidden');
-                raffleTab.classList.add('hidden'); // Start hidden, only show if authenticated
+                raffleTab.classList.add('hidden'); 
 
                 
                 if (isSuperAdmin) {
@@ -1028,41 +1039,35 @@
                     addManualSaleButton.classList.remove('hidden');
                     exportButton.classList.remove('hidden');
                     overviewCard.classList.remove('hidden');
-                    raffleTab.classList.remove('hidden'); // Show Raffle Tab
-
-                    currentTab = currentTab || 'referrers'; // Set referrers tab as default for SA
+                    raffleTab.classList.remove('hidden'); 
+                    raffleFilterControls.classList.remove('hidden'); // SA uses the filter control
+                    currentTab = currentTab || 'referrers'; 
+                    await fetchAllUsers(); // Fetch users list for SA
 
                 } else if (isReferrer) {
                     // Regular Referrer sees their overview and Split The Pot Sales (filtered internally)
                     overviewCard.classList.remove('hidden');
-                    raffleTab.classList.remove('hidden'); // Show Raffle Tab
+                    raffleTab.classList.remove('hidden'); 
                     raffleFilterControls.classList.add('hidden'); // Hide filter dropdown for non-SA Referrers
-                    
+                    activeRefIdFilter = null; // Ensure no lingering SA filter
                     currentTab = currentTab || 'raffle';
                     
                 } else if (isLoggedInAdmin) { 
                     // General Admin (non-referrer, non-super) sees only the Raffle Tab (All Sales)
                     raffleTab.classList.remove('hidden');
-                    raffleFilterControls.classList.remove('hidden'); // Show filter controls for general admins
+                    raffleFilterControls.classList.remove('hidden'); 
+                    activeRefIdFilter = null; // Ensure no lingering SA filter
                     currentTab = currentTab || 'raffle';
                 }
 
                 // --- Overview Card Population (Visible to SA and Referrers) ---
                 if (isReferrer || isSuperAdmin) {
-                    const refId = dashboardData.userData.refId || 'N/A';
-                    
-                    // FIX: Find the authoritative entry in the processed referrers list
-                    let currentSelfData = dashboardData.userData;
-                    const authoritativeData = dashboardData.referrers.find(r => r.refId === refId);
-                    if (authoritativeData) {
-                        currentSelfData = authoritativeData;
-                    }
-                    
-                    // These values should now be correctly calculated and sourced from the authoritative list entry
-                    const finalRefId = currentSelfData.refId || 'N/A';
-                    const finalTotalTickets = currentSelfData.totalTickets || 0; // Should be 40 (39+1)
-                    const finalTotalAmount = currentSelfData.combinedTotalAmount || 0; // Should be 847
-                    const finalClicks = currentSelfData.clickCount || 0;
+                    const finalRefId = dashboardData.userData.refId || 'N/A';
+                    // FIX: Use the processed data from userData which now includes correct aggregated fields
+                    const finalTotalTickets = dashboardData.userData.totalTickets || 0; 
+                    // FIX APPLIED: Fallback to totalAmount for non-SA users whose userData object was not enriched by the list processing
+                    const finalTotalAmount = dashboardData.userData.combinedTotalAmount || dashboardData.userData.totalAmount || 0; 
+                    const finalClicks = dashboardData.userData.clickCount || 0;
                     
                     document.getElementById('overviewRefId').textContent = finalRefId;
                     
@@ -1114,7 +1119,8 @@
                 // Determine if this header belongs to the current table context based on class or attribute
                 const tableContext = header.dataset.table || (header.classList.contains('referrer-sort-header') ? 'referrer' : (header.classList.contains('user-sort-header') ? 'users' : ''));
                 if (tableContext === table) {
-                    header.classList.remove('active', 'text-yellow-400', 'text-purple-400', 'text-red-400', 'font-semibold');
+                    // Remove all previous active/color classes
+                    header.classList.remove('active', 'text-yellow-400', 'text-purple-400', 'text-red-400', 'font-semibold', 'text-asc', 'text-desc');
                     
                     // Specific handling for referrer table header icons (using the nested SVG)
                     if (header.classList.contains('referrer-sort-header')) {
@@ -1149,7 +1155,7 @@
                         svg.style.transform = config.direction === 'asc' ? 'rotate(180deg)' : 'rotate(0deg)';
                     }
                 } else {
-                    // Handle inner span for sales tables
+                    // Handle inner span for sales tables and users
                     const icon = activeHeader.querySelector('.sort-icon');
                     if (icon) {
                         icon.classList.remove('hidden');
@@ -1170,9 +1176,17 @@
             // 1. Reset Select All and count
             const selectAllCheckbox = document.getElementById('selectAllUsers');
             selectAllCheckbox.checked = false;
-            selectedUserUids.clear();
-            document.getElementById('usersSelectedCount').textContent = `0 selected`;
-            document.getElementById('openBatchResetModalButton').disabled = true;
+            
+            document.getElementById('usersSelectedCount').textContent = `${selectedUserUids.size} selected`;
+            document.getElementById('openBatchResetModalButton').disabled = selectedUserUids.size === 0;
+            
+            // Check if all displayed users are selected to tick the selectAll box
+            const allDisplayedSelected = filteredAuthUsers.length > 0 && 
+                                             filteredAuthUsers.every(u => selectedUserUids.has(u.uid));
+            if (allDisplayedSelected) {
+                selectAllCheckbox.checked = true;
+            }
+
 
             if (filteredAuthUsers.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-400">No users found matching search criteria.</td></tr>';
@@ -1198,9 +1212,9 @@
                     <td class="text-center">
                         <input type="checkbox" data-uid="${u.uid}" class="user-select-checkbox rounded text-red-500 focus:ring-red-500 bg-gray-700 border-gray-600" ${isSelected ? 'checked' : ''}>
                     </td>
-                    <td>${u.displayName}</td>
+                    <td>${u.displayName || 'N/A'}</td>
                     <td><span class="${u.emailVerified ? 'text-green-400' : 'text-orange-400'}" title="${u.emailVerified ? 'Verified' : 'Unverified'}">${u.email}</span></td>
-                    <td class="font-mono text-xs text-gray-400 truncate max-w-[150px]">${u.uid}</td>
+                    <td class="font-mono text-xs text-gray-400 truncate max-w-[100px] sm:max-w-[150px]">${u.uid}</td>
                     <td>${formatDate(u.createdAt)}</td>
                     <td>${roles.map(r => `<span class="text-xs font-medium px-2 py-1 rounded-full bg-gray-600 text-gray-300">${r}</span>`).join(' ')}</td>
                     <td>${statusContent}</td>
@@ -1223,7 +1237,10 @@
             document.getElementById('openBatchResetModalButton').disabled = selectedUserUids.size === 0;
 
             const selectAllCheckbox = document.getElementById('selectAllUsers');
-            if (selectedUserUids.size === filteredAuthUsers.length && filteredAuthUsers.length > 0) {
+            const allDisplayedSelected = filteredAuthUsers.length > 0 && 
+                                             filteredAuthUsers.every(u => selectedUserUids.has(u.uid));
+                                             
+            if (allDisplayedSelected) {
                 selectAllCheckbox.checked = true;
             } else {
                 selectAllCheckbox.checked = false;
@@ -1334,39 +1351,42 @@
                 if (isSuperAdmin) {
                     // Update: Clicking the name now applies the combined filter and shows sales.
                     nameCellContent = `<span 
-                                         class="text-white font-semibold cursor-pointer hover:underline" 
-                                         data-action="view-referrer-sales" 
-                                         data-refid="${r.refId}" 
-                                         data-refname="${r.name}"
-                                         >${r.name}</span>`;
+                                            class="text-white font-semibold cursor-pointer hover:underline" 
+                                            data-action="view-referrer-sales" 
+                                            data-refid="${r.refId}" 
+                                            data-refname="${r.name}"
+                                            >${r.name}</span>`;
                     
-                    if (r.uid !== auth.currentUser?.uid) {
+                    // Check if a corresponding Firebase Auth User exists (optional, but good practice)
+                    const authUser = allAuthUsers.find(u => u.refId === r.refId);
+                    
+                    if (authUser && !authUser.isSuperAdmin && authUser.uid !== auth.currentUser?.uid) {
                         upgradeButton = `
                             <button class="px-2 py-1 text-xs bg-red-500 text-white font-semibold rounded-lg shadow-md hover:bg-red-600 transition-colors mb-1"
-                                             data-action="promote-sa"
-                                             data-uid="${r.uid}"
-                                             data-refid="${r.refId}"
-                                             data-refname="${r.name}">Promote to SA</button>
+                                         data-action="promote-sa"
+                                         data-uid="${authUser.uid}"
+                                         data-refid="${r.refId}"
+                                         data-refname="${r.name}">Promote to SA</button>
                         `;
                     }
                     
                     actionCellContent = `
                         ${upgradeButton}
                         <button class="px-2 py-1 text-xs bg-purple-500 text-white font-semibold rounded-lg shadow-md hover:bg-purple-600 transition-colors mb-1"
-                                             data-action="assign-rolex-tickets"
-                                             data-refid="${r.refId}"
-                                             data-refname="${r.name}">Assign Spin</button>
+                                         data-action="assign-rolex-tickets"
+                                         data-refid="${r.refId}"
+                                         data-refname="${r.name}">Assign Spin</button>
                         <button class="px-2 py-1 text-xs bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 transition-colors"
-                                             data-action="assign-raffle-tickets"
-                                             data-refid="${r.refId}"
-                                             data-refname="${r.name}">Assign Raffle</button>
+                                         data-action="assign-raffle-tickets"
+                                         data-refid="${r.refId}"
+                                         data-refname="${r.name}">Assign Raffle</button>
                     `;
                 }
 
                 tr.innerHTML = `
                     <td>${nameCellContent}</td>
                     <td><span class="font-mono text-xs px-2 py-1 bg-yellow-400/20 text-yellow-300 rounded">${r.refId}</span></td>
-                    <td>${r.email}</td>
+                    <td>${r.email || 'N/A'}</td>
                     <td class="text-right">${(r.raffleTickets || 0).toLocaleString()}</td>
                     <td class="text-right">${(r.rolexTickets || 0).toLocaleString()}</td>
                     <td class="text-right font-semibold">${formatCurrency(r.combinedTotalAmount || 0)}</td>
@@ -1381,37 +1401,51 @@
 
         const renderRaffleTable = (entries) => {
             const tbody = document.getElementById('raffleTableBody');
-            const header = document.getElementById('raffleSalesHeader');
+            const headerElement = document.getElementById('raffleSalesHeader');
             const actionHeader = document.getElementById('raffleSalesActionHeader');
             const raffleFilterControls = document.getElementById('raffleFilterControls');
             tbody.innerHTML = '';
             
-            // 1. Filter based on current filter state ('all', 'assigned', 'unassigned') and referrer filter
+            // 1. Filter based on current filter state ('all', 'assigned', 'unassigned')
             let displayEntries = filterSalesEntries(entries, raffleFilter);
 
-            // Apply automatic filter for non-Super Admin referrers.
-            const currentRefId = dashboardData.userData.refId;
-            
             // Determine header and filter visibility
             raffleFilterControls.classList.remove('hidden');
+            let headerText = "Split The Pot Sales";
 
             if (isReferrer && !isSuperAdmin) {
                 // Non-Super Admin Referrer: filter sales to only show their referred sales
+                const currentRefId = dashboardData.userData.refId;
                 displayEntries = displayEntries.filter(e => e.referrerRefId === currentRefId);
-                header.textContent = "Your Split The Pot Sales";
+                headerText = "Your Split The Pot Sales";
                 activeRefIdFilter = null; // Clear manual filter if automatic filter is active
                 raffleFilterControls.classList.add('hidden'); // Hide filter dropdown
                 
             } else if (activeRefIdFilter) {
                 // Super Admin manual filter is active
-                header.textContent = `Split The Pot Sales for ${activeRefNameFilter}`;
                 displayEntries = displayEntries.filter(e => e.referrerRefId === activeRefIdFilter);
-                header.innerHTML += ` <button id="clearRaffleFilter" class="ml-4 px-2 py-1 text-sm text-white bg-red-500 rounded-lg hover:bg-red-600">Clear Filter</button>`;
+                headerText = `Split The Pot Sales for ${activeRefNameFilter}`;
                 
             } else {
                 // Super Admin or General Admin viewing all sales
-                header.textContent = "All Split The Pot Sales";
+                headerText = "All Split The Pot Sales";
+                // Show filter controls for SA/Admin
+                if (isSuperAdmin || isLoggedInAdmin) {
+                     raffleFilterControls.classList.remove('hidden');
+                }
             }
+
+            // Set header text and add 'Clear Filter' button if filter is active
+            headerElement.textContent = headerText;
+            // FIX: Remove old clear filter button before re-adding
+            const existingClearButton = headerElement.querySelector('#clearRaffleFilter');
+            if (existingClearButton) existingClearButton.remove();
+
+            if (activeRefIdFilter) {
+                // IMPORTANT: The button must be a child of the header element for dynamic update
+                headerElement.innerHTML += ` <button id="clearRaffleFilter" class="ml-4 px-2 py-1 text-sm text-white bg-red-500 rounded-lg hover:bg-red-600">Clear Filter</button>`;
+            }
+
 
             // 2. Sort the display entries
             displayEntries = sortEntries(displayEntries, raffleSortConfig);
@@ -1424,8 +1458,9 @@
             }
 
             // 4. Render rows
+            const colspan = isSuperAdmin ? 8 : 7;
             if (displayEntries.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="${isSuperAdmin ? 8 : 7}" class="text-center py-4 text-gray-400">No Split The Pot sales found matching current criteria.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="${colspan}" class="text-center py-4 text-gray-400">No Split The Pot sales found matching current criteria.</td></tr>`;
                 return;
             }
             displayEntries.forEach(e => {
@@ -1459,26 +1494,33 @@
 
         const renderRolexTable = (entries) => {
             const tbody = document.getElementById('rolexTableBody');
-            const header = document.getElementById('rolexSalesHeader');
+            const headerElement = document.getElementById('rolexSalesHeader');
 
+            // This tab is only visible to Super Admin, so no non-SA referrer logic needed here.
+            
             // 1. Filter based on current filter state
             let displayEntries = filterSalesEntries(entries, rolexFilter);
             
+            let headerText = "Spin The Wheel Sales (SA Only)";
+
             // Apply direct referrer filter (Rolex must also be filtered by the active referrer if set)
             if (activeRefIdFilter) {
                 displayEntries = displayEntries.filter(e => e.referrerRefId === activeRefIdFilter);
-                header.textContent = `Spin The Wheel Sales for ${activeRefNameFilter}`;
-                header.innerHTML += ` <button id="clearRolexFilter" class="ml-4 px-2 py-1 text-sm text-white bg-red-500 rounded-lg hover:bg-red-600">Clear Filter</button>`;
-            } else if (!isSuperAdmin) {
-                // Regular referrer view (they shouldn't see this tab anyway, but just in case, only show their own)
-                // This logic is mostly redundant because the tab is hidden via fetchDashboardData, but good practice.
-                const currentRefId = dashboardData.userData.refId;
-                displayEntries = displayEntries.filter(e => e.referrerRefId === currentRefId);
-                header.textContent = "Your Spin The Wheel Sales";
+                headerText = `Spin The Wheel Sales for ${activeRefNameFilter}`;
             } else {
-                header.textContent = "Spin The Wheel Sales (SA Only)";
+                headerText = "Spin The Wheel Sales (SA Only)";
             }
 
+            // Set header text and add 'Clear Filter' button if filter is active
+            headerElement.textContent = headerText;
+            // FIX: Remove old clear filter button before re-adding
+            const existingClearButton = headerElement.querySelector('#clearRolexFilter');
+            if (existingClearButton) existingClearButton.remove();
+
+            if (activeRefIdFilter) {
+                headerElement.innerHTML += ` <button id="clearRolexFilter" class="ml-4 px-2 py-1 text-sm text-white bg-red-500 rounded-lg hover:bg-red-600">Clear Filter</button>`;
+            }
+            
             // 2. Sort the display entries
             displayEntries = sortEntries(displayEntries, rolexSortConfig);
             tbody.innerHTML = '';
@@ -1500,7 +1542,7 @@
                     <td class="font-bold">${e.id}</td>
                     <td>${customerName}</td>
                     <td>${e.email || 'N/A'}</td>
-                    <td><span class="text-xs font-medium px-2 py-1 rounded-full ${statusClass}">${e.status.toUpperCase()}</span></td>
+                    <td><span class="text-xs font-medium px-2 py-1 rounded-full ${statusClass}">${(e.status || 'N/A').toUpperCase()}</span></td>
                     <td class="text-right font-medium">${formatCurrency(e.amountPaid || 0)}</td>
                     <td>${referrerInfo}</td>
                 `;
@@ -1527,6 +1569,7 @@
                     <td>${customerName}</td>
                     <td>${e.email || 'N/A'}</td>
                     <td>${e.phone || 'N/A'}</td>
+                    <td>${e.referrerRefId || 'N/A'}</td>
                     <td class="text-right font-medium">${formatCurrency(e.amount || e.amountPaid || 0)}</td>
                     <td><span class="text-xs font-medium px-2 py-1 rounded-full bg-green-700/50 text-green-300">${(e.status || 'N/A').toUpperCase()}</span></td>
                 `;
@@ -1544,27 +1587,25 @@
             const activePane = document.getElementById(`tab-${tabName}`);
             if (activePane) activePane.classList.remove('hidden');
 
-            // Re-render tables on tab switch in case a filter is active
-            if (activeRefIdFilter) {
-                renderRaffleTable(dashboardData.raffleEntries);
-                renderRolexTable(dashboardData.rolexEntries);
-            }
-            // Ensure filter control visibility is respected if we land on raffle tab
+            // Re-render tables on tab switch to apply current filters/sorts
             if (tabName === 'raffle') {
-                 const raffleFilterControls = document.getElementById('raffleFilterControls');
-                 if (isReferrer && !isSuperAdmin) {
-                    raffleFilterControls.classList.add('hidden');
-                 } else {
-                    raffleFilterControls.classList.remove('hidden');
-                 }
+                renderRaffleTable(dashboardData.raffleEntries);
+            } else if (tabName === 'rolex') {
+                renderRolexTable(dashboardData.rolexEntries);
+            } else if (tabName === 'referrers') {
+                 renderReferrersTable(dashboardData.referrers); // Ensure SA referrer table is rendered
+            } else if (tabName === 'users') {
+                 renderAuthUsersTable(allAuthUsers); // Ensure SA user table is rendered
             }
         };
 
         // --- NEW: Refresh Feature ---
         const handleRefreshClick = async () => {
+            // Clearing the current filter is generally safer on a full refresh
             if (activeRefIdFilter) {
                 clearRefIdFilter(); 
             }
+            // Fetch data will also re-render tables and switch back to the correct tab
             await fetchDashboardData();
         };
 
@@ -1656,7 +1697,7 @@
             }
         };
 
-        // --- Promote to Super Admin Logic (unchanged) ---
+        // --- Promote to Super Admin Logic ---
 
         const upgradeToSuperAdmin = async (uid) => {
             try {
@@ -1698,6 +1739,7 @@
                 
                 showCustomPopup('Success', `${name} has been promoted to Super Admin. They must sign out and sign back in to see their new permissions.`);
                 
+                // Re-fetch all data to update local claims and tables
                 await fetchDashboardData(); 
                 
             } catch (error) {
@@ -1708,7 +1750,7 @@
             }
         }
         
-        // --- Admin Tools Logic (SA Only - unchanged logic) ---
+        // --- Admin Tools Logic (SA Only) ---
         
         const updateReservedTicketCounts = async () => {
             if (!isSuperAdmin && !isLoggedInAdmin) return;
@@ -1818,7 +1860,7 @@
 
                     // Special handling for nested objects (e.g., Timestamps) and commas
                     if (typeof value === 'object') {
-                        if (fieldName.toLowerCase().includes('date') || fieldName.toLowerCase().includes('timestamp') || fieldName.toLowerCase().includes('createdat')) {
+                        if (fieldName.toLowerCase().includes('date') || fieldName.toLowerCase().includes('timestamp') || fieldName.toLowerCase().includes('createdat') || fieldName.toLowerCase().includes('time')) {
                             // Use existing date formatter, remove internal commas
                             value = formatDate(value).replace(/,/g, ''); 
                         } else {
@@ -1875,10 +1917,10 @@
                         UID: u.uid,
                         Email: u.email,
                         DisplayName: u.displayName,
-                        Is_Super_Admin: u.isSuperAdmin,
-                        Is_Referrer: u.isReferrer,
-                        Is_Disabled: u.disabled,
-                        Email_Verified: u.emailVerified,
+                        Is_Super_Admin: u.isSuperAdmin || false,
+                        Is_Referrer: u.isReferrer || false,
+                        Is_Disabled: u.disabled || false,
+                        Email_Verified: u.emailVerified || false,
                         Created_At: u.createdAt,
                         Last_Sign_In: u.lastSignInTime
                     }));
@@ -1905,8 +1947,12 @@
                     dataToExport = cleanData(dashboardData.donationEntries);
                     dataToExport.sort((a, b) => getTimestampValue(b.createdAt) - getTimestampValue(a.createdAt));
                     break;
+                case 'tools':
+                case '': // No tab selected/default
+                    showCustomPopup('Export Failed', 'Please navigate to a data tab (Referrers, Sales, Donations, Users) to export.');
+                    return;
                 default:
-                    showCustomPopup('Export Failed', 'Please select a valid data tab to export.');
+                    showCustomPopup('Export Failed', 'Unknown tab selected for export.');
                     return;
             }
             
@@ -1918,7 +1964,7 @@
         };
 
 
-        // --- Other Modal and Form Handlers (unchanged) ---
+        // --- Other Modal and Form Handlers ---
 
         const openManualSaleModal = () => {
             if (!isSuperAdmin) {
@@ -1971,26 +2017,18 @@
         };
 
 
-        // --- Split the Pot Assignment Logic (unchanged) ---
+        // --- Split the Pot Assignment Logic ---
 
         const fetchAssignmentRaffleSales = async () => {
-            showGlobalLoading("Fetching all Split the Pot sales...");
-            try {
-                allAssignmentRaffleSales = dashboardData.raffleEntries.map((sale, index) => ({
-                    id: sale.id || `sale-${index}`, 
-                    ...sale
-                }));
-                
-                filteredRaffleSales = [...allAssignmentRaffleSales];
-                selectedRaffleSaleIds.clear();
-                updateApplyRaffleTicketsUI();
-
-            } catch (error) {
-                console.error("Error fetching assignment sales:", error);
-                showCustomPopup('Error', `Failed to load sales: ${error.message}`);
-            } finally {
-                hideGlobalLoading();
-            }
+            // Use local data as source, no extra fetch needed
+            allAssignmentRaffleSales = dashboardData.raffleEntries.map((sale, index) => ({
+                id: sale.id || `sale-${index}`, 
+                ...sale
+            }));
+            
+            filteredRaffleSales = [...allAssignmentRaffleSales];
+            selectedRaffleSaleIds.clear();
+            updateApplyRaffleTicketsUI();
         };
         
         const openApplyRaffleTicketsModal = async (refId, refName) => {
@@ -2006,7 +2044,7 @@
             document.getElementById('targetReferrerId').textContent = refId;
             document.getElementById('unassignedSearchInput').value = '';
             
-            await fetchAssignmentRaffleSales();
+            await fetchAssignmentRaffleSales(); // Re-fetch all sales and populate the assignment modal's table
             
             document.getElementById('applyTicketsModalOverlay').classList.remove('hidden');
         };
@@ -2027,7 +2065,10 @@
             const selectedCountDisplay = document.getElementById('selectedCountDisplay');
             const applyButton = document.getElementById('applyReferrerButton');
             
-            selectAllCheckbox.checked = false;
+            // Recheck state to ensure correct select-all state
+            const allDisplayedSelected = filteredRaffleSales.length > 0 && 
+                                             filteredRaffleSales.every(s => selectedRaffleSaleIds.has(s.id));
+            selectAllCheckbox.checked = allDisplayedSelected;
             
             if (filteredRaffleSales.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-400">No Split the Pot sales found matching the criteria.</td></tr>';
@@ -2064,9 +2105,6 @@
             selectedCountDisplay.textContent = `${selectedRaffleSaleIds.size} sales selected`;
             applyButton.disabled = selectedRaffleSaleIds.size === 0;
 
-            if (filteredRaffleSales.length > 0 && selectedRaffleSaleIds.size === filteredRaffleSales.length) {
-                selectAllCheckbox.checked = true;
-            }
         };
 
         const handleRaffleSearchChange = () => {
@@ -2082,6 +2120,8 @@
                     return name.includes(searchLower) || email.includes(searchLower) || phone.includes(searchLower) || currentRef.includes(searchLower);
                 });
             }
+            // Clear selections for newly filtered set
+            selectedRaffleSaleIds.clear(); 
             updateApplyRaffleTicketsUI();
         };
 
@@ -2094,7 +2134,10 @@
             }
             
             const selectAllCheckbox = document.getElementById('selectAllUnassigned');
-            if (selectedRaffleSaleIds.size === filteredRaffleSales.length && filteredRaffleSales.length > 0) {
+            const allDisplayedSelected = filteredRaffleSales.length > 0 && 
+                                             filteredRaffleSales.every(s => selectedRaffleSaleIds.has(s.id));
+                                             
+            if (allDisplayedSelected) {
                 selectAllCheckbox.checked = true;
             } else {
                 selectAllCheckbox.checked = false;
@@ -2138,6 +2181,7 @@
 
                 showCustomPopup('Success', response.data.message || `Successfully processed ${salesToUpdate.length} sales for ${refId}.`);
                 
+                // Full refresh to update all tables and totals
                 await fetchDashboardData(); 
 
             } catch (error) {
@@ -2148,26 +2192,18 @@
             }
         };
         
-        // --- Spin the Wheel (Rolex) Assignment Logic (unchanged) ---
+        // --- Spin the Wheel (Rolex) Assignment Logic ---
         
         const fetchAssignmentRolexSales = async () => {
-            showGlobalLoading("Fetching all Spin The Wheel tickets...");
-            try {
-                allAssignmentRolexSales = dashboardData.rolexEntries.map((ticket) => ({
-                    id: ticket.id, // Ticket number is the ID
-                    ...ticket
-                }));
-                
-                filteredRolexSales = [...allAssignmentRolexSales];
-                selectedRolexSaleIds.clear();
-                updateApplyRolexTicketsUI();
-
-            } catch (error) {
-                console.error("Error fetching Rolex sales:", error);
-                showCustomPopup('Error', `Failed to load Rolex tickets: ${error.message}`);
-            } finally {
-                hideGlobalLoading();
-            }
+            // Use local data as source, no extra fetch needed
+            allAssignmentRolexSales = dashboardData.rolexEntries.filter(t => t.status === 'paid' || t.status === 'claimed').map((ticket) => ({
+                id: ticket.id, // Ticket number is the ID
+                ...ticket
+            }));
+            
+            filteredRolexSales = [...allAssignmentRolexSales];
+            selectedRolexSaleIds.clear();
+            updateApplyRolexTicketsUI();
         };
 
         const openApplyRolexTicketsModal = async (refId, refName) => {
@@ -2204,7 +2240,10 @@
             const selectedCountDisplay = document.getElementById('selectedRolexCountDisplay');
             const applyButton = document.getElementById('applyRolexReferrerButton');
             
-            selectAllCheckbox.checked = false;
+            // Recheck state to ensure correct select-all state
+            const allDisplayedSelected = filteredRolexSales.length > 0 && 
+                                             filteredRolexSales.every(s => selectedRolexSaleIds.has(s.id));
+            selectAllCheckbox.checked = allDisplayedSelected;
 
             if (filteredRolexSales.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-400">No Paid or Claimed Spin The Wheel tickets found matching the criteria.</td></tr>';
@@ -2217,9 +2256,10 @@
                 const isSelected = selectedRolexSaleIds.has(ticket.id);
                 const customerName = ticket.fullName || ticket.name || ticket.firstName || 'N/A';
                 const contact = ticket.email || ticket.phoneNumber || 'N/A';
-                // FIX: Variable name changed to currentReferrerContent
+                const statusClass = ticket.status === 'paid' ? 'bg-green-700/50 text-green-300' : 'bg-yellow-700/50 text-yellow-300';
+                
                 const currentReferrerContent = ticket.referrerRefId 
-                    ? `<span class="font-mono text-xs px-2 py-1 bg-yellow-400/20 text-yellow-300 rounded">${ticket.referrerRefId}</span>`
+                    ? `<span class="font-mono text-xs px-1 bg-yellow-400/20 text-yellow-300 rounded">${ticket.referrerRefId}</span>`
                     : '<span class="text-red-400">None</span>';
 
                 const tr = document.createElement('tr');
@@ -2231,6 +2271,7 @@
                     <td>${formatDate(ticket.timestamp)}</td>
                     <td>${customerName}</td>
                     <td>${contact}</td>
+                    <td><span class="text-xs font-medium px-2 py-1 rounded-full ${statusClass}">${(ticket.status || 'N/A').toUpperCase()}</span></td>
                     <td class="text-right font-medium">${formatCurrency(ticket.amountPaid || 0)}</td>
                     <td>${currentReferrerContent}</td> 
                 `;
@@ -2240,9 +2281,6 @@
             selectedCountDisplay.textContent = `${selectedRolexSaleIds.size} tickets selected`;
             applyButton.disabled = selectedRolexSaleIds.size === 0;
 
-            if (filteredRolexSales.length > 0 && selectedRolexSaleIds.size === filteredRolexSales.length) {
-                selectAllCheckbox.checked = true;
-            }
         };
 
         const handleRolexSearchChange = () => {
@@ -2258,6 +2296,8 @@
                     return name.includes(searchLower) || email.includes(searchLower) || currentRef.includes(searchLower) || id.includes(searchLower);
                 });
             }
+            // Clear selections for newly filtered set
+            selectedRolexSaleIds.clear(); 
             updateApplyRolexTicketsUI();
         };
 
@@ -2270,7 +2310,10 @@
             }
             
             const selectAllCheckbox = document.getElementById('selectAllRolex');
-            if (selectedRolexSaleIds.size === filteredRolexSales.length && filteredRolexSales.length > 0) {
+            const allDisplayedSelected = filteredRolexSales.length > 0 && 
+                                             filteredRolexSales.every(s => selectedRolexSaleIds.has(s.id));
+                                             
+            if (allDisplayedSelected) {
                 selectAllCheckbox.checked = true;
             } else {
                 selectAllCheckbox.checked = false;
@@ -2325,13 +2368,14 @@
         };
 
 
-        // --- Authentication and Initialization (unchanged login/logout) ---
+        // --- Authentication and Initialization ---
 
         const setupAuthListeners = () => {
             onAuthStateChanged(auth, async (user) => {
                 showGlobalLoading("Checking authorization...");
                 if (user) {
-                    const idTokenResult = await user.getIdTokenResult(true);
+                    // Force refresh token to get latest claims
+                    const idTokenResult = await user.getIdTokenResult(true); 
                     const claims = idTokenResult.claims;
                     
                     const isAuthenticated = claims.admin || claims.superAdmin || claims.referrer;
@@ -2340,7 +2384,8 @@
                         document.getElementById('loginModalOverlay').classList.add('hidden');
                         document.getElementById('dashboardContainer').classList.remove('hidden');
                         document.getElementById('authErrorDisplay').classList.add('hidden');
-                        await fetchDashboardData();
+                        // Fetch data, which also sets isSuperAdmin/isReferrer/isLoggedInAdmin flags
+                        await fetchDashboardData(); 
                     } else {
                         document.getElementById('loginModalOverlay').classList.remove('hidden');
                         document.getElementById('dashboardContainer').classList.add('hidden');
@@ -2349,6 +2394,7 @@
                         hideGlobalLoading();
                     }
                 } else {
+                    // Logged out state
                     document.getElementById('dashboardContainer').classList.add('hidden');
                     document.getElementById('loginModalOverlay').classList.remove('hidden');
                     hideGlobalLoading();
@@ -2380,8 +2426,12 @@
             showGlobalLoading("Logging out...");
             try {
                 await signOut(auth);
-                document.getElementById('dashboardContainer').classList.add('hidden');
-                document.getElementById('loginModalOverlay').classList.remove('hidden');
+                // Clear all state flags on logout
+                isSuperAdmin = false;
+                isReferrer = false;
+                isLoggedInAdmin = false;
+                currentTab = '';
+                // The onAuthStateChanged listener will handle UI transition
             } catch (error) {
                 console.error("Logout failed:", error);
                 window.showCustomPopup("Logout Failed", "Could not log out. Please try again.");
@@ -2415,6 +2465,7 @@
                         userSortConfig.direction = userSortConfig.direction === 'asc' ? 'desc' : 'asc';
                     } else {
                         userSortConfig.key = key;
+                        // Default to ascending for strings, descending for dates
                         userSortConfig.direction = (key === 'email' || key === 'displayName') ? 'asc' : 'desc';
                     }
                     renderAuthUsersTable(allAuthUsers);
@@ -2429,6 +2480,7 @@
                         referrerSortConfig.direction = referrerSortConfig.direction === 'asc' ? 'desc' : 'asc';
                     } else {
                         referrerSortConfig.key = key;
+                        // Default to ascending for strings, descending for numbers
                         referrerSortConfig.direction = (key === 'name' || key === 'refId' || key === 'email') ? 'asc' : 'desc';
                     }
                     renderReferrersTable(dashboardData.referrers);
@@ -2460,12 +2512,9 @@
             if (raffleFilterElement) {
                 raffleFilterElement.addEventListener('change', (e) => {
                     raffleFilter = e.target.value;
-                    // If a referrer filter is active, only update the raffle table, otherwise clear all filters.
-                    if (!activeRefIdFilter) {
-                        clearRefIdFilter(); 
-                    } else {
-                        renderRaffleTable(dashboardData.raffleEntries);
-                    }
+                    // Note: If activeRefIdFilter is set, we still filter by that, 
+                    // but the raffleFilter is applied *within* that set.
+                    renderRaffleTable(dashboardData.raffleEntries);
                 });
             }
             
@@ -2518,7 +2567,6 @@
                 attachSortAndSearchListeners();
                 
                 // Manual Sale Modal listeners
-                // Wrapping in an existence check for safety, though the HTML elements are now restored
                 if (document.getElementById('addManualSaleButton')) {
                     document.getElementById('addManualSaleButton').addEventListener('click', openManualSaleModal);
                 }
@@ -2567,7 +2615,7 @@
                 }
                 
                 if (document.getElementById('unassignedSalesTableBody')) {
-                    document.getElementById('unassignedSalesTableBody').addEventListener('change', (e) => {
+                    document.getElementById('unassignedSalesTableBody').addEventListener('change', (e) => { // Using change for checkboxes is more reliable
                         if (e.target.classList.contains('raffle-sale-checkbox')) {
                             handleRaffleCheckboxChange(e);
                         }
@@ -2590,7 +2638,7 @@
                 }
                 
                 if (document.getElementById('rolexAssignmentTableBody')) {
-                    document.getElementById('rolexAssignmentTableBody').addEventListener('change', (e) => {
+                    document.getElementById('rolexAssignmentTableBody').addEventListener('change', (e) => { // Using change for checkboxes is more reliable
                         if (e.target.classList.contains('rolex-ticket-checkbox')) {
                             handleRolexCheckboxChange(e);
                         }
@@ -2605,9 +2653,9 @@
                     document.getElementById('confirmUpgradeAdmin').addEventListener('click', handleUpgradeAdmin);
                 }
 
-                // --- NEW USER MANAGEMENT LISTENERS ---
+                // --- USER MANAGEMENT LISTENERS ---
                 if (document.getElementById('usersTableBody')) {
-                    document.getElementById('usersTableBody').addEventListener('click', (e) => {
+                    document.getElementById('usersTableBody').addEventListener('change', (e) => { // Using change for checkboxes is more reliable
                         if (e.target.classList.contains('user-select-checkbox')) {
                             handleUserCheckboxChange(e);
                         }
@@ -2630,51 +2678,42 @@
                 // Event delegation for Referrers Table clicks (Handles View Sales, Assign Raffle/Rolex, and Promote to SA)
                 if (document.getElementById('referrersTableBody')) {
                     document.getElementById('referrersTableBody').addEventListener('click', (e) => {
-                        const target = e.target;
-                        const action = target.dataset.action;
+                        const target = e.target.closest('[data-action]'); // Use closest for better button targeting
+                        if (!target || !isSuperAdmin) return;
                         
+                        const action = target.dataset.action;
+                        const refId = target.dataset.refid;
+                        const refName = target.dataset.refname;
+                        const uid = target.dataset.uid;
+                        
+                        if (action === 'assign-raffle-tickets') {
+                            openApplyRaffleTicketsModal(refId, refName);
+                        } else if (action === 'assign-rolex-tickets') {
+                            openApplyRolexTicketsModal(refId, refName);
+                        } else if (action === 'view-referrer-sales') { 
+                            // Unified filter for both Raffle and Rolex
+                            openReferrerSalesModal(refId, refName);
+                        } else if (action === 'promote-sa') {
+                            openUpgradeAdminModal(uid, refName, refId);
+                        }
+                    });
+                }
+
+                // FIX: Centralized event delegation for Clear Filter buttons on a static parent
+                document.getElementById('dashboardContainer').addEventListener('click', (e) => {
+                    if (e.target.id === 'clearRaffleFilter' || e.target.id === 'clearRolexFilter') {
                         if (isSuperAdmin) {
-                            const refId = target.dataset.refid;
-                            const refName = target.dataset.refname;
-                            const uid = target.dataset.uid;
-                            
-                            if (action === 'assign-raffle-tickets') {
-                                openApplyRaffleTicketsModal(refId, refName);
-                            } else if (action === 'assign-rolex-tickets') {
-                                openApplyRolexTicketsModal(refId, refName);
-                            } else if (action === 'view-referrer-sales') { 
-                                // Unified filter for both Raffle and Rolex
-                                openReferrerSalesModal(refId, refName);
-                            } else if (action === 'promote-sa') {
-                                openUpgradeAdminModal(uid, refName, refId);
-                            }
-                        }
-                    });
-                }
-
-                // Event delegation for Raffle Sales Table clicks (for Edit button and Clear Filter button)
-                if (document.getElementById('raffleTableBody')) {
-                    document.getElementById('raffleTableBody').addEventListener('click', (e) => {
-                        const target = e.target;
-                        if (target.dataset.action === 'edit-sale' && isSuperAdmin) {
-                            openEditSaleModal(target.dataset.entryId);
-                        } else if (target.id === 'clearRaffleFilter') {
                             clearRefIdFilter();
+                        } else {
+                            showCustomPopup('Permission Denied', 'Only Super Admins can clear referrer filters.');
                         }
-                    });
-                }
+                    }
+                     // Also handle Edit button click here for the raffle table if it's on a row item
+                    if (e.target.dataset.action === 'edit-sale' && isSuperAdmin) {
+                        openEditSaleModal(e.target.dataset.entryId);
+                    }
+                });
                 
-                // Event delegation for Rolex Sales Table clicks (for Clear Filter button)
-                if (document.getElementById('rolexTableBody')) {
-                    document.getElementById('rolexTableBody').addEventListener('click', (e) => {
-                        const target = e.target;
-                        if (target.id === 'clearRolexFilter') {
-                            clearRefIdFilter();
-                        }
-                    });
-                }
-
-
             } catch (error) {
                 document.getElementById('globalSpinnerText').textContent = 'A critical error occurred during setup. Check the console for details.';
                 console.error("Critical Application Error:", error);

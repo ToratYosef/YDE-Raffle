@@ -15,6 +15,32 @@ const corsHandler = cors({
     ],
 });
 
+// --- Utility Functions ---
+
+/**
+ * Rounds a number to exactly two decimal places for financial calculations.
+ * Used to prevent floating point math errors during summation and storage.
+ * @param {number} value The number to round.
+ * @returns {number} The rounded number.
+ */
+function cleanAmount(value) {
+    const num = parseFloat(value);
+    if (isNaN(num)) return 0;
+    return Math.round(num * 100) / 100;
+}
+
+/**
+ * Ensures a value is a safe integer for ticket counting.
+ * @param {*} value The value to convert.
+ * @returns {number} A clean integer.
+ */
+function cleanTicketCount(value) {
+    const num = parseInt(value, 10);
+    if (isNaN(num)) return 0;
+    return Math.max(0, num);
+}
+
+
 // --- SECURITY AND ROLE CHECKERS ---
 
 /**
@@ -166,7 +192,8 @@ exports.trackRefLinkClick = functions.https.onCall(async (data, context) => {
         // Atomically increment the clickCount field
         await referrerDocRef.set({
             clickCount: admin.firestore.FieldValue.increment(1),
-            lastClickTimestamp: admin.firestore.FieldValue.serverTimestamp()
+            // FIX: Use a new field for the last click time to avoid overwriting the original referrer doc timestamp/metadata
+            lastClickTimestamp: admin.firestore.FieldValue.serverTimestamp() 
         }, { merge: true });
 
         return { success: true, message: `Click tracked for referrer: ${refId}` };
@@ -345,17 +372,23 @@ async function adminResetPassword(uid, newPassword) {
 /**
  * HTTP Function endpoint for Super Admins to directly reset a user's password 
  * based on their email, bypassing the password reset email requirement.
- * This function MUST be secured against public access (e.g., using API keys, 
- * App Check, or custom token validation).
+ * NOTE: SECURITY WARNING - This MUST be secured via API Key/App Check/Session Cookie.
  */
 exports.adminResetPasswordByEmail = functions.https.onRequest((req, res) => {
     // NOTE: This uses the existing corsHandler defined in the file
     corsHandler(req, res, async () => {
         
-        // !!! SECURITY WARNING !!!
+        // !!! CRITICAL SECURITY CHECK PLACEHOLDER !!!
         // You MUST implement a strong authentication check here (e.g., validating 
-        // a session cookie or a SuperAdmin API key in the request headers) to 
-        // prevent unauthorized public access to this high-privilege endpoint.
+        // a secret API key passed in headers, or Firebase App Check). 
+        const ADMIN_SECRET_KEY = functions.config().admin?.api_key;
+        const providedKey = req.headers['x-admin-api-key'];
+
+        if (!providedKey || providedKey !== ADMIN_SECRET_KEY) {
+             // Return HTTP 403 Forbidden for security
+             return res.status(403).send({ message: 'Forbidden. Invalid Admin API Key.' });
+        }
+        // !!! END CRITICAL SECURITY CHECK PLACEHOLDER !!!
 
         if (req.method !== 'POST') {
             return res.status(405).send({ message: 'Method Not Allowed. Use POST.' });
@@ -440,9 +473,10 @@ exports.createRolexPaymentIntent = functions.https.onCall(async (data, context) 
                 await db.runTransaction(async (transaction) => {
                     const docSnapshot = await transaction.get(ticketRef);
                     if (!docSnapshot.exists) {
+                        // Set initial ticket reservation data
                         transaction.set(ticketRef, {
                             status: 'reserved',
-                            timestamp: admin.firestore.FieldValue.serverTimestamp(), 
+                            timestamp: admin.firestore.FieldValue.serverTimestamp(), // Original creation time
                             name: name,
                             firstName: firstName, 
                             email: email,
@@ -469,11 +503,7 @@ exports.createRolexPaymentIntent = functions.https.onCall(async (data, context) 
         }
 
         // IMPORTANT: ticketNumber (1-650) is the base price in USD.
-        // The client must pass the FINAL CHARGED amount (including fees if applicable)
-        // in the request payload if they are implementing fee calculation client-side.
-        
-        // For simplicity and matching the existing `createSpinPaymentIntent` logic, 
-        // we'll assume the ticketNumber is the base amount (no fee adjustment in PI creation).
+        // We charge the equivalent amount in cents.
         const amountInCents = ticketNumber * 100;
 
         const paymentIntent = await stripe.paymentIntents.create({
@@ -485,10 +515,10 @@ exports.createRolexPaymentIntent = functions.https.onCall(async (data, context) 
                 name,
                 email,
                 phone,
-                ticketsBought: 1,
+                ticketsBought: '1', // Ensure ticketsBought is a string for metadata
                 // ticketNumber serves as the base amount for Rolex sales
                 baseAmount: ticketNumber.toString(), 
-                ticketNumber: ticketNumber, 
+                ticketNumber: ticketNumber.toString(), 
                 entryType: 'rolex',
                 sourceApp: SOURCE_APP_TAG,
                 referrerRefId: referral || null 
@@ -526,8 +556,9 @@ exports.createStripePaymentIntent = functions.https.onCall(async (data, context)
 
     try {
         const { chargedAmount, baseAmount, ticketsBought, name, email, phone, referral } = data;
+        const cleanedTicketsBought = cleanTicketCount(ticketsBought);
 
-        if (!chargedAmount || !baseAmount || !ticketsBought || !name || !email || !phone) {
+        if (!chargedAmount || !baseAmount || !cleanedTicketsBought || !name || !email || !phone) {
             throw new functions.https.HttpsError('invalid-argument', 'Missing required fields: chargedAmount, baseAmount, ticketsBought, name, email, or phone.');
         }
 
@@ -537,15 +568,16 @@ exports.createStripePaymentIntent = functions.https.onCall(async (data, context)
         const paymentIntent = await stripe.paymentIntents.create({
             amount: amountToChargeInCents,
             currency: 'usd',
-            description: `YDE Split The Pot - ${ticketsBought} Tickets`, 
+            description: `YDE Split The Pot - ${cleanedTicketsBought} Tickets`, 
             payment_method_types: ['card'],
             metadata: {
                 name,
                 email,
                 phone,
-                ticketsBought,
+                // Use cleaned integer ticketsBought
+                ticketsBought: cleanedTicketsBought.toString(), 
                 // baseAmount is the price excluding fees (e.g., 86, not 88.88)
-                baseAmount: baseAmount.toString(), 
+                baseAmount: cleanAmount(baseAmount).toString(), 
                 referrerRefId: referral || '',
                 entryType: 'raffle',
                 sourceApp: SOURCE_APP_TAG 
@@ -555,8 +587,8 @@ exports.createStripePaymentIntent = functions.https.onCall(async (data, context)
         // Store PI creation details, including both charged and base amounts
         await admin.firestore().collection('stripe_payment_intents').doc(paymentIntent.id).set({
             chargedAmount: chargedAmount,
-            baseAmount: baseAmount,
-            ticketsBought,
+            baseAmount: cleanAmount(baseAmount),
+            ticketsBought: cleanedTicketsBought,
             name,
             email,
             phone,
@@ -581,14 +613,16 @@ exports.createDonationPaymentIntent = functions.https.onCall(async (data, contex
     const SOURCE_APP_TAG = 'YDE Donation'; 
 
     try {
-        const { amount, name, email, phone } = data;
+        // Updated to accept the referral/refId
+        const { amount, name, email, phone, referral } = data;
+        const cleanedAmount = cleanAmount(amount);
 
-        if (!amount || !name || !email || !phone) {
+        if (!cleanedAmount || !name || !email || !phone) {
             throw new functions.https.HttpsError('invalid-argument', 'Missing required fields: amount, name, email, or phone.');
         }
         
         // Assume 'amount' here is the total charged (Base Amount + Fee, if user pays the fee).
-        const amountInCents = Math.round(parseFloat(amount) * 100);
+        const amountInCents = Math.round(cleanedAmount * 100);
 
         const paymentIntent = await stripe.paymentIntents.create({
             amount: amountInCents,
@@ -599,9 +633,11 @@ exports.createDonationPaymentIntent = functions.https.onCall(async (data, contex
                 name,
                 email,
                 phone,
-                amount,
+                amount: cleanedAmount.toString(), // Ensure amount in metadata is cleaned
                 entryType: 'donation',
-                sourceApp: SOURCE_APP_TAG 
+                sourceApp: SOURCE_APP_TAG,
+                // Add referral ID to Stripe metadata
+                referrerRefId: referral || null
             },
         });
 
@@ -611,10 +647,12 @@ exports.createDonationPaymentIntent = functions.https.onCall(async (data, contex
             email,
             phone,
             // Storing the charged amount here
-            amount: amount, 
+            amount: cleanedAmount, 
             status: 'created',
             sourceApp: SOURCE_APP_TAG, 
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            // Add referral ID to Firestore document
+            referrerRefId: referral || null
         });
 
         return { clientSecret: paymentIntent.client_secret, paymentIntentId: paymentIntent.id };
@@ -663,32 +701,24 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
         }
         
         // --- Shared variables ---
-        const amountCharged = paymentIntent.amount / 100; 
+        const amountCharged = cleanAmount(paymentIntent.amount / 100); 
 
         // Base amount (excluding fees) to be recorded as the revenue/sale value
         let amountForSaleRecord;
         if (entryType === 'raffle') {
-            // Use metadata baseAmount for fee-excluded value
-            amountForSaleRecord = parseFloat(baseAmount); 
+            // Use metadata baseAmount for fee-excluded value, ensure it is cleaned
+            amountForSaleRecord = cleanAmount(baseAmount); 
         } else if (entryType === 'rolex') {
-            // Use ticketNumber, which is the base price in USD
-            amountForSaleRecord = parseFloat(ticketNumber); 
+            // Use ticketNumber, which is the base price in USD, ensure it is cleaned
+            amountForSaleRecord = cleanAmount(ticketNumber); 
         } else if (entryType === 'donation') {
              // Use the 'amount' field from donation PI metadata, which should be the base donation amount
-             amountForSaleRecord = parseFloat(paymentIntent.metadata.amount) || amountCharged;
+             amountForSaleRecord = cleanAmount(paymentIntent.metadata.amount) || amountCharged;
         } else {
             amountForSaleRecord = 0;
         }
         
-        // FIX: Round the base amount to two decimals immediately to prevent floating point accumulation in Firestore
-        if (!isNaN(amountForSaleRecord)) {
-            amountForSaleRecord = Math.round(amountForSaleRecord * 100) / 100;
-        } else {
-            console.warn(`Invalid amountForSaleRecord calculated for ${entryType}. Defaulting to charged amount or zero.`);
-            amountForSaleRecord = Math.round(amountCharged * 100) / 100;
-            if (isNaN(amountForSaleRecord)) amountForSaleRecord = 0;
-        }
-
+        amountForSaleRecord = cleanAmount(amountForSaleRecord); // Final sanity round
 
         let referrerUid = null;
         let referrerName = null;
@@ -707,7 +737,8 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
         
         // --- Rolex Ticket Processing (Spin to Win) ---
         if (entryType === 'rolex') {
-            const rolexTicketRef = db.collection('rolex_tickets').doc(ticketNumber);
+            // Use cleanAmount on the ticketNumber (which is the document ID/base price)
+            const rolexTicketRef = db.collection('rolex_tickets').doc(ticketNumber); 
             
             await rolexTicketRef.update({
                 status: 'paid',
@@ -716,9 +747,9 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
                 firstName: firstName, 
                 email,
                 phoneNumber: phone, 
-                // Store fee-excluded amount (now rounded)
+                // Store fee-excluded amount (now cleaned)
                 amountPaid: amountForSaleRecord, 
-                timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(), // FIX: Use new updatedAt field
                 sourceApp: sourceApp || 'YDE Spin The Wheel (Webhook)',
                 referrerRefId: referrerRefId || null 
             });
@@ -737,7 +768,7 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
         
         // --- Raffle (Split The Pot) Processing ---
         else if (entryType === 'raffle') {
-            const ticketCount = parseInt(ticketsBought); 
+            const ticketCount = cleanTicketCount(ticketsBought); // Use cleanTicketCount
             // Use fee-excluded amount (baseAmount)
             const amountForPot = amountForSaleRecord; 
 
@@ -750,7 +781,7 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
                 referrerRefId: referrerRefId || null,
                 referrerUid,
                 referrerName,
-                // Store fee-excluded amount (now rounded)
+                // Store fee-excluded amount (now cleaned)
                 amountPaid: amountForPot, 
                 ticketCount: ticketCount, 
                 paymentMethod: 'Stripe', 
@@ -786,6 +817,7 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
                 webhookProcessed: true,
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
                 sourceApp: sourceApp || 'YDE Donation (Webhook)' 
+                // The referrerRefId is already in the PI doc from the callable function
             });
         }
 
@@ -993,28 +1025,28 @@ exports.assignReferrerToSales = functions.https.onCall(async (data, context) => 
                     // OR if it is unassigned. Do nothing if already assigned to the target.
                     if (oldRefId !== refId) { 
                         // IMPORTANT: Use amountPaid from the sale document (which holds baseAmount)
-                        const tickets = sale.ticketCount || 0;
-                        const amount = sale.amountPaid || 0; 
-
+                        const tickets = cleanTicketCount(sale.ticketCount); // Ensure ticket count is clean
+                        const amount = cleanAmount(sale.amountPaid) || 0; // Use cleanAmount
+                        
                         // A) Decrement (Transfer scenario)
                         if (oldRefUid) {
                             // Add to decrement map for atomic update later
                             const currentDecrement = oldReferrerDecrementMap.get(oldRefUid) || { tickets: 0, amount: 0 };
                             currentDecrement.tickets += tickets;
-                            currentDecrement.amount += amount;
+                            currentDecrement.amount = cleanAmount(currentDecrement.amount + amount); // Clean intermediate sum
                             oldReferrerDecrementMap.set(oldRefUid, currentDecrement);
                         }
 
                         // B) Increment (Always happens for the target referrer)
                         targetTicketsIncrement += tickets;
-                        targetAmountIncrement += amount;
+                        targetAmountIncrement = cleanAmount(targetAmountIncrement + amount); // Clean intermediate sum
 
                         // C) Update Sale Document in the Batch
                         batch.update(snapshot.ref, {
                             referrerRefId: refId,
                             referrerUid: targetReferrerUid,
                             referrerName: targetReferrerName,
-                            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+                            updatedAt: admin.firestore.FieldValue.serverTimestamp() // Use new updatedAt field
                         });
 
                         updatedCount++;
@@ -1076,7 +1108,6 @@ exports.assignReferrerToSales = functions.https.onCall(async (data, context) => 
  * and incrementing the new referrer's totals.
  */
 exports.assignReferrerToRolexTickets = functions.https.onCall(async (data, context) => {
-    // 1. Security Check
     if (!isSuperAdmin(context)) {
         throw new functions.https.HttpsError('permission-denied', 'Access denied. Requires Super Admin role.');
     }
@@ -1136,7 +1167,7 @@ exports.assignReferrerToRolexTickets = functions.https.onCall(async (data, conte
                     }
                     
                     const oldRefId = ticket.referrerRefId;
-                    const amount = ticket.amountPaid || 0; // amountPaid stores the base amount
+                    const amount = cleanAmount(ticket.amountPaid) || 0; // amountPaid stores the base amount
 
                     // Only process if the ticket is currently assigned to a DIFFERENT referrer 
                     // OR if it is unassigned (oldRefId is null).
@@ -1147,18 +1178,18 @@ exports.assignReferrerToRolexTickets = functions.https.onCall(async (data, conte
                             // Add to decrement map for atomic update later (Rolex tickets are always 1 ticket count)
                             const currentDecrement = oldReferrerDecrementMap.get(oldRefId) || { tickets: 0, amount: 0 };
                             currentDecrement.tickets += 1;
-                            currentDecrement.amount += amount;
+                            currentDecrement.amount = cleanAmount(currentDecrement.amount + amount); // Clean intermediate sum
                             oldReferrerDecrementMap.set(oldRefId, currentDecrement);
                         }
 
                         // B) Increment (Always happens for the target referrer)
-                        targetAmountIncrement += amount;
+                        targetAmountIncrement = cleanAmount(targetAmountIncrement + amount); // Clean intermediate sum
                         targetTicketCount += 1;
 
                         // C) Update Ticket Document in the Batch
                         batch.update(snapshot.ref, {
                             referrerRefId: refId,
-                            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+                            updatedAt: admin.firestore.FieldValue.serverTimestamp() // Use new updatedAt field
                         });
 
                         updatedCount++;
@@ -1243,11 +1274,11 @@ async function _rebuildAllReferrerTotals(db) {
         const amountPaid = ticket.amountPaid || 0; 
         
         // FIX: Ensure retrieved amount is rounded to prevent float errors during summation
-        const cleanedAmount = Math.round(amountPaid * 100) / 100;
+        const cleanedAmount = cleanAmount(amountPaid);
 
         if (refId) {
             const current = rolexAggregatesByRefId.get(refId) || { amount: 0, tickets: 0 };
-            current.amount += cleanedAmount; // Use cleaned amount
+            current.amount = cleanAmount(current.amount + cleanedAmount); // Use cleaned intermediate sum
             current.tickets += 1;
             rolexAggregatesByRefId.set(refId, current);
         }
@@ -1284,15 +1315,15 @@ async function _rebuildAllReferrerTotals(db) {
         splitPotSales.forEach(saleDoc => {
             const amountPaid = saleDoc.data().amountPaid || 0;
             // FIX: Ensure retrieved amount is rounded to prevent float errors during summation
-            const cleanedAmount = Math.round(amountPaid * 100) / 100;
+            const cleanedAmount = cleanAmount(amountPaid);
 
-            newSplitPotAmount += cleanedAmount; // Use cleaned amount
-            newSplitPotTickets += saleDoc.data().ticketCount || 0;
+            newSplitPotAmount = cleanAmount(newSplitPotAmount + cleanedAmount); // Use cleaned intermediate sum
+            newSplitPotTickets += cleanTicketCount(saleDoc.data().ticketCount); // Ensure ticket count is clean
         });
 
         // 2c. Calculate the FINAL Combined Total Amount (base amounts only)
-        const newCombinedTotalAmount = newSplitPotAmount + newRolexTotals.amount;
-
+        const newCombinedTotalAmount = cleanAmount(newSplitPotAmount + newRolexTotals.amount); // Final rounding
+        
         // 2d. Set the complete, accurate data in the batch
         // We SET the new values; no dangerous incrementing/decrementing is needed.
         updateBatch.set(referrerRef, {
@@ -1389,18 +1420,18 @@ exports.recalculateRaffleTotals = functions.https.onCall(async (data, context) =
         } else {
             raffleEntriesSnapshot.forEach(doc => {
                 const entry = doc.data();
-                if (typeof entry.ticketCount === 'number') {
-                    totalTickets += entry.ticketCount;
-                }
+                const tickets = cleanTicketCount(entry.ticketCount); // Use cleanTicketCount
+                totalTickets += tickets;
+
                 const amountPaid = entry.amountPaid || 0;
                 // FIX: Ensure retrieved amount is rounded to prevent float errors during summation
-                const cleanedAmount = Math.round(amountPaid * 100) / 100;
-                totalAmount += cleanedAmount;
+                const cleanedAmount = cleanAmount(amountPaid);
+                totalAmount = cleanAmount(totalAmount + cleanedAmount); // Clean intermediate sum
             });
         }
         
         // FIX: Round the final global amount before saving
-        totalAmount = Math.round(totalAmount * 100) / 100;
+        totalAmount = cleanAmount(totalAmount);
 
 
         const raffleTotalsRef = db.collection('counters').doc('raffle_totals');
@@ -1439,15 +1470,8 @@ exports.addManualSale = functions.https.onCall(async (data, context) => {
     }
 
     const db = admin.firestore();
-    const ticketCount = parseInt(ticketsBought, 10);
-    let amountPaid = parseFloat(amount); // This acts as the baseAmount for manual sales
-
-    // FIX: Round manual entry amount before storing
-    if (!isNaN(amountPaid)) {
-        amountPaid = Math.round(amountPaid * 100) / 100;
-    } else {
-        amountPaid = 0;
-    }
+    const ticketCount = cleanTicketCount(ticketsBought); // Use cleanTicketCount
+    let amountPaid = cleanAmount(amount); // This acts as the baseAmount for manual sales and is now rounded
     
     const firstName = name.split(' ')[0] || name;
 
@@ -1543,31 +1567,30 @@ exports.updateRaffleEntry = functions.https.onCall(async (data, context) => {
         }
 
         const originalData = docSnapshot.data();
-        const originalTickets = originalData.ticketCount || 0;
-        const originalAmount = originalData.amountPaid || 0; // Base amount
+        
+        // Use clean functions for original data
+        const originalTickets = cleanTicketCount(originalData.ticketCount);
+        const originalAmount = cleanAmount(originalData.amountPaid) || 0; // Base amount
 
-        const updatedTickets = updatedData.ticketCount;
-        let updatedAmount = updatedData.amountPaid; // New base amount
-
-        // FIX: Round updated amount before calculating diff and storing
-        if (!isNaN(updatedAmount)) {
-             updatedAmount = Math.round(updatedAmount * 100) / 100;
-        } else {
-             updatedAmount = 0;
-        }
+        // Use clean functions for updated data
+        const updatedTickets = cleanTicketCount(updatedData.ticketCount);
+        let updatedAmount = cleanAmount(updatedData.amountPaid); // New base amount and rounded
         
         const updatedFullName = updatedData.fullName || (updatedData.name ? updatedData.name.split(' ')[0] : originalData.firstName); 
 
+        // Calculate differences using cleaned numbers
         const ticketDiff = updatedTickets - originalTickets;
-        const amountDiff = updatedAmount - originalAmount;
+        const amountDiff = cleanAmount(updatedAmount - originalAmount); // Clean the difference
 
+        // FIX: Completed the update payload
         await docRef.update({
             fullName: updatedFullName, 
             firstName: updatedData.firstName,
             email: updatedData.email,
             phoneNumber: updatedData.phoneNumber,
-            ticketCount: updatedTickets,
-            amountPaid: updatedAmount, // Storing the base amount (fee-excluded and rounded)
+            ticketCount: updatedTickets, // Store clean integer
+            amountPaid: updatedAmount, // Store clean amount
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
         const raffleTotalsRef = db.collection('counters').doc('raffle_totals');
@@ -1616,8 +1639,8 @@ exports.deleteRaffleEntry = functions.https.onCall(async (data, context) => {
         }
 
         const entryData = docSnapshot.data();
-        const tickets = entryData.ticketCount || 0;
-        const amount = entryData.amountPaid || 0; // Base amount
+        const tickets = cleanTicketCount(entryData.ticketCount); // Use cleanTicketCount
+        const amount = cleanAmount(entryData.amountPaid) || 0; // Base amount
         const referrerUid = entryData.referrerUid;
 
         await docRef.delete();
@@ -1649,60 +1672,60 @@ exports.deleteRaffleEntry = functions.https.onCall(async (data, context) => {
 
 /**
  * Callable function to claim a free spin-to-win ticket.
+ * FIX: Removed unnecessary Promise and corsHandler wrapper.
  */
 exports.claimSpinTicket = functions.https.onCall(async (data, context) => {
     const SOURCE_APP_TAG = 'YDE Free Spin Claim'; 
 
-    return new Promise((resolve, reject) => {
-        corsHandler(context.req, context.res, async () => {
-            const { name } = data;
-            const TOTAL_TICKETS = 650;
+    const { name } = data;
+    const TOTAL_TICKETS = 650;
 
-            if (!name) {
-                return reject(new functions.https.HttpsError('invalid-argument', 'Missing required field: name.'));
-            }
+    if (!name) {
+        throw new functions.https.HttpsError('invalid-argument', 'Missing required field: name.');
+    }
 
-            const db = admin.firestore();
-            let ticketNumber;
-            let foundUniqueTicket = false;
+    const db = admin.firestore();
+    let ticketNumber;
+    let foundUniqueTicket = false;
 
-            for (let i = 0; i < TOTAL_TICKETS * 2; i++) {
-                const randomTicket = Math.floor(Math.random() * TOTAL_TICKETS) + 1;
-                const ticketRef = db.collection('rolex_tickets').doc(randomTicket.toString());
+    // Retry loop to find an available ticket number
+    for (let i = 0; i < TOTAL_TICKETS * 2; i++) {
+        const randomTicket = Math.floor(Math.random() * TOTAL_TICKETS) + 1;
+        const ticketRef = db.collection('rolex_tickets').doc(randomTicket.toString());
 
-                try {
-                    await db.runTransaction(async (transaction) => {
-                        const docSnapshot = await transaction.get(ticketRef);
-                        if (!docSnapshot.exists) {
-                            transaction.set(ticketRef, {
-                                status: 'claimed',
-                                timestamp: admin.firestore.FieldValue.serverTimestamp(),
-                                name: name,
-                                // Free ticket has $0.00 amountPaid
-                                amountPaid: 0, 
-                                sourceApp: SOURCE_APP_TAG 
-                            });
-                            foundUniqueTicket = true;
-                        }
+        try {
+            await db.runTransaction(async (transaction) => {
+                const docSnapshot = await transaction.get(ticketRef);
+                if (!docSnapshot.exists) {
+                    transaction.set(ticketRef, {
+                        status: 'claimed', // Directly claimed (free ticket)
+                        timestamp: admin.firestore.FieldValue.serverTimestamp(), // Original creation time
+                        name: name,
+                        // Free ticket has $0.00 amountPaid
+                        amountPaid: 0, 
+                        sourceApp: SOURCE_APP_TAG 
                     });
-
-                    if (foundUniqueTicket) {
-                        ticketNumber = randomTicket;
-                        break;
-                    }
-                } catch (e) {
-                    console.error("Transaction failed during free ticket claim: ", e);
+                    foundUniqueTicket = true;
                 }
-            }
+            });
 
-            if (!foundUniqueTicket) {
-                return reject(new functions.https.HttpsError('resource-exhausted', 'All tickets have been claimed. Please try again later.'));
+            if (foundUniqueTicket) {
+                ticketNumber = randomTicket;
+                break;
             }
+        } catch (e) {
+            console.error("Transaction failed during free ticket claim: ", e);
+            // Ignore transient transaction failures and retry
+        }
+    }
 
-            resolve({ success: true, ticketNumber });
-        });
-    });
+    if (!foundUniqueTicket) {
+        throw new functions.https.HttpsError('resource-exhausted', 'All tickets have been claimed. Please try again later.');
+    }
+
+    return { success: true, ticketNumber };
 });
+
 /**
  * Callable function to create a new referrer account.
  */
@@ -1729,7 +1752,7 @@ exports.createReferrer = functions.https.onCall(async (data, context) => {
             name,
             email,
             refId: refIdToSave, 
-            goal: goal || 0, 
+            goal: cleanAmount(goal) || 0, // Ensure goal is rounded
             totalTickets: 0, // Split the Pot Tickets
             totalAmount: 0, // Combined Amount (Split the Pot + Rolex) (Base amounts only)
             rolexTicketsTotal: 0, // NEW: Spin the Wheel Tickets
@@ -1743,6 +1766,7 @@ exports.createReferrer = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError('internal', 'Failed to create referrer.', error.message);
     }
 });
+
 exports.setSuperAdminClaim = functions.https.onCall(async (data, context) => {
     if (!isSuperAdmin(context)) {
         throw new functions.https.HttpsError('permission-denied', 'Access denied. Only a Super Admin can promote another user.');

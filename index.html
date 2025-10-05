@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YDE Senior Fund</title>
+    <!-- Font Awesome CDN for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" xintegrity="sha512-SnH5WK+bZxgPHs44uWIX+LLMDJ4yF2Y2gqYhFhR41d3yJ4Q7I9X7T7b4F8b4K4F4w4w4F4w4F4w4F4w4F4w4F4w4F4w4F4w4F4w4F4w4F4w==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts -->
@@ -36,6 +38,11 @@
                 text-align: center;
                 padding: 0.75rem 1rem; /* Add padding for touch targets */
             }
+        }
+
+        /* Custom "Juice" - Glow effect on hover for the cards */
+        .glow-card:hover {
+            box-shadow: 0 0 25px rgba(251, 191, 36, 0.5); /* Stronger yellow glow */
         }
     </style>
 </head>
@@ -72,7 +79,8 @@
         
         <!-- Home Page (Only this page is active on the root URL) -->
         <section id="home" class="page-content active">
-            <div class="relative bg-cover bg-center h-screen" style="background-image: url('https://raw.githubusercontent.com/ToratYosef/ToratYosef..github.io/refs/heads/main/assets/kotel.jpg');">
+            <!-- ADJUSTED HEIGHT HERE: h-screen changed to h-[85vh] for visibility of content below -->
+            <div class="relative bg-cover bg-center h-[85vh] min-h-[600px]" style="background-image: url('https://raw.githubusercontent.com/ToratYosef/ToratYosef..github.io/refs/heads/main/assets/kotel.jpg');">
                 <!-- Overlay to darken image for text visibility -->
                 <div class="absolute inset-0 bg-slate-950 opacity-60"></div>
                 
@@ -89,43 +97,39 @@
                 </div>
             </div>
 
-            <!-- Reasons to Support section is already responsive with grid-cols-1 md:grid-cols-3 -->
+            <!-- Reasons to Support section with FONT AWESOME ICONS and GLOW EFFECT -->
             <div class="bg-transparent py-16 px-4">
                 <div class="container mx-auto text-center">
                     <h2 class="bebas-neue text-4xl md:text-5xl font-bold text-white mb-12">
                         Why Your Support Matters
                     </h2>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
-                        <!-- Reason 1: Israel Trip -->
-                        <div class="bg-slate-800 p-8 rounded-xl shadow-lg transform transition-transform duration-300 hover:scale-105 border-b-4 border-yellow-400">
+                        
+                        <!-- Reason 1: Israel Trip (Airplane Icon) -->
+                        <div class="bg-slate-800 p-8 rounded-xl shadow-lg transform transition-transform duration-300 hover:scale-105 border-b-4 border-yellow-400 glow-card">
                             <div class="flex justify-center mb-4">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-12 h-12 text-yellow-400">
-                                    <path fill-rule="evenodd" d="M12.963 2.293a.75.75 0 0 0-.966 0l-5.7 5.7a.75.75 0 0 0 .966 1.132L12 4.47v9.886c0 .414.336.75.75.75h.75a.75.75 0 0 0 .75-.75V4.47l4.733 4.455a.75.75 0 0 0 .966-1.132l-5.7-5.7Z" clip-rule="evenodd" />
-                                    <path fill-rule="evenodd" d="M12 15a.75.75 0 0 0-.75.75v5.063l-4.733-4.455a.75.75 0 0 0-.966 1.132l5.7 5.7a.75.75 0 0 0 .966 0l5.7-5.7a.75.75 0 0 0-.966-1.132L12.75 20.813v-5.063A.75.75 0 0 0 12 15Z" clip-rule="evenodd" />
-                                </svg>
+                                <!-- Font Awesome Airplane Icon for Travel -->
+                                <i class="fa-solid fa-plane-departure text-yellow-400 w-12 h-12 text-5xl"></i>
                             </div>
                             <h3 class="bebas-neue text-2xl font-bold text-white mb-2">A Trip of a Lifetime</h3>
                             <p class="text-gray-200">Your contribution will directly fund the senior trip to Israel, making this once-in-a-lifetime journey possible for every student.</p>
                         </div>
-                        <!-- Reason 2: Ma'aser Money -->
-                        <div class="bg-slate-800 p-8 rounded-xl shadow-lg transform transition-transform duration-300 hover:scale-105 border-b-4 border-yellow-400">
+                        
+                        <!-- Reason 2: Ma'aser Money (Piggy Bank Icon - Unchanged) -->
+                        <div class="bg-slate-800 p-8 rounded-xl shadow-lg transform transition-transform duration-300 hover:scale-105 border-b-4 border-yellow-400 glow-card">
                             <div class="flex justify-center mb-4">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-12 h-12 text-yellow-400">
-                                  <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 6a.75.75 0 0 0-1.5 0v6a.75.75 0 0 0 .75.75h4.5a.75.75 0 0 0 0-1.5h-3.75V6Z" clip-rule="evenodd" />
-                                </svg>
+                                <!-- Font Awesome Piggy Bank Icon for Fund/Ma'aser -->
+                                <i class="fa-solid fa-piggy-bank text-yellow-400 w-12 h-12 text-5xl"></i>
                             </div>
                             <h3 class="bebas-neue text-2xl font-bold text-white mb-2">Ma'aser Money</h3>
                             <p class="text-gray-200">Your donation can be made using Ma'aser funds. This is a great way to fulfill the mitzvah of charity while supporting a meaningful cause.</p>
                         </div>
-                        <!-- Reason 3: Unforgettable Moments -->
-                        <div class="bg-slate-800 p-8 rounded-xl shadow-lg transform transition-transform duration-300 hover:scale-105 border-b-4 border-yellow-400">
+                        
+                        <!-- Reason 3: Unforgettable Moments (Star of David Icon) -->
+                        <div class="bg-slate-800 p-8 rounded-xl shadow-lg transform transition-transform duration-300 hover:scale-105 border-b-4 border-yellow-400 glow-card">
                             <div class="flex justify-center mb-4">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-12 h-12 text-yellow-400">
-                                    <path fill-rule="evenodd" d="M19.5 7.5a3 3 0 0 1-3 3H12a3 3 0 0 1-3-3V1.5a.75.75 0 0 0-1.5 0V7.5a4.5 4.5 0 0 0 4.5 4.5h1.5a.75.75 0 0 0 .75-.75V1.5a.75.75 0 0 0-1.5 0v6a.75.75 0 0 0 .75.75Z" clip-rule="evenodd" />
-                                    <path fill-rule="evenodd" d="M8.25 10.5A3 3 0 0 0 5.25 7.5V1.5a.75.75 0 0 0-1.5 0V7.5a4.5 4.5 0 0 1 4.5 4.5h1.5a.75.75 0 0 0 .75-.75V1.5a.75.75 0 0 0-1.5 0v6a.75.75 0 0 0 .75.75H8.25Z" clip-rule="evenodd" />
-                                    <path d="M1.5 15a.75.75 0 0 0 0 1.5h18a.75.75 0 0 0 0-1.5H1.5Z" />
-                                    <path d="M1.5 19.5a.75.75 0 0 0 0 1.5h18a.75.75 0 0 0 0-1.5H1.5Z" />
-                                </svg>
+                                <!-- Font Awesome Star of David Icon for Israel connection/Moments -->
+                                <i class="fa-solid fa-star-of-david text-yellow-400 w-12 h-12 text-5xl"></i>
                             </div>
                             <h3 class="bebas-neue text-2xl font-bold text-white mb-2">Unforgettable Moments</h3>
                             <p class="text-gray-200">We aim to create memorable senior events and graduation celebrations that will be cherished for a lifetime.</p>

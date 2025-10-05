@@ -236,8 +236,9 @@
                             <th>Date</th>
                             <th>Full Name</th>
                             <th>Email/Phone</th>
-                            <th class="text-right">Amount Paid</th>
-                            <th>Current Referrer</th>
+                            <th>Status</th>
+                            <th class="sort-header text-right" data-table="rolex" data-sort-key="amountPaid">Amount Paid <span class="sort-icon ml-1"></span></th>
+                            <th class="sort-header" data-table="rolex" data-sort-key="referrerRefId">Referrer <span class="sort-icon ml-1"></span></th>
                         </tr>
                     </thead>
                     <tbody id="rolexAssignmentTableBody">
@@ -257,8 +258,8 @@
         <div class="bg-gray-800 p-6 rounded-lg shadow-2xl max-w-sm w-full">
             <h2 class="text-2xl font-bold text-red-400 mb-4">Confirm Role Change</h2>
             <p class="text-gray-300 mb-6">
-                Are you sure you want to promote <span id="upgrade-referrer-name" class="font-bold text-white"></span> 
-                (<span id="upgrade-referrer-refid" class="font-mono text-xs bg-gray-700 p-1 rounded"></span>) 
+                Are you sure you want to promote <span id="upgrade-referrer-name" class="font-bold text-white"></span>
+                (<span id="upgrade-referrer-refid" class="font-mono text-xs bg-gray-700 p-1 rounded"></span>)
                 to a **Super Admin**?
             </p>
             <p class="text-sm text-red-400 mb-4">This action grants full system access and requires them to re-login.</p>
@@ -578,7 +579,7 @@
                                 Recalculate Global Pot
                             </button>
                         </div>
-                        
+
                         <!-- Recalculate Spin The Wheel Totals (NEW) -->
                         <div id="recalculateRolexTotalsCard" class="border p-4 rounded-lg bg-purple-900/50 border-purple-700">
                             <h4 class="font-semibold text-lg text-purple-400 mb-2">Recalculate Spin The Wheel Totals (Global)</h4>
@@ -793,7 +794,6 @@
                     const tempInput = document.createElement('input');
                     tempInput.value = text;
                     document.body.appendChild(tempInput);
-                    tempInput.select();
                     document.execCommand('copy');
                     document.body.removeChild(tempInput);
                     showCustomPopup('Success', message);
@@ -1334,32 +1334,32 @@
                 if (isSuperAdmin) {
                     // Update: Clicking the name now applies the combined filter and shows sales.
                     nameCellContent = `<span 
-                                        class="text-white font-semibold cursor-pointer hover:underline" 
-                                        data-action="view-referrer-sales" 
-                                        data-refid="${r.refId}" 
-                                        data-refname="${r.name}"
-                                        >${r.name}</span>`;
+                                         class="text-white font-semibold cursor-pointer hover:underline" 
+                                         data-action="view-referrer-sales" 
+                                         data-refid="${r.refId}" 
+                                         data-refname="${r.name}"
+                                         >${r.name}</span>`;
                     
                     if (r.uid !== auth.currentUser?.uid) {
                         upgradeButton = `
                             <button class="px-2 py-1 text-xs bg-red-500 text-white font-semibold rounded-lg shadow-md hover:bg-red-600 transition-colors mb-1"
-                                                data-action="promote-sa"
-                                                data-uid="${r.uid}"
-                                                data-refid="${r.refId}"
-                                                data-refname="${r.name}">Promote to SA</button>
+                                             data-action="promote-sa"
+                                             data-uid="${r.uid}"
+                                             data-refid="${r.refId}"
+                                             data-refname="${r.name}">Promote to SA</button>
                         `;
                     }
                     
                     actionCellContent = `
                         ${upgradeButton}
                         <button class="px-2 py-1 text-xs bg-purple-500 text-white font-semibold rounded-lg shadow-md hover:bg-purple-600 transition-colors mb-1"
-                                                data-action="assign-rolex-tickets"
-                                                data-refid="${r.refId}"
-                                                data-refname="${r.name}">Assign Spin</button>
+                                             data-action="assign-rolex-tickets"
+                                             data-refid="${r.refId}"
+                                             data-refname="${r.name}">Assign Spin</button>
                         <button class="px-2 py-1 text-xs bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 transition-colors"
-                                                data-action="assign-raffle-tickets"
-                                                data-refid="${r.refId}"
-                                                data-refname="${r.name}">Assign Raffle</button>
+                                             data-action="assign-raffle-tickets"
+                                             data-refid="${r.refId}"
+                                             data-refname="${r.name}">Assign Raffle</button>
                     `;
                 }
 
@@ -1553,9 +1553,9 @@
             if (tabName === 'raffle') {
                  const raffleFilterControls = document.getElementById('raffleFilterControls');
                  if (isReferrer && !isSuperAdmin) {
-                     raffleFilterControls.classList.add('hidden');
+                    raffleFilterControls.classList.add('hidden');
                  } else {
-                     raffleFilterControls.classList.remove('hidden');
+                    raffleFilterControls.classList.remove('hidden');
                  }
             }
         };
@@ -1791,6 +1791,7 @@
                 const response = await recalculateRolexTotalsCallable({});
                 showCustomPopup('Recalculation Complete', response.data.message);
                 await fetchDashboardData(); 
+
             } catch (error) {
                 console.error("Error recalculating Rolex totals:", error);
                 showCustomPopup('Recalculation Failed', `Error: ${error.message}`);
@@ -2216,6 +2217,7 @@
                 const isSelected = selectedRolexSaleIds.has(ticket.id);
                 const customerName = ticket.fullName || ticket.name || ticket.firstName || 'N/A';
                 const contact = ticket.email || ticket.phoneNumber || 'N/A';
+                // FIX: Variable name changed to currentReferrerContent
                 const currentReferrerContent = ticket.referrerRefId 
                     ? `<span class="font-mono text-xs px-2 py-1 bg-yellow-400/20 text-yellow-300 rounded">${ticket.referrerRefId}</span>`
                     : '<span class="text-red-400">None</span>';
@@ -2230,7 +2232,7 @@
                     <td>${customerName}</td>
                     <td>${contact}</td>
                     <td class="text-right font-medium">${formatCurrency(ticket.amountPaid || 0)}</td>
-                    <td>${referrerInfo}</td>
+                    <td>${currentReferrerContent}</td> 
                 `;
                 tbody.appendChild(tr);
             });
@@ -2605,7 +2607,7 @@
 
                 // --- NEW USER MANAGEMENT LISTENERS ---
                 if (document.getElementById('usersTableBody')) {
-                    document.getElementById('usersTableBody').addEventListener('change', (e) => {
+                    document.getElementById('usersTableBody').addEventListener('click', (e) => {
                         if (e.target.classList.contains('user-select-checkbox')) {
                             handleUserCheckboxChange(e);
                         }

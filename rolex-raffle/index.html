@@ -170,11 +170,10 @@
                         alt="Rolex Oyster Perpetual Sky-Dweller" class="w-full h-auto object-contain rounded-lg shadow-xl">
                 </div>
                 <div class="md:w-1/2 text-left">
-                    <p class="bebas-neue text-3xl text-white mb-2">Rolex Sky-Dweller</p>
-                    <p class="text-2xl font-semibold text-yellow-400 mb-6">$26,000 Cash or Luxury Watch</p>
+                    <p class="bebas-neue text-3xl text-white mb-2">Grand Prize</p>
+                    <p class="text-2xl font-semibold text-yellow-400 mb-6">$26,000 Cash</p>
                     <p class="text-gray-300 leading-relaxed mb-6">
-                        The winner gets to choose between the stunning Rolex Oyster Perpetual Sky-Dweller 
-                        (model m336934-0002, worth $35,000+) or a substantial cash prize of $26,000 to use however they wish.
+                        The winner receives a substantial cash prize of **$26,000** to use however they wish.
                         This is a once-in-a-lifetime opportunity to support YDE Senior Fund and walk away with an incredible prize!
                     </p>
                     <button onclick="hidePrizeModal();" class="w-full py-3 rounded-full bg-yellow-400 text-slate-950 font-bold hover:bg-yellow-500 transition-colors duration-300">
@@ -218,7 +217,7 @@
                     The Ultimate Rolex Raffle
                 </h1>
                 <p class="text-base sm:text-lg md:text-xl text-gray-300 mb-8">
-                    Win a luxury Rolex watch (worth $35,000+) or take the $26,000 cash equivalent!
+                    Win the **\$26,000** Grand Prize Cash!
                 </p>
 
                 <!-- Prize Display Section (Smaller, clickable) -->
@@ -229,27 +228,12 @@
                         <img src="https://media.rolex.com/image/upload/q_auto:eco/f_auto/t_v7-majesty/c_limit,w_1600/v1/catalogue/2025/upright-c/m336934-0002" 
                             onerror="this.onerror=null; this.src='https://placehold.co/800x450/1e293b/fde047?text=Rolex+Grand+Prize';"
                             alt="Rolex Oyster Perpetual Sky-Dweller" class="w-full h-auto object-contain rounded-lg shadow-xl">
-                        <p class="text-gray-300 text-lg font-semibold">Rolex Oyster Perpetual Sky-Dweller or $26,000</p>
+                        <p class="text-gray-300 text-lg font-semibold">Grand Prize: $26,000 Cash</p>
                         <button class="mt-4 py-2 px-4 rounded-full bg-yellow-400 text-black font-bold hover:bg-yellow-500 transition-colors w-full">
                             See Prize Details
                         </button>
                     </div>
                 </div>
-
-                <!-- Live Counter -->
-                <div class="mb-12">
-                    <h2 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4" id="ticketsSoldTitle">TICKETS SOLD: 0</h2>
-                    <!-- Scoreboard Container (4 Digits) -->
-                    <div id="ticketsSoldDisplay" class="flex justify-center space-x-2 md:space-x-3 lg:space-x-4">
-                        <div id="digit-thousands" class="digit-box"></div>
-                        <div id="digit-hundreds" class="digit-box"></div>
-                        <div id="digit-tens" class="digit-box"></div>
-                        <div id="digit-ones" class="digit-box"></div>
-                    </div>
-                </div>
-                <!-- End Live Counter -->
-
-                <!-- Removed How it Works Section -->
                 
                 <!-- Payment Form Section (UPDATED FOR NEW STYLE) -->
                 <div class="relative-container bg-[#2d3340] p-6 rounded-2xl shadow-2xl max-w-lg mx-auto mb-12 border border-slate-700">
@@ -334,6 +318,20 @@
                         </button>
                     </div>
                 </div>
+                <!-- End Payment Form Section -->
+
+                <!-- Live Counter (NEW LOCATION: bottom of the glass panel) -->
+                <div class="pt-12">
+                    <h2 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4" id="ticketsSoldTitle">TICKETS SOLD: 0</h2>
+                    <!-- Scoreboard Container (4 Digits) -->
+                    <div id="ticketsSoldDisplay" class="flex justify-center space-x-2 md:space-x-3 lg:space-x-4">
+                        <div id="digit-thousands" class="digit-box"></div>
+                        <div id="digit-hundreds" class="digit-box"></div>
+                        <div id="digit-tens" class="digit-box"></div>
+                        <div id="digit-ones" class="digit-box"></div>
+                    </div>
+                </div>
+                <!-- End Live Counter -->
             </div>
         </section>
     </main>

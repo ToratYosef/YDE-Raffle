@@ -132,13 +132,13 @@
                 
                     <!-- Ticket Quantity: Stack vertically on small screens, horizontal on larger screens -->
                     <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-                        <label for="quantity" class="font-bold text-yellow-400 bebas-neue text-lg block text-center mb-1 sm:mb-0 sm:hidden md:block">Tickets:</label>
+                        <label for="quantity" class="font-bold text-yellow-400 bebas-neue text-lg block text-center mb-1 sm:mb-0 md:block">Tickets:</label>
                         <div class="flex items-center justify-center gap-4">
-                            <!-- Removed +/- buttons from mobile view, visible only on medium screens and up -->
-                            <button type="button" class="hidden md:flex w-full md:w-12 h-12 bg-yellow-400 text-black rounded-full items-center justify-center font-bold text-2xl hover:bg-yellow-500 transition-colors" id="decrease-quantity">-</button>
+                            <!-- Show +/- buttons on all screens (removed hidden md:flex) -->
+                            <button type="button" class="flex w-12 h-12 bg-yellow-400 text-black rounded-full items-center justify-center font-bold text-2xl hover:bg-yellow-500 transition-colors" id="decrease-quantity">-</button>
                             <input type="number" id="quantity" class="w-full h-12 text-center py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300" value="1" min="1" max="9999999999999999999999" aria-label="Number of tickets">
-                            <!-- Removed +/- buttons from mobile view, visible only on medium screens and up -->
-                            <button type="button" class="hidden md:flex w-full md:w-12 h-12 bg-yellow-400 text-black rounded-full items-center justify-center font-bold text-2xl hover:bg-yellow-500 transition-colors" id="increase-quantity">+</button>
+                            <!-- Show +/- buttons on all screens (removed hidden md:flex) -->
+                            <button type="button" class="flex w-12 h-12 bg-yellow-400 text-black rounded-full items-center justify-center font-bold text-2xl hover:bg-yellow-500 transition-colors" id="increase-quantity">+</button>
                         </div>
                     </div>
                     

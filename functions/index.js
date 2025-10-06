@@ -445,102 +445,70 @@ exports.adminResetPasswordByEmail = functions.https.onRequest((req, res) => {
 // --- PAYMENT INTENT FUNCTIONS ---
 
 /**
- * Firebase Callable Function to create a Stripe PaymentIntent for the Spin to Win game (Rolex).
- * This function also reserves a ticket in Firestore.
+ * Firebase Callable Function to create a Stripe PaymentIntent for the Rolex Raffle.
+ * This function handles quantity-based sales ($150 per ticket).
  */
 exports.createRolexPaymentIntent = functions.https.onCall(async (data, context) => {
-    let ticketNumber;
     const SOURCE_APP_TAG = 'YDE Rolex Raffle';
 
     try {
-        const { name, email, phone, referral } = data;
-        const TOTAL_TICKETS = 650;
+        const { name, email, phone, quantity, amount, referral } = data;
         
-        const firstName = name.split(' ')[0] || name; 
+        const chargedAmount = cleanAmount(amount); // Total amount user is charged (with fees)
+        const ticketsBought = cleanTicketCount(quantity);
+        const basePricePerTicket = 150;
+        const totalBaseAmount = cleanAmount(ticketsBought * basePricePerTicket); // Price excluding fees
 
-        if (!name || !email || !phone) {
-            throw new functions.https.HttpsError('invalid-argument', 'Missing required fields: name, email, or phone.');
+        if (!name || !email || !phone || !ticketsBought || chargedAmount <= 0) {
+            throw new functions.https.HttpsError('invalid-argument', 'Missing or invalid required fields (name, email, phone, quantity, or amount).');
         }
 
-        const db = admin.firestore();
-        let foundUniqueTicket = false;
-
-        for (let i = 0; i < TOTAL_TICKETS * 2; i++) { 
-            const randomTicket = Math.floor(Math.random() * TOTAL_TICKETS) + 1;
-            const ticketRef = db.collection('rolex_tickets').doc(randomTicket.toString());
-
-            try {
-                await db.runTransaction(async (transaction) => {
-                    const docSnapshot = await transaction.get(ticketRef);
-                    if (!docSnapshot.exists) {
-                        // Set initial ticket reservation data
-                        transaction.set(ticketRef, {
-                            status: 'reserved',
-                            timestamp: admin.firestore.FieldValue.serverTimestamp(), // Original creation time
-                            name: name,
-                            firstName: firstName, 
-                            email: email,
-                            phoneNumber: phone, 
-                            sourceApp: SOURCE_APP_TAG,
-                            referrerRefId: referral || null
-                        });
-                        foundUniqueTicket = true;
-                    }
-                });
-
-                if (foundUniqueTicket) {
-                    ticketNumber = randomTicket;
-                    break;
-                }
-            } catch (e) {
-                // Ignore transient transaction failures and retry
-                console.error("Transaction failed during ticket reservation: ", e);
-            }
-        }
-
-        if (!foundUniqueTicket) {
-            throw new functions.https.HttpsError('resource-exhausted', 'All tickets have been claimed. Please try again later.');
-        }
-
-        // IMPORTANT: ticketNumber (1-650) is the base price in USD.
-        // We charge the equivalent amount in cents.
-        const amountInCents = ticketNumber * 100;
+        // The amount sent to Stripe is the total charged amount (in cents).
+        const amountInCents = Math.round(chargedAmount * 100); 
 
         const paymentIntent = await stripe.paymentIntents.create({
             amount: amountInCents,
             currency: 'usd',
-            description: `YDE Rolex Raffle - Ticket ${ticketNumber}`, 
+            description: `YDE Rolex Raffle - ${ticketsBought} Tickets`, 
             payment_method_types: ['card'],
             metadata: {
                 name,
                 email,
                 phone,
-                ticketsBought: '1', // Ensure ticketsBought is a string for metadata
-                // ticketNumber serves as the base amount for Rolex sales
-                baseAmount: ticketNumber.toString(), 
-                ticketNumber: ticketNumber.toString(), 
-                entryType: 'rolex',
+                // Pass quantity (ticketsBought)
+                ticketsBought: ticketsBought.toString(), 
+                // Pass base amount (price excluding fees)
+                baseAmount: totalBaseAmount.toString(), 
+                // Pass charged amount (price including fees)
+                chargedAmount: chargedAmount.toString(), 
+                entryType: 'rolex_raffle', // NEW: Distinguish from the 'spin' type
                 sourceApp: SOURCE_APP_TAG,
                 referrerRefId: referral || null 
             },
         });
+        
+        // Store PI creation details
+        await admin.firestore().collection('stripe_payment_intents').doc(paymentIntent.id).set({
+            chargedAmount: chargedAmount,
+            baseAmount: totalBaseAmount,
+            ticketsBought: ticketsBought,
+            name,
+            email,
+            phone,
+            referrerRefId: referral || null,
+            status: 'created',
+            sourceApp: SOURCE_APP_TAG,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
 
-        return { clientSecret: paymentIntent.client_secret, ticketNumber };
+        return { clientSecret: paymentIntent.client_secret, paymentIntentId: paymentIntent.id };
 
     } catch (error) {
-        console.error('Error creating Stripe PaymentIntent for spin game:', error);
-        if (ticketNumber) {
-            try {
-                // Clean up reserved ticket if PI creation fails
-                await admin.firestore().collection('rolex_tickets').doc(ticketNumber.toString()).delete();
-            } catch (cleanupError) {
-                console.error('Failed to clean up reserved ticket:', cleanupError);
-            }
-        }
+        console.error('Error creating Stripe PaymentIntent for Rolex Raffle:', error);
+
         if (error.code && error.message) {
-             throw new functions.https.HttpsError(error.code, error.message);
+            throw new functions.https.HttpsError(error.code, error.message);
         } else {
-            // Check for Stripe specific error object structure
             const stripeError = error.raw && error.raw.message ? error.raw.message : 'Failed to create PaymentIntent.';
             throw new functions.https.HttpsError('internal', stripeError);
         }
@@ -682,14 +650,14 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
       const paymentIntent = event.data.object;
 
       // Metadata extraction
-      const { name, email, phone, ticketsBought, baseAmount, referrerRefId, ticketNumber, entryType, sourceApp } = paymentIntent.metadata;
+      const { name, email, phone, ticketsBought, baseAmount, chargedAmount, referrerRefId, entryType, sourceApp } = paymentIntent.metadata;
 
       const firstName = name.split(' ')[0] || name;
       
       try {
         const db = admin.firestore();
 
-        // 1. Determine which document to check/update (raffle or donation PI status document)
+        // 1. Determine which document to check/update (raffle, rolex_raffle, or donation PI status document)
         let docRefToCheck = db.collection('stripe_payment_intents').doc(paymentIntent.id);
         if (entryType === 'donation') {
             docRefToCheck = db.collection('stripe_donation_payment_intents').doc(paymentIntent.id);
@@ -702,20 +670,27 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
         
         // --- Shared variables ---
         const amountCharged = cleanAmount(paymentIntent.amount / 100); 
+        
+        // amountForSaleRecord is the base amount (excluding fees) to be recorded as the revenue/sale value
+        let amountForSaleRecord = 0;
+        let ticketsCount = 0;
 
-        // Base amount (excluding fees) to be recorded as the revenue/sale value
-        let amountForSaleRecord;
         if (entryType === 'raffle') {
-            // Use metadata baseAmount for fee-excluded value, ensure it is cleaned
+            // Split The Pot uses baseAmount from metadata
             amountForSaleRecord = cleanAmount(baseAmount); 
-        } else if (entryType === 'rolex') {
-            // Use ticketNumber, which is the base price in USD, ensure it is cleaned
-            amountForSaleRecord = cleanAmount(ticketNumber); 
+            ticketsCount = cleanTicketCount(ticketsBought);
+        } else if (entryType === 'rolex_raffle') { // NEW: Handle rolex_raffle entry
+            // Rolex Raffle uses baseAmount from metadata
+            amountForSaleRecord = cleanAmount(baseAmount); 
+            ticketsCount = cleanTicketCount(ticketsBought);
         } else if (entryType === 'donation') {
-             // Use the 'amount' field from donation PI metadata, which should be the base donation amount
-             amountForSaleRecord = cleanAmount(paymentIntent.metadata.amount) || amountCharged;
+            // Donation uses the 'amount' field from donation PI metadata, which should be the base donation amount
+            amountForSaleRecord = cleanAmount(paymentIntent.metadata.amount) || amountCharged;
+            ticketsCount = 0;
         } else {
-            amountForSaleRecord = 0;
+            // Legacy spin tickets use ticketNumber in metadata (kept for backward compatibility, but not ideal)
+            amountForSaleRecord = cleanAmount(baseAmount);
+            ticketsCount = cleanTicketCount(ticketsBought) || 1;
         }
         
         amountForSaleRecord = cleanAmount(amountForSaleRecord); // Final sanity round
@@ -735,41 +710,48 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
             }
         }
         
-        // --- Rolex Ticket Processing (Spin to Win) ---
-        if (entryType === 'rolex') {
-            // Use cleanAmount on the ticketNumber (which is the document ID/base price)
-            const rolexTicketRef = db.collection('rolex_tickets').doc(ticketNumber); 
-            
-            await rolexTicketRef.update({
-                status: 'paid',
+        // --- Rolex Raffle Processing ---
+        if (entryType === 'rolex_raffle') {
+             // Create a new document in the 'rolex_entries' collection (as it's quantity-based)
+             await db.collection('rolex_entries').add({
                 paymentIntentId: paymentIntent.id,
                 name,
                 firstName: firstName, 
                 email,
                 phoneNumber: phone, 
-                // Store fee-excluded amount (now cleaned)
-                amountPaid: amountForSaleRecord, 
-                updatedAt: admin.firestore.FieldValue.serverTimestamp(), // FIX: Use new updatedAt field
+                ticketsBought: ticketsCount, 
+                amountPaid: amountForSaleRecord, // Store fee-excluded amount
+                chargedAmount: amountCharged, // Store actual charged amount
+                status: 'paid',
+                timestamp: admin.firestore.FieldValue.serverTimestamp(),
                 sourceApp: sourceApp || 'YDE Rolex Raffle (Webhook)',
-                referrerRefId: referrerRefId || null 
-            });
+                referrerRefId: referrerRefId || null,
+                referrerUid: referrerUid || null // Store UID for easier admin filtering
+             });
+             
+             // Update the global Rolex counter (using 'tickets' field for this counter)
+             const rolexTotalsRef = db.collection('counters').doc('rolex_totals');
+             await rolexTotalsRef.set({
+                 totalTicketsSold: admin.firestore.FieldValue.increment(ticketsCount),
+                 totalAmount: admin.firestore.FieldValue.increment(amountForSaleRecord)
+             }, { merge: true });
 
             // Update Referrer Stats for Rolex Ticket
             if (referrerUid) {
                 const referrerRef = db.collection('referrers').doc(referrerUid);
                 
-                // Use fee-excluded amount for total calculation
+                // rolexTicketsTotal tracks the TICKET COUNT for this raffle type
+                // totalAmount tracks the $ AMOUNT (base) for all raffles combined
                 await referrerRef.set({
-                    rolexTicketsTotal: admin.firestore.FieldValue.increment(1), 
+                    rolexTicketsTotal: admin.firestore.FieldValue.increment(ticketsCount), 
                     totalAmount: admin.firestore.FieldValue.increment(amountForSaleRecord) 
                 }, { merge: true });
             }
-        } 
+        }
         
         // --- Raffle (Split The Pot) Processing ---
         else if (entryType === 'raffle') {
-            const ticketCount = cleanTicketCount(ticketsBought); // Use cleanTicketCount
-            // Use fee-excluded amount (baseAmount)
+            const ticketCount = ticketsCount; 
             const amountForPot = amountForSaleRecord; 
 
             // Add the entry to the splitThePotTickets collection
@@ -820,7 +802,37 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
                 // The referrerRefId is already in the PI doc from the callable function
             });
         }
+        // --- Legacy Spin to Win Processing (Kept for compatibility) ---
+        else if (entryType === 'rolex') {
+            const ticketNumber = paymentIntent.metadata.ticketNumber;
+            if (ticketNumber) {
+                const rolexTicketRef = db.collection('rolex_tickets').doc(ticketNumber); 
+                
+                await rolexTicketRef.update({
+                    status: 'paid',
+                    paymentIntentId: paymentIntent.id,
+                    name,
+                    firstName: firstName, 
+                    email,
+                    phoneNumber: phone, 
+                    amountPaid: amountForSaleRecord, // Store fee-excluded amount (now cleaned)
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp(), 
+                    sourceApp: sourceApp || 'YDE Rolex Raffle (Webhook)',
+                    referrerRefId: referrerRefId || null 
+                });
 
+                // Update Referrer Stats for Rolex Ticket
+                if (referrerUid) {
+                    const referrerRef = db.collection('referrers').doc(referrerUid);
+                    // Use fee-excluded amount for total calculation
+                    await referrerRef.set({
+                        rolexTicketsTotal: admin.firestore.FieldValue.increment(1), 
+                        totalAmount: admin.firestore.FieldValue.increment(amountForSaleRecord) 
+                    }, { merge: true });
+                }
+            }
+        }
+        
         // 2. Update the main payment intent document status (whether raffle or donation PI status document)
         await docRefToCheck.update({
           status: 'succeeded',
@@ -840,423 +852,172 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
 });
 
 
-// --- ADMIN/REFERRER MANAGEMENT FUNCTIONS ---
+/**
+ * Callable function to claim a free spin-to-win ticket.
+ * FIX: Now requires authentication and performs a one-time claim check.
+ */
+exports.claimSpinTicket = functions.https.onCall(async (data, context) => {
+    const SOURCE_APP_TAG = 'YDE Free Spin Claim'; 
+
+    // --- FIX 1: Require Authentication (Anonymous or credentialed) ---
+    if (!context.auth) {
+        // Updated error message to guide client toward anonymous authentication
+        throw new functions.https.HttpsError('unauthenticated', 'Authentication required. Please ensure the user is signed in, even anonymously (using signInAnonymously), to claim a one-time ticket.');
+    }
+    const uid = context.auth.uid;
+    const db = admin.firestore();
+    // The "Spin to Win" model uses fixed ticket slots 1-650
+    const TOTAL_TICKETS = 650; 
+    
+    let ticketNumber;
+    let foundUniqueTicket = false;
+    let userName = data.name || 'Anonymous Claim'; // Use provided name for the ticket if available
+
+    try {
+        const userClaimRef = db.collection('user_claims').doc(uid);
+        const userClaimSnapshot = await userClaimRef.get();
+
+        // --- FIX 2: Check for existing claim ---
+        if (userClaimSnapshot.exists && userClaimSnapshot.data().freeSpinClaimed) {
+            throw new functions.https.HttpsError('failed-precondition', 'You have already claimed your free spin ticket.');
+        }
+
+        // Retry loop to find an available ticket number
+        for (let i = 0; i < TOTAL_TICKETS * 2; i++) {
+            const randomTicket = Math.floor(Math.random() * TOTAL_TICKETS) + 1;
+            const ticketRef = db.collection('rolex_tickets').doc(randomTicket.toString());
+
+            try {
+                await db.runTransaction(async (transaction) => {
+                    const docSnapshot = await transaction.get(ticketRef);
+                    if (!docSnapshot.exists) {
+                        transaction.set(ticketRef, {
+                            status: 'claimed', // Directly claimed (free ticket)
+                            timestamp: admin.firestore.FieldValue.serverTimestamp(), // Original creation time
+                            name: userName,
+                            uid: uid, // FIX: Store the claiming user's UID
+                            // Free ticket has $0.00 amountPaid
+                            amountPaid: 0, 
+                            sourceApp: SOURCE_APP_TAG,
+                            isFreeClaim: true, // FIX: Flag as a free claim
+                        });
+                        // Also update the user's claim status inside the same transaction
+                        transaction.set(userClaimRef, {
+                            freeSpinClaimed: true,
+                            claimedTicketNumber: randomTicket,
+                            claimedAt: admin.firestore.FieldValue.serverTimestamp(),
+                            claimedName: userName
+                        }, { merge: true });
+
+                        foundUniqueTicket = true;
+                    }
+                });
+
+                if (foundUniqueTicket) {
+                    ticketNumber = randomTicket;
+                    break;
+                }
+            } catch (e) {
+                console.error(`Transaction failed during free ticket claim for UID ${uid}: `, e);
+                // Ignore transient transaction failures and retry
+            }
+        }
+
+        if (!foundUniqueTicket) {
+            throw new functions.https.HttpsError('resource-exhausted', 'All tickets have been claimed. Please try again later.');
+        }
+
+        return { success: true, ticketNumber };
+        
+    } catch (error) {
+        console.error("Error in claimSpinTicket:", error);
+        if (error.code && error.message) {
+            throw new functions.https.HttpsError(error.code, error.message);
+        } else {
+            throw new functions.https.HttpsError('internal', 'An unexpected error occurred during claim process.');
+        }
+    }
+});
+
 
 /**
- * Callable function to create a new Admin account (non-SuperAdmin, non-Referrer viewer).
- * Requires Super Admin role.
+ * Callable function to create a new referrer account.
  */
-exports.createAdmin = functions.https.onCall(async (data, context) => {
+exports.createReferrer = functions.https.onCall(async (data, context) => {
     if (!isSuperAdmin(context)) {
-        throw new functions.https.HttpsError('permission-denied', 'Only Super Admins can create new admins.');
+        throw new functions.https.HttpsError('permission-denied', 'Only Super Admins can create new referrers.');
     }
-    const { email, password, name } = data;
+    const { email, password, name, goal, intendedRefId } = data; 
 
-    if (!email || !password || !name) {
-        throw new functions.https.HttpsError('invalid-argument', 'Missing required fields.');
+    if (!email || !password || !name || !intendedRefId) { 
+        throw new functions.https.HttpsError('invalid-argument', 'Missing required fields (email, password, name, or intendedRefId).');
     }
 
     try {
         const userRecord = await admin.auth().createUser({ email, password, displayName: name });
         const uid = userRecord.uid;
 
-        // Set custom claims for general admin access (can view dashboard, run cleanup, etc.)
-        await admin.auth().setCustomUserClaims(uid, { admin: true });
-
-        return { success: true, message: `Admin ${name} created successfully.` };
-    } catch (error) {
-        console.error('Error creating new admin:', error);
-        throw new functions.https.HttpsError('internal', 'Failed to create admin.', error.message);
-    }
-});
-
-
-/**
- * Callable function to get dashboard data based on user role.
- * Requires Admin role.
- */
-exports.getAdminDashboardData = functions.https.onCall(async (data, context) => {
-    if (!context.auth) {
-        throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated.');
-    }
-
-    const uid = context.auth.uid;
-    const isSuperAdminUser = isSuperAdmin(context);
-    const isReferrerUser = context.auth.token.referrer === true;
-
-    if (!isAdmin(context)) {
-        throw new functions.https.HttpsError('permission-denied', 'User is not authorized as Admin, Super Admin, or Referrer.');
-    }
-
-    const db = admin.firestore();
-    let rolexEntries = [];
-    let raffleEntries = [];
-    let donationEntries = [];
-    let referrers = [];
-    let userData = {};
-
-    try {
-        // 1. Fetch User/Referrer Data (needed for referrer name, goal, and filtering)
-        if (isReferrerUser || isSuperAdminUser) {
-            const userDoc = await db.collection('referrers').doc(uid).get();
-            if (userDoc.exists) {
-                userData = { uid, ...userDoc.data() };
-            }
-        }
+        // Set custom claims for referrer access
+        await admin.auth().setCustomUserClaims(uid, { referrer: true });
         
-        // 2. Determine Query scope
-        let raffleQuery = db.collection('splitThePotTickets');
-        let rolexQuery = db.collection('rolex_tickets');
-        
-        // If a standard referrer, filter sales to only show their own
-        if (isReferrerUser && !isSuperAdminUser) {
-            const refId = userData.refId || 'INVALID_REF_ID';
-            // Filter by UIDs for raffle (more reliable)
-            raffleQuery = raffleQuery.where('referrerUid', '==', uid); 
-            // Filter by Ref ID for Rolex (stored as referrerRefId)
-            rolexQuery = rolexQuery.where('referrerRefId', '==', refId); 
-        } else if (!isSuperAdminUser) {
-             // General Admin: Show all raffle sales, but hide rolex/donations
-             rolexQuery = rolexQuery.where('status', '==', 'invalid_status_to_hide_from_general_admin');
-             
-        }
+        const refIdToSave = intendedRefId; 
 
-        // 3. Fetch Transaction Data
-        // IMPORTANT: Exclude the free 'claimed' tickets that don't have a referrerRefId set
-        const rolexSnapshot = await rolexQuery
-            .where('status', 'in', ['paid', 'claimed'])
-            .orderBy('timestamp', 'desc').get();
-            
-        const raffleSnapshot = await raffleQuery
-            .orderBy('timestamp', 'desc').get();
-
-        rolexEntries = rolexSnapshot.docs
-            .map(doc => ({ id: doc.id, ...doc.data() }))
-            // Further filter out free claims that don't belong to a referrer (only affects Super Admin view)
-            .filter(entry => isSuperAdminUser || entry.referrerRefId); 
-
-        // Ensure raffle entries include the document ID for the assignment/transfer feature
-        raffleEntries = raffleSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
-
-        if (isSuperAdminUser) {
-            // Super Admin: Fetch all referrers and all donations
-            const referrerSnapshot = await db.collection('referrers').get();
-            referrers = referrerSnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
-
-            const donationSnapshot = await db.collection('stripe_donation_payment_intents')
-                                             .where('status', '==', 'succeeded')
-                                             .orderBy('createdAt', 'desc').get();
-            donationEntries = donationSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        }
-
-        return {
-            isSuperAdmin: isSuperAdminUser,
-            isReferrer: isReferrerUser,
-            userData: userData,
-            referrers: referrers,
-            rolexEntries: rolexEntries,
-            raffleEntries: raffleEntries,
-            donationEntries: donationEntries 
-        };
-
-    } catch (error) {
-        console.error("Error in getAdminDashboardData:", error);
-        throw new functions.https.HttpsError('internal', 'An internal error occurred while fetching dashboard data. This is often caused by a missing Firestore composite index.', error.message);
-    }
-});
-
-/**
- * Callable function to assign or transfer a batch of raffle sales (SplitThePot) to a specific referrer.
- * Requires Super Admin role. This function handles decrementing the old referrer's totals
- * and incrementing the new referrer's totals if a transfer occurs.
- */
-exports.assignReferrerToSales = functions.https.onCall(async (data, context) => {
-    // 1. Security Check
-    if (!isSuperAdmin(context)) {
-        throw new functions.https.HttpsError('permission-denied', 'Access denied. Requires Super Admin role.');
-    }
-
-    const { saleIds, refId } = data;
-    if (!saleIds || !Array.isArray(saleIds) || saleIds.length === 0 || !refId) {
-        throw new functions.https.HttpsError('invalid-argument', 'Missing sales IDs or target referrer ID.');
-    }
-
-    const db = admin.firestore();
-    const chunkSize = 400; // Batch write limit is 500.
-
-    let targetReferrerUid = null;
-    let targetReferrerName = null;
-
-    // Aggregates for final update on the TARGET referrer
-    let targetTicketsIncrement = 0;
-    let targetAmountIncrement = 0;
-
-    // Map to track decrements for OLD referrers (Uid -> {tickets: number, amount: number})
-    const oldReferrerDecrementMap = new Map();
-
-    try {
-        // 2. Get Target Referrer Info (UID and Name)
-        const targetReferrerQuerySnapshot = await db.collection('referrers')
-            .where('refId', '==', refId)
-            .limit(1)
-            .get();
-
-        if (targetReferrerQuerySnapshot.empty) {
-            throw new functions.https.HttpsError('not-found', `Target Referrer with ID ${refId} not found.`);
-        }
-        
-        const referrerDoc = targetReferrerQuerySnapshot.docs[0];
-        targetReferrerUid = referrerDoc.id;
-        targetReferrerName = referrerDoc.data().name;
-
-        // 3. Process updates in batches
-        for (let i = 0; i < saleIds.length; i += chunkSize) {
-            const batch = db.batch();
-            const chunk = saleIds.slice(i, i + chunkSize);
-
-            // Fetch the documents to calculate the current state BEFORE updating
-            const salePromises = chunk.map(id => db.collection('splitThePotTickets').doc(id).get());
-            const saleSnapshots = await Promise.all(salePromises);
-            
-            let updatedCount = 0;
-
-            saleSnapshots.forEach(snapshot => {
-                if (snapshot.exists) {
-                    const sale = snapshot.data();
-                    const oldRefId = sale.referrerRefId;
-                    const oldRefUid = sale.referrerUid;
-                    
-                    // Only process if the sale is currently assigned to a DIFFERENT referrer 
-                    // OR if it is unassigned. Do nothing if already assigned to the target.
-                    if (oldRefId !== refId) { 
-                        // IMPORTANT: Use amountPaid from the sale document (which holds baseAmount)
-                        const tickets = cleanTicketCount(sale.ticketCount); // Ensure ticket count is clean
-                        const amount = cleanAmount(sale.amountPaid) || 0; // Use cleanAmount
-                        
-                        // A) Decrement (Transfer scenario)
-                        if (oldRefUid) {
-                            // Add to decrement map for atomic update later
-                            const currentDecrement = oldReferrerDecrementMap.get(oldRefUid) || { tickets: 0, amount: 0 };
-                            currentDecrement.tickets += tickets;
-                            currentDecrement.amount = cleanAmount(currentDecrement.amount + amount); // Clean intermediate sum
-                            oldReferrerDecrementMap.set(oldRefUid, currentDecrement);
-                        }
-
-                        // B) Increment (Always happens for the target referrer)
-                        targetTicketsIncrement += tickets;
-                        targetAmountIncrement = cleanAmount(targetAmountIncrement + amount); // Clean intermediate sum
-
-                        // C) Update Sale Document in the Batch
-                        batch.update(snapshot.ref, {
-                            referrerRefId: refId,
-                            referrerUid: targetReferrerUid,
-                            referrerName: targetReferrerName,
-                            updatedAt: admin.firestore.FieldValue.serverTimestamp() // Use new updatedAt field
-                        });
-
-                        updatedCount++;
-                    }
-                }
-            });
-
-            if (updatedCount > 0) {
-                 await batch.commit();
-            }
-        }
-        
-        // 4. Update Referrer Totals (Atomic Updates)
-        const totalBatch = db.batch();
-
-        // 4.1 Decrement Old Referrers
-        oldReferrerDecrementMap.forEach((totals, uid) => {
-            if (uid !== targetReferrerUid) { // Skip decrementing if old and new are the same
-                const oldReferrerRef = db.collection('referrers').doc(uid);
-                // totalTickets and totalAmount are for Split the Pot sales
-                totalBatch.set(oldReferrerRef, {
-                    totalTickets: admin.firestore.FieldValue.increment(-totals.tickets),
-                    totalAmount: admin.firestore.FieldValue.increment(-totals.amount)
-                }, { merge: true });
-            }
+        await admin.firestore().collection('referrers').doc(uid).set({
+            name,
+            email,
+            refId: refIdToSave, 
+            goal: cleanAmount(goal) || 0, // Ensure goal is rounded
+            totalTickets: 0, // Split the Pot Tickets
+            totalAmount: 0, // Combined Amount (Split the Pot + Rolex) (Base amounts only)
+            rolexTicketsTotal: 0, // NEW: Rolex Raffle Tickets
+            clickCount: 0, 
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
-        // 4.2 Increment Target Referrer
-        if (targetTicketsIncrement > 0) {
-            const targetReferrerRef = db.collection('referrers').doc(targetReferrerUid);
-            // totalTickets and totalAmount here are for Split the Pot sales
-            totalBatch.set(targetReferrerRef, {
-                totalTickets: admin.firestore.FieldValue.increment(targetTicketsIncrement),
-                totalAmount: admin.firestore.FieldValue.increment(targetAmountIncrement)
-            }, { merge: true });
-        }
-
-        await totalBatch.commit();
-
-
-        return { 
-            success: true, 
-            message: `Successfully assigned/transferred ${targetTicketsIncrement} Split The Pot tickets to ${targetReferrerName} (${refId}).` 
-        };
-
+        return { success: true, message: `Referrer ${name} created successfully with Ref ID: ${refIdToSave}.` };
     } catch (error) {
-        console.error("Error assigning/transmitting raffle sales:", error);
-        if (error.code) {
-            throw new functions.https.HttpsError(error.code, error.message);
-        }
-        throw new functions.https.HttpsError('internal', 'Failed to assign/transfer sales due to server error.', error.message);
+        console.error('Error creating new referrer:', error);
+        throw new functions.https.HttpsError('internal', 'Failed to create referrer.', error.message);
     }
 });
 
-
-/**
- * Callable function to assign or transfer a batch of Rolex Raffle (Rolex) sales to a specific referrer.
- * Requires Super Admin role. This function handles decrementing the old referrer's totals
- * and incrementing the new referrer's totals.
- */
-exports.assignReferrerToRolexTickets = functions.https.onCall(async (data, context) => {
+exports.setSuperAdminClaim = functions.https.onCall(async (data, context) => {
     if (!isSuperAdmin(context)) {
-        throw new functions.https.HttpsError('permission-denied', 'Access denied. Requires Super Admin role.');
+        throw new functions.https.HttpsError('permission-denied', 'Access denied. Only a Super Admin can promote another user.');
     }
 
-    const { ticketIds, refId } = data;
-    if (!ticketIds || !Array.isArray(ticketIds) || ticketIds.length === 0 || !refId) {
-        throw new functions.https.HttpsError('invalid-argument', 'Missing ticket IDs or target referrer ID.');
+    const { uid } = data;
+
+    if (!uid) {
+        throw new functions.https.HttpsError('invalid-argument', 'Missing target user ID (uid).');
     }
-
-    const db = admin.firestore();
-    const chunkSize = 400; // Batch write limit is 500.
-
-    let targetReferrerUid = null;
-    let targetReferrerName = null;
-
-    // Aggregates for final update on the TARGET referrer
-    let targetAmountIncrement = 0;
-    let targetTicketCount = 0; 
-
-    // Map to track decrements for OLD referrers (RefId -> {tickets: number, amount: number})
-    const oldReferrerDecrementMap = new Map();
 
     try {
-        // 2. Get Target Referrer Info (UID and Name)
-        const targetReferrerQuerySnapshot = await db.collection('referrers')
-            .where('refId', '==', refId)
-            .limit(1)
-            .get();
+        // Get existing claims to avoid overwriting (e.g., if they were a 'referrer')
+        const user = await admin.auth().getUser(uid);
+        const existingClaims = user.customClaims || {};
 
-        if (targetReferrerQuerySnapshot.empty) {
-            throw new functions.https.HttpsError('not-found', `Target Referrer with ID ${refId} not found.`);
-        }
-        
-        const referrerDoc = targetReferrerQuerySnapshot.docs[0];
-        targetReferrerUid = referrerDoc.id;
-        targetReferrerName = referrerDoc.data().name;
-        const targetReferrerRef = db.collection('referrers').doc(targetReferrerUid);
+        // Set the new claims: keep existing claims, and explicitly set 'superAdmin' to true.
+        const updatedClaims = {
+            ...existingClaims,
+            admin: true, // Ensure they also have general admin access
+            superAdmin: true
+        };
 
+        // Set the custom claim on the Firebase user object
+        await admin.auth().setCustomUserClaims(uid, updatedClaims);
 
-        // 3. Process updates in batches
-        for (let i = 0; i < ticketIds.length; i += chunkSize) {
-            const batch = db.batch();
-            const chunk = ticketIds.slice(i, i + chunkSize);
-
-            // Fetch the documents to calculate the current state BEFORE updating
-            const ticketPromises = chunk.map(id => db.collection('rolex_tickets').doc(id).get());
-            const ticketSnapshots = await Promise.all(ticketPromises);
-            
-            let updatedCount = 0;
-
-            ticketSnapshots.forEach(snapshot => {
-                if (snapshot.exists) {
-                    const ticket = snapshot.data();
-                    // Rolex tickets must be 'paid' or 'claimed' (not reserved/expired)
-                    if (ticket.status !== 'paid' && ticket.status !== 'claimed') {
-                        return;
-                    }
-                    // CRITICAL FIX: Ignore free claimed tickets for referral assignment/transfer
-                    if (ticket.isFreeClaim === true) {
-                        return;
-                    }
-                    
-                    const oldRefId = ticket.referrerRefId;
-                    const amount = cleanAmount(ticket.amountPaid) || 0; // amountPaid stores the base amount
-
-                    // Only process if the ticket is currently assigned to a DIFFERENT referrer 
-                    // OR if it is unassigned (oldRefId is null).
-                    if (oldRefId !== refId) { 
-                        
-                        // A) Decrement (Transfer scenario)
-                        if (oldRefId) {
-                            // Add to decrement map for atomic update later (Rolex tickets are always 1 ticket count)
-                            const currentDecrement = oldReferrerDecrementMap.get(oldRefId) || { tickets: 0, amount: 0 };
-                            currentDecrement.tickets += 1;
-                            currentDecrement.amount = cleanAmount(currentDecrement.amount + amount); // Clean intermediate sum
-                            oldReferrerDecrementMap.set(oldRefId, currentDecrement);
-                        }
-
-                        // B) Increment (Always happens for the target referrer)
-                        targetAmountIncrement = cleanAmount(targetAmountIncrement + amount); // Clean intermediate sum
-                        targetTicketCount += 1;
-
-                        // C) Update Ticket Document in the Batch
-                        batch.update(snapshot.ref, {
-                            referrerRefId: refId,
-                            updatedAt: admin.firestore.FieldValue.serverTimestamp() // Use new updatedAt field
-                        });
-
-                        updatedCount++;
-                    }
-                }
-            });
-
-            if (updatedCount > 0) {
-                 await batch.commit();
-            }
-        }
-        
-        // 4. Update Referrer Totals (Atomic Updates)
-        const totalBatch = db.batch();
-
-        // 4.1 Decrement Old Referrers
-        for (const [oldRefId, totals] of oldReferrerDecrementMap.entries()) {
-            if (oldRefId !== refId) { 
-                // Need to look up UID for the old referrer since the Rolex ticket only stores RefId
-                const oldReferrerQuerySnapshot = await db.collection('referrers')
-                    .where('refId', '==', oldRefId)
-                    .limit(1)
-                    .get();
-
-                if (!oldReferrerQuerySnapshot.empty) {
-                    const oldReferrerUid = oldReferrerQuerySnapshot.docs[0].id;
-                    const oldReferrerRef = db.collection('referrers').doc(oldReferrerUid);
-                    
-                    totalBatch.set(oldReferrerRef, {
-                        rolexTicketsTotal: admin.firestore.FieldValue.increment(-totals.tickets), // Decrement rolex ticket count
-                        totalAmount: admin.firestore.FieldValue.increment(-totals.amount) // Decrement general total amount
-                    }, { merge: true });
-                }
-            }
-        }
-        
-        // 4.2 Increment Target Referrer
-        if (targetTicketCount > 0) {
-            totalBatch.set(targetReferrerRef, {
-                rolexTicketsTotal: admin.firestore.FieldValue.increment(targetTicketCount),
-                totalAmount: admin.firestore.FieldValue.increment(targetAmountIncrement)
-            }, { merge: true });
-        }
-
-        await totalBatch.commit();
-
+        // Force user to re-authenticate on their device to pick up the new claims immediately
+        await admin.auth().revokeRefreshTokens(uid);
 
         return { 
             success: true, 
-            message: `Successfully assigned/transferred ${targetTicketCount} Rolex Raffle tickets to ${targetReferrerName} (${refId}).` 
+            message: `User ${uid} successfully promoted to Super Admin status. Tokens revoked.` 
         };
 
     } catch (error) {
-        console.error("Error assigning/transferring Rolex sales:", error);
-        if (error.code) {
-            throw new functions.https.HttpsError(error.code, error.message);
-        }
-        throw new functions.https.HttpsError('internal', 'Failed to assign/transfer sales due to server error.', error.message);
+        console.error(`Error promoting user ${uid} to Super Admin:`, error);
+        throw new functions.https.HttpsError('internal', 'Failed to update user claims.', error.message);
     }
 });
 
@@ -1268,24 +1029,22 @@ exports.assignReferrerToRolexTickets = functions.https.onCall(async (data, conte
  * for all referrers from scratch based on current sales documents.
  */
 async function _rebuildAllReferrerTotals(db) {
-    // --- 1. Aggregate NEW Rolex Totals (from rolex_tickets) by RefId ---
-    const rolexTicketsSnapshot = await db.collection('rolex_tickets')
-        .where('status', 'in', ['paid', 'claimed'])
+    // --- 1. Aggregate NEW Rolex Totals (from rolex_entries) by RefId ---
+    // NOTE: Changed from rolex_tickets to rolex_entries for quantity-based sales
+    const rolexTicketsSnapshot = await db.collection('rolex_entries')
+        .where('status', '==', 'paid') 
         .get();
 
     // Map: { refId: { amount: number, tickets: number } }
     const rolexAggregatesByRefId = new Map();
     
     rolexTicketsSnapshot.forEach(ticketDoc => {
-        const ticket = ticketDoc.data();
-        const refId = ticket.referrerRefId;
-        // FIX: Ensure free claims are IGNORED during referral recalculation
-        if (ticket.isFreeClaim === true) {
-            return;
-        }
-
-        // Uses amountPaid which is the fee-excluded amount
-        const amountPaid = ticket.amountPaid || 0; 
+        const entry = ticketDoc.data();
+        const refId = entry.referrerRefId;
+        
+        // Use amountPaid which is the fee-excluded amount
+        const amountPaid = entry.amountPaid || 0; 
+        const ticketsBought = entry.ticketsBought || 0;
         
         // FIX: Ensure retrieved amount is rounded to prevent float errors during summation
         const cleanedAmount = cleanAmount(amountPaid);
@@ -1293,7 +1052,7 @@ async function _rebuildAllReferrerTotals(db) {
         if (refId) {
             const current = rolexAggregatesByRefId.get(refId) || { amount: 0, tickets: 0 };
             current.amount = cleanAmount(current.amount + cleanedAmount); // Use cleaned intermediate sum
-            current.tickets += 1;
+            current.tickets += cleanTicketCount(ticketsBought);
             rolexAggregatesByRefId.set(refId, current);
         }
     });
@@ -1380,7 +1139,7 @@ exports.recalculateRolexTotals = functions.https.onCall(async (data, context) =>
 
         return {
             success: true,
-            message: `Rolex and Combined Totals successfully rebuilt for ${result.totalUpdatedReferrers} referrers. Total Rolex tickets analyzed: ${result.totalRolexTicketsAnalyzed}.`
+            message: `Rolex and Combined Totals successfully rebuilt for ${result.totalUpdatedReferrers} referrers. Total Rolex entries analyzed: ${result.totalRolexTicketsAnalyzed}.`
         };
         
     } catch (error) {
@@ -1478,8 +1237,8 @@ exports.addManualSale = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError('permission-denied', 'You must be an admin to add a manual entry.');
     }
 
-    const { name, email, phone, ticketsBought, amount, refId } = data;
-    if (!name || !ticketsBought || !amount) {
+    const { name, email, phone, ticketsBought, amount, refId, entryType } = data; // Added entryType
+    if (!name || !ticketsBought || !amount || !entryType) {
         throw new functions.https.HttpsError('invalid-argument', 'Missing required fields.');
     }
 
@@ -1516,7 +1275,6 @@ exports.addManualSale = functions.https.onCall(async (data, context) => {
         }
     }
 
-
     const newEntry = {
         fullName: name, 
         firstName: firstName, 
@@ -1529,31 +1287,50 @@ exports.addManualSale = functions.https.onCall(async (data, context) => {
         referrerUid: referrerUid || null,
         referrerName: referrerName,
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
-        entryType: "manual",
+        entryType: entryType, // Use provided entry type (raffle or rolex_raffle)
         sourceApp: SOURCE_APP_TAG 
     };
 
     try {
-        await db.collection('splitThePotTickets').add(newEntry);
+        let updateRef = null;
+        let counterRef = null;
 
-        // Update overall raffle totals (using new field names)
-        const raffleTotalsRef = db.collection('counters').doc('raffle_totals');
-        await raffleTotalsRef.set({
-            totalTickets: admin.firestore.FieldValue.increment(ticketCount),
-            totalAmount: admin.firestore.FieldValue.increment(amountPaid)
-        }, { merge: true });
+        if (entryType === 'raffle') {
+            updateRef = db.collection('splitThePotTickets');
+            counterRef = db.collection('counters').doc('raffle_totals');
+        } else if (entryType === 'rolex_raffle') {
+            updateRef = db.collection('rolex_entries'); // Save to the new rolex entries collection
+            counterRef = db.collection('counters').doc('rolex_totals');
+        } else {
+             throw new functions.https.HttpsError('invalid-argument', 'Invalid entryType specified.');
+        }
 
-        // Update referrer stats
-        if (referrerUid) {
-            const referrerRef = db.collection('referrers').doc(referrerUid);
-            // totalTickets and totalAmount here are for Split the Pot sales
-            await referrerRef.set({
+        await updateRef.add(newEntry);
+
+        // Update overall totals
+        if (counterRef) {
+            await counterRef.set({
                 totalTickets: admin.firestore.FieldValue.increment(ticketCount),
                 totalAmount: admin.firestore.FieldValue.increment(amountPaid)
             }, { merge: true });
         }
 
-        return { success: true, message: "Manual entry added successfully." };
+
+        // Update referrer stats
+        if (referrerUid) {
+            const referrerRef = db.collection('referrers').doc(referrerUid);
+            const updateData = { totalAmount: admin.firestore.FieldValue.increment(amountPaid) };
+
+            if (entryType === 'raffle') {
+                updateData.totalTickets = admin.firestore.FieldValue.increment(ticketCount);
+            } else if (entryType === 'rolex_raffle') {
+                updateData.rolexTicketsTotal = admin.firestore.FieldValue.increment(ticketCount);
+            }
+
+            await referrerRef.set(updateData, { merge: true });
+        }
+
+        return { success: true, message: `Manual ${entryType} entry added successfully.` };
     } catch (error) {
         console.error("Error adding manual sale:", error);
         throw new functions.https.HttpsError('internal', 'An internal error occurred.', error.message);
@@ -1570,11 +1347,28 @@ exports.updateRaffleEntry = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError('permission-denied', 'You must be a super admin to update entries.');
     }
     
-    const { entryId, updatedData } = data;
+    const { entryId, entryType, updatedData } = data; // Added entryType
     const db = admin.firestore();
+    
+    let collectionPath;
+    let counterDocId;
+    let referrerTicketField;
+
+    if (entryType === 'raffle') {
+        collectionPath = 'splitThePotTickets';
+        counterDocId = 'raffle_totals';
+        referrerTicketField = 'totalTickets';
+    } else if (entryType === 'rolex_raffle') {
+        collectionPath = 'rolex_entries';
+        counterDocId = 'rolex_totals';
+        referrerTicketField = 'rolexTicketsTotal';
+    } else {
+        throw new functions.https.HttpsError('invalid-argument', 'Invalid entryType specified.');
+    }
+
 
     try {
-        const docRef = db.collection('splitThePotTickets').doc(entryId);
+        const docRef = db.collection(collectionPath).doc(entryId);
         const docSnapshot = await docRef.get();
         if (!docSnapshot.exists) {
             throw new functions.https.HttpsError('not-found', 'Entry not found.');
@@ -1585,12 +1379,15 @@ exports.updateRaffleEntry = functions.https.onCall(async (data, context) => {
         // Use clean functions for original data
         const originalTickets = cleanTicketCount(originalData.ticketCount);
         const originalAmount = cleanAmount(originalData.amountPaid) || 0; // Base amount
+        const originalReferrerUid = originalData.referrerUid;
+
 
         // Use clean functions for updated data
         const updatedTickets = cleanTicketCount(updatedData.ticketCount);
         let updatedAmount = cleanAmount(updatedData.amountPaid); // New base amount and rounded
         
-        const updatedFullName = updatedData.fullName || (updatedData.name ? updatedData.name.split(' ')[0] : originalData.firstName); 
+        const updatedFullName = updatedData.fullName || originalData.fullName; 
+        const updatedFirstName = updatedData.firstName || (updatedFullName ? updatedFullName.split(' ')[0] : originalData.firstName);
 
         // Calculate differences using cleaned numbers
         const ticketDiff = updatedTickets - originalTickets;
@@ -1599,7 +1396,7 @@ exports.updateRaffleEntry = functions.https.onCall(async (data, context) => {
         // FIX: Completed the update payload
         await docRef.update({
             fullName: updatedFullName, 
-            firstName: updatedData.firstName,
+            firstName: updatedFirstName,
             email: updatedData.email,
             phoneNumber: updatedData.phoneNumber,
             ticketCount: updatedTickets, // Store clean integer
@@ -1607,24 +1404,27 @@ exports.updateRaffleEntry = functions.https.onCall(async (data, context) => {
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
-        const raffleTotalsRef = db.collection('counters').doc('raffle_totals');
-        await raffleTotalsRef.set({
+        // 1. Update Global Counter
+        const totalsRef = db.collection('counters').doc(counterDocId);
+        await totalsRef.set({
             totalTickets: admin.firestore.FieldValue.increment(ticketDiff),
             totalAmount: admin.firestore.FieldValue.increment(amountDiff)
         }, { merge: true });
 
-        if (originalData.referrerUid) {
-            const referrerRef = db.collection('referrers').doc(originalData.referrerUid);
-            // totalTickets and totalAmount here are for Split the Pot sales
-            await referrerRef.set({
-                totalTickets: admin.firestore.FieldValue.increment(ticketDiff),
-                totalAmount: admin.firestore.FieldValue.increment(amountDiff)
-            }, { merge: true });
+        // 2. Update Referrer Counter (Split The Pot and Combined Total)
+        if (originalReferrerUid) {
+            const referrerRef = db.collection('referrers').doc(originalReferrerUid);
+            const updateData = { totalAmount: admin.firestore.FieldValue.increment(amountDiff) };
+            
+            // Increment the specific ticket field for the referrer
+            updateData[referrerTicketField] = admin.firestore.FieldValue.increment(ticketDiff);
+            
+            await referrerRef.set(updateData, { merge: true });
         }
 
-        return { success: true, message: "Entry updated successfully." };
+        return { success: true, message: `Entry updated successfully in ${collectionPath}.` };
     } catch (error) {
-        console.error("Error updating entry:", error);
+        console.error(`Error updating ${entryType} entry:`, error);
         if (error.code) {
             throw error;
         }
@@ -1642,11 +1442,27 @@ exports.deleteRaffleEntry = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError('permission-denied', 'You must be a super admin to delete entries.');
     }
     
-    const { entryId } = data;
+    const { entryId, entryType } = data; // Added entryType
     const db = admin.firestore();
+    
+    let collectionPath;
+    let counterDocId;
+    let referrerTicketField;
+
+    if (entryType === 'raffle') {
+        collectionPath = 'splitThePotTickets';
+        counterDocId = 'raffle_totals';
+        referrerTicketField = 'totalTickets';
+    } else if (entryType === 'rolex_raffle') {
+        collectionPath = 'rolex_entries';
+        counterDocId = 'rolex_totals';
+        referrerTicketField = 'rolexTicketsTotal';
+    } else {
+        throw new functions.https.HttpsError('invalid-argument', 'Invalid entryType specified.');
+    }
 
     try {
-        const docRef = db.collection('splitThePotTickets').doc(entryId);
+        const docRef = db.collection(collectionPath).doc(entryId);
         const docSnapshot = await docRef.get();
         if (!docSnapshot.exists) {
             throw new functions.https.HttpsError('not-found', 'Entry not found.');
@@ -1659,24 +1475,28 @@ exports.deleteRaffleEntry = functions.https.onCall(async (data, context) => {
 
         await docRef.delete();
 
-        const raffleTotalsRef = db.collection('counters').doc('raffle_totals');
-        await raffleTotalsRef.set({
+        // 1. Update Global Counter
+        const totalsRef = db.collection('counters').doc(counterDocId);
+        await totalsRef.set({
             totalTickets: admin.firestore.FieldValue.increment(-tickets),
             totalAmount: admin.firestore.FieldValue.increment(-amount)
         }, { merge: true });
 
+        // 2. Update Referrer Counter (Split The Pot and Combined Total)
         if (referrerUid) {
             const referrerRef = db.collection('referrers').doc(referrerUid);
-            // totalTickets and totalAmount here are for Split the Pot sales
-            await referrerRef.set({
-                totalTickets: admin.firestore.FieldValue.increment(-tickets),
-                totalAmount: admin.firestore.FieldValue.increment(-amount)
-            }, { merge: true });
+            const updateData = { totalAmount: admin.firestore.FieldValue.increment(-amount) };
+            
+            // Decrement the specific ticket field for the referrer
+            updateData[referrerTicketField] = admin.firestore.FieldValue.increment(-tickets);
+
+            await referrerRef.set(updateData, { merge: true });
         }
+
 
         return { success: true, message: "Entry deleted successfully." };
     } catch (error) {
-        console.error("Error deleting entry:", error);
+        console.error(`Error deleting ${entryType} entry:`, error);
         if (error.code) {
             throw error;
         }
@@ -1684,169 +1504,388 @@ exports.deleteRaffleEntry = functions.https.onCall(async (data, context) => {
     }
 });
 
-/**
- * Callable function to claim a free spin-to-win ticket.
- * FIX: Now requires authentication and performs a one-time claim check.
- */
-exports.claimSpinTicket = functions.https.onCall(async (data, context) => {
-    const SOURCE_APP_TAG = 'YDE Free Spin Claim'; 
 
-    // --- FIX 1: Require Authentication (Anonymous or credentialed) ---
+// --- ADMIN/REFERRER MANAGEMENT FUNCTIONS ---
+
+/**
+ * Callable function to get dashboard data based on user role.
+ * Requires Admin role.
+ */
+exports.getAdminDashboardData = functions.https.onCall(async (data, context) => {
     if (!context.auth) {
-        // Updated error message to guide client toward anonymous authentication
-        throw new functions.https.HttpsError('unauthenticated', 'Authentication required. Please ensure the user is signed in, even anonymously (using signInAnonymously), to claim a one-time ticket.');
+        throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated.');
     }
+
     const uid = context.auth.uid;
+    const isSuperAdminUser = isSuperAdmin(context);
+    const isReferrerUser = context.auth.token.referrer === true;
+
+    if (!isAdmin(context)) {
+        throw new functions.https.HttpsError('permission-denied', 'User is not authorized as Admin, Super Admin, or Referrer.');
+    }
+
     const db = admin.firestore();
-    const TOTAL_TICKETS = 650;
-    
-    let ticketNumber;
-    let foundUniqueTicket = false;
-    let userName = data.name || 'Anonymous Claim'; // Use provided name for the ticket if available
+    let rolexEntries = [];
+    let raffleEntries = [];
+    let donationEntries = [];
+    let referrers = [];
+    let userData = {};
 
     try {
-        const userClaimRef = db.collection('user_claims').doc(uid);
-        const userClaimSnapshot = await userClaimRef.get();
-
-        // --- FIX 2: Check for existing claim ---
-        if (userClaimSnapshot.exists && userClaimSnapshot.data().freeSpinClaimed) {
-            throw new functions.https.HttpsError('failed-precondition', 'You have already claimed your free spin ticket.');
-        }
-
-        // Retry loop to find an available ticket number
-        for (let i = 0; i < TOTAL_TICKETS * 2; i++) {
-            const randomTicket = Math.floor(Math.random() * TOTAL_TICKETS) + 1;
-            const ticketRef = db.collection('rolex_tickets').doc(randomTicket.toString());
-
-            try {
-                await db.runTransaction(async (transaction) => {
-                    const docSnapshot = await transaction.get(ticketRef);
-                    if (!docSnapshot.exists) {
-                        transaction.set(ticketRef, {
-                            status: 'claimed', // Directly claimed (free ticket)
-                            timestamp: admin.firestore.FieldValue.serverTimestamp(), // Original creation time
-                            name: userName,
-                            uid: uid, // FIX: Store the claiming user's UID
-                            // Free ticket has $0.00 amountPaid
-                            amountPaid: 0, 
-                            sourceApp: SOURCE_APP_TAG,
-                            isFreeClaim: true, // FIX: Flag as a free claim
-                        });
-                        // Also update the user's claim status inside the same transaction
-                        transaction.set(userClaimRef, {
-                            freeSpinClaimed: true,
-                            claimedTicketNumber: randomTicket,
-                            claimedAt: admin.firestore.FieldValue.serverTimestamp(),
-                            claimedName: userName
-                        }, { merge: true });
-
-                        foundUniqueTicket = true;
-                    }
-                });
-
-                if (foundUniqueTicket) {
-                    ticketNumber = randomTicket;
-                    break;
-                }
-            } catch (e) {
-                console.error(`Transaction failed during free ticket claim for UID ${uid}: `, e);
-                // Ignore transient transaction failures and retry
+        // 1. Fetch User/Referrer Data (needed for referrer name, goal, and filtering)
+        if (isReferrerUser || isSuperAdminUser) {
+            const userDoc = await db.collection('referrers').doc(uid).get();
+            if (userDoc.exists) {
+                userData = { uid, ...userDoc.data() };
             }
         }
-
-        if (!foundUniqueTicket) {
-            throw new functions.https.HttpsError('resource-exhausted', 'All tickets have been claimed. Please try again later.');
+        
+        // 2. Determine Query scope
+        let raffleQuery = db.collection('splitThePotTickets');
+        // FIX: Reference the new rolex_entries collection for dashboard display
+        let rolexQuery = db.collection('rolex_entries');
+        
+        // If a standard referrer, filter sales to only show their own
+        if (isReferrerUser && !isSuperAdminUser) {
+            const refId = userData.refId || 'INVALID_REF_ID';
+            // Filter by UIDs for raffle (more reliable)
+            raffleQuery = raffleQuery.where('referrerUid', '==', uid); 
+            // Filter by UID for Rolex (stored as referrerUid)
+            rolexQuery = rolexQuery.where('referrerUid', '==', uid); 
+        } else if (!isSuperAdminUser) {
+             // General Admin: Show all raffle sales, but hide rolex/donations
+             rolexQuery = rolexQuery.where('status', '==', 'invalid_status_to_hide_from_general_admin');
+             
         }
 
-        return { success: true, ticketNumber };
-        
-    } catch (error) {
-        console.error("Error in claimSpinTicket:", error);
-        if (error.code && error.message) {
-             throw new functions.https.HttpsError(error.code, error.message);
-        } else {
-            throw new functions.https.HttpsError('internal', 'An unexpected error occurred during claim process.');
+        // 3. Fetch Transaction Data
+        // IMPORTANT: Exclude the free 'claimed' tickets that don't have a referrerRefId set
+        const rolexSnapshot = await rolexQuery
+            .where('status', '==', 'paid') // Only paid entries
+            .orderBy('timestamp', 'desc').get();
+            
+        const raffleSnapshot = await raffleQuery
+            .orderBy('timestamp', 'desc').get();
+
+        rolexEntries = rolexSnapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .filter(entry => isSuperAdminUser || entry.referrerUid); // Filter by UID for safety
+
+        // Ensure raffle entries include the document ID for the assignment/transfer feature
+        raffleEntries = raffleSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
+
+        if (isSuperAdminUser) {
+            // Super Admin: Fetch all referrers and all donations
+            const referrerSnapshot = await db.collection('referrers').get();
+            referrers = referrerSnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
+
+            const donationSnapshot = await db.collection('stripe_donation_payment_intents')
+                                         .where('status', '==', 'succeeded')
+                                         .orderBy('createdAt', 'desc').get();
+            donationEntries = donationSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         }
-    }
-});
 
-/**
- * Callable function to create a new referrer account.
- */
-exports.createReferrer = functions.https.onCall(async (data, context) => {
-    if (!isSuperAdmin(context)) {
-        throw new functions.https.HttpsError('permission-denied', 'Only Super Admins can create new referrers.');
-    }
-    const { email, password, name, goal, intendedRefId } = data; 
-
-    if (!email || !password || !name || !intendedRefId) { 
-        throw new functions.https.HttpsError('invalid-argument', 'Missing required fields (email, password, name, or intendedRefId).');
-    }
-
-    try {
-        const userRecord = await admin.auth().createUser({ email, password, displayName: name });
-        const uid = userRecord.uid;
-
-        // Set custom claims for referrer access
-        await admin.auth().setCustomUserClaims(uid, { referrer: true });
-        
-        const refIdToSave = intendedRefId; 
-
-        await admin.firestore().collection('referrers').doc(uid).set({
-            name,
-            email,
-            refId: refIdToSave, 
-            goal: cleanAmount(goal) || 0, // Ensure goal is rounded
-            totalTickets: 0, // Split the Pot Tickets
-            totalAmount: 0, // Combined Amount (Split the Pot + Rolex) (Base amounts only)
-            rolexTicketsTotal: 0, // NEW: Rolex Raffle Tickets
-            clickCount: 0, 
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-
-        return { success: true, message: `Referrer ${name} created successfully with Ref ID: ${refIdToSave}.` };
-    } catch (error) {
-        console.error('Error creating new referrer:', error);
-        throw new functions.https.HttpsError('internal', 'Failed to create referrer.', error.message);
-    }
-});
-
-exports.setSuperAdminClaim = functions.https.onCall(async (data, context) => {
-    if (!isSuperAdmin(context)) {
-        throw new functions.https.HttpsError('permission-denied', 'Access denied. Only a Super Admin can promote another user.');
-    }
-
-    const { uid } = data;
-
-    if (!uid) {
-        throw new functions.https.HttpsError('invalid-argument', 'Missing target user ID (uid).');
-    }
-
-    try {
-        // Get existing claims to avoid overwriting (e.g., if they were a 'referrer')
-        const user = await admin.auth().getUser(uid);
-        const existingClaims = user.customClaims || {};
-
-        // Set the new claims: keep existing claims, and explicitly set 'superAdmin' to true.
-        const updatedClaims = {
-            ...existingClaims,
-            admin: true, // Ensure they also have general admin access
-            superAdmin: true
+        return {
+            isSuperAdmin: isSuperAdminUser,
+            isReferrer: isReferrerUser,
+            userData: userData,
+            referrers: referrers,
+            rolexEntries: rolexEntries,
+            raffleEntries: raffleEntries,
+            donationEntries: donationEntries 
         };
 
-        // Set the custom claim on the Firebase user object
-        await admin.auth().setCustomUserClaims(uid, updatedClaims);
+    } catch (error) {
+        console.error("Error in getAdminDashboardData:", error);
+        throw new functions.https.HttpsError('internal', 'An internal error occurred while fetching dashboard data. This is often caused by a missing Firestore composite index.', error.message);
+    }
+});
 
-        // Force user to re-authenticate on their device to pick up the new claims immediately
-        await admin.auth().revokeRefreshTokens(uid);
+
+/**
+ * Callable function to assign or transfer a batch of raffle sales (SplitThePot) to a specific referrer.
+ * Requires Super Admin role. This function handles decrementing the old referrer's totals
+ * and incrementing the new referrer's totals if a transfer occurs.
+ */
+exports.assignReferrerToSales = functions.https.onCall(async (data, context) => {
+    // 1. Security Check
+    if (!isSuperAdmin(context)) {
+        throw new functions.https.HttpsError('permission-denied', 'Access denied. Requires Super Admin role.');
+    }
+
+    const { saleIds, refId } = data;
+    if (!saleIds || !Array.isArray(saleIds) || saleIds.length === 0 || !refId) {
+        throw new functions.https.HttpsError('invalid-argument', 'Missing sales IDs or target referrer ID.');
+    }
+
+    const db = admin.firestore();
+    const chunkSize = 400; // Batch write limit is 500.
+
+    let targetReferrerUid = null;
+    let targetReferrerName = null;
+
+    // Aggregates for final update on the TARGET referrer
+    let targetTicketsIncrement = 0;
+    let targetAmountIncrement = 0;
+
+    // Map to track decrements for OLD referrers (Uid -> {tickets: number, amount: number})
+    const oldReferrerDecrementMap = new Map();
+
+    try {
+        // 2. Get Target Referrer Info (UID and Name)
+        const targetReferrerQuerySnapshot = await db.collection('referrers')
+            .where('refId', '==', refId)
+            .limit(1)
+            .get();
+
+        if (targetReferrerQuerySnapshot.empty) {
+            throw new functions.https.HttpsError('not-found', `Target Referrer with ID ${refId} not found.`);
+        }
+        
+        const referrerDoc = targetReferrerQuerySnapshot.docs[0];
+        targetReferrerUid = referrerDoc.id;
+        targetReferrerName = referrerDoc.data().name;
+
+        // 3. Process updates in batches
+        for (let i = 0; i < saleIds.length; i += chunkSize) {
+            const batch = db.batch();
+            const chunk = saleIds.slice(i, i + chunkSize);
+
+            // Fetch the documents to calculate the current state BEFORE updating
+            const salePromises = chunk.map(id => db.collection('splitThePotTickets').doc(id).get());
+            const saleSnapshots = await Promise.all(salePromises);
+            
+            let updatedCount = 0;
+
+            saleSnapshots.forEach(snapshot => {
+                if (snapshot.exists) {
+                    const sale = snapshot.data();
+                    const oldRefId = sale.referrerRefId;
+                    const oldRefUid = sale.referrerUid;
+                    
+                    // Only process if the sale is currently assigned to a DIFFERENT referrer 
+                    // OR if it is unassigned. Do nothing if already assigned to the target.
+                    if (oldRefUid !== targetReferrerUid) { // Changed comparison to UIDs for consistency
+                        // IMPORTANT: Use amountPaid from the sale document (which holds baseAmount)
+                        const tickets = cleanTicketCount(sale.ticketCount); // Ensure ticket count is clean
+                        const amount = cleanAmount(sale.amountPaid) || 0; // Use cleanAmount
+                        
+                        // A) Decrement (Transfer scenario)
+                        if (oldRefUid) {
+                            // Add to decrement map for atomic update later
+                            const currentDecrement = oldReferrerDecrementMap.get(oldRefUid) || { tickets: 0, amount: 0 };
+                            currentDecrement.tickets += tickets;
+                            currentDecrement.amount = cleanAmount(currentDecrement.amount + amount); // Clean intermediate sum
+                            oldReferrerDecrementMap.set(oldRefUid, currentDecrement);
+                        }
+
+                        // B) Increment (Always happens for the target referrer)
+                        targetTicketsIncrement += tickets;
+                        targetAmountIncrement = cleanAmount(targetAmountIncrement + amount); // Clean intermediate sum
+
+                        // C) Update Sale Document in the Batch
+                        batch.update(snapshot.ref, {
+                            referrerRefId: refId,
+                            referrerUid: targetReferrerUid,
+                            referrerName: targetReferrerName,
+                            updatedAt: admin.firestore.FieldValue.serverTimestamp() // Use new updatedAt field
+                        });
+
+                        updatedCount++;
+                    }
+                }
+            });
+
+            if (updatedCount > 0) {
+                await batch.commit();
+            }
+        }
+        
+        // 4. Update Referrer Totals (Atomic Updates)
+        const totalBatch = db.batch();
+
+        // 4.1 Decrement Old Referrers
+        oldReferrerDecrementMap.forEach((totals, uid) => {
+            if (uid !== targetReferrerUid) { // Skip decrementing if old and new are the same
+                const oldReferrerRef = db.collection('referrers').doc(uid);
+                // totalTickets and totalAmount are for Split the Pot sales
+                totalBatch.set(oldReferrerRef, {
+                    totalTickets: admin.firestore.FieldValue.increment(-totals.tickets),
+                    totalAmount: admin.firestore.FieldValue.increment(-totals.amount)
+                }, { merge: true });
+            }
+        });
+
+        // 4.2 Increment Target Referrer
+        if (targetTicketsIncrement > 0) {
+            const targetReferrerRef = db.collection('referrers').doc(targetReferrerUid);
+            // totalTickets and totalAmount here are for Split the Pot sales
+            totalBatch.set(targetReferrerRef, {
+                totalTickets: admin.firestore.FieldValue.increment(targetTicketsIncrement),
+                totalAmount: admin.firestore.FieldValue.increment(targetAmountIncrement)
+            }, { merge: true });
+        }
+
+        await totalBatch.commit();
+
 
         return { 
             success: true, 
-            message: `User ${uid} successfully promoted to Super Admin status. Tokens revoked.` 
+            message: `Successfully assigned/transferred ${targetTicketsIncrement} Split The Pot tickets to ${targetReferrerName} (${refId}).` 
         };
 
     } catch (error) {
-        console.error(`Error promoting user ${uid} to Super Admin:`, error);
-        throw new functions.https.HttpsError('internal', 'Failed to update user claims.', error.message);
+        console.error("Error assigning/transmitting raffle sales:", error);
+        if (error.code) {
+            throw new functions.https.HttpsError(error.code, error.message);
+        }
+        throw new functions.https.HttpsError('internal', 'Failed to assign/transfer sales due to server error.', error.message);
+    }
+});
+
+
+/**
+ * Callable function to assign or transfer a batch of Rolex Raffle (Rolex) sales to a specific referrer.
+ * Requires Super Admin role. This function handles decrementing the old referrer's totals
+ * and incrementing the new referrer's totals.
+ */
+exports.assignReferrerToRolexTickets = functions.https.onCall(async (data, context) => {
+    if (!isSuperAdmin(context)) {
+        throw new functions.https.HttpsError('permission-denied', 'Access denied. Requires Super Admin role.');
+    }
+
+    const { ticketIds, refId } = data;
+    if (!ticketIds || !Array.isArray(ticketIds) || ticketIds.length === 0 || !refId) {
+        throw new functions.https.HttpsError('invalid-argument', 'Missing ticket IDs or target referrer ID.');
+    }
+
+    const db = admin.firestore();
+    const chunkSize = 400; // Batch write limit is 500.
+
+    let targetReferrerUid = null;
+    let targetReferrerName = null;
+
+    // Aggregates for final update on the TARGET referrer
+    let targetAmountIncrement = 0;
+    let targetTicketCount = 0; 
+
+    // Map to track decrements for OLD referrers (Uid -> {tickets: number, amount: number})
+    const oldReferrerDecrementMap = new Map();
+
+    try {
+        // 2. Get Target Referrer Info (UID and Name)
+        const targetReferrerQuerySnapshot = await db.collection('referrers')
+            .where('refId', '==', refId)
+            .limit(1)
+            .get();
+
+        if (targetReferrerQuerySnapshot.empty) {
+            throw new functions.https.HttpsError('not-found', `Target Referrer with ID ${refId} not found.`);
+        }
+        
+        const referrerDoc = targetReferrerQuerySnapshot.docs[0];
+        targetReferrerUid = referrerDoc.id;
+        targetReferrerName = referrerDoc.data().name;
+        const targetReferrerRef = db.collection('referrers').doc(targetReferrerUid);
+
+
+        // 3. Process updates in batches
+        for (let i = 0; i < ticketIds.length; i += chunkSize) {
+            const batch = db.batch();
+            const chunk = ticketIds.slice(i, i + chunkSize);
+
+            // Fetch the documents to calculate the current state BEFORE updating
+            // FIX: Reference the new 'rolex_entries' collection
+            const entryPromises = chunk.map(id => db.collection('rolex_entries').doc(id).get());
+            const entrySnapshots = await Promise.all(entryPromises);
+            
+            let updatedCount = 0;
+
+            entrySnapshots.forEach(snapshot => {
+                if (snapshot.exists) {
+                    const entry = snapshot.data();
+                    
+                    // Rolex entries must be 'paid'
+                    if (entry.status !== 'paid') {
+                        return;
+                    }
+                    
+                    const oldRefUid = entry.referrerUid;
+                    
+                    // Only process if the entry is currently assigned to a DIFFERENT referrer 
+                    // OR if it is unassigned (oldRefUid is null).
+                    if (oldRefUid !== targetReferrerUid) { 
+                        // IMPORTANT: Use amountPaid from the entry document (which holds baseAmount)
+                        const tickets = cleanTicketCount(entry.ticketsBought); // Quantity of tickets
+                        const amount = cleanAmount(entry.amountPaid) || 0; // Base amount
+                        
+                        // A) Decrement (Transfer scenario)
+                        if (oldRefUid) {
+                            // Add to decrement map for atomic update later
+                            const currentDecrement = oldReferrerDecrementMap.get(oldRefUid) || { tickets: 0, amount: 0 };
+                            currentDecrement.tickets += tickets;
+                            currentDecrement.amount = cleanAmount(currentDecrement.amount + amount); // Clean intermediate sum
+                            oldReferrerDecrementMap.set(oldRefUid, currentDecrement);
+                        }
+
+                        // B) Increment (Always happens for the target referrer)
+                        targetAmountIncrement = cleanAmount(targetAmountIncrement + amount); // Clean intermediate sum
+                        targetTicketCount += tickets;
+
+                        // C) Update Entry Document in the Batch
+                        batch.update(snapshot.ref, {
+                            referrerRefId: refId, // Store RefId
+                            referrerUid: targetReferrerUid, // Store UID
+                            updatedAt: admin.firestore.FieldValue.serverTimestamp() // Use new updatedAt field
+                        });
+
+                        updatedCount++;
+                    }
+                }
+            });
+
+            if (updatedCount > 0) {
+                await batch.commit();
+            }
+        }
+        
+        // 4. Update Referrer Totals (Atomic Updates)
+        const totalBatch = db.batch();
+
+        // 4.1 Decrement Old Referrers
+        oldReferrerDecrementMap.forEach((totals, uid) => {
+            if (uid !== targetReferrerUid) { // Skip decrementing if old and new are the same
+                const oldReferrerRef = db.collection('referrers').doc(uid);
+                
+                // Decrement rolexTicketsTotal (ticket count) and totalAmount ($ amount)
+                totalBatch.set(oldReferrerRef, {
+                    rolexTicketsTotal: admin.firestore.FieldValue.increment(-totals.tickets), 
+                    totalAmount: admin.firestore.FieldValue.increment(-totals.amount) 
+                }, { merge: true });
+            }
+        });
+        
+        // 4.2 Increment Target Referrer
+        if (targetTicketCount > 0) {
+            totalBatch.set(targetReferrerRef, {
+                rolexTicketsTotal: admin.firestore.FieldValue.increment(targetTicketCount),
+                totalAmount: admin.firestore.FieldValue.increment(targetAmountIncrement)
+            }, { merge: true });
+        }
+
+        await totalBatch.commit();
+
+
+        return { 
+            success: true, 
+            message: `Successfully assigned/transferred ${targetTicketCount} Rolex Raffle tickets to ${targetReferrerName} (${refId}).` 
+        };
+
+    } catch (error) {
+        console.error("Error assigning/transferring Rolex sales:", error);
+        if (error.code) {
+            throw new functions.https.HttpsError(error.code, error.message);
+        }
+        throw new functions.https.HttpsError('internal', 'Failed to assign/transfer sales due to server error.', error.message);
     }
 });

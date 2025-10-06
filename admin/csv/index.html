@@ -78,6 +78,7 @@
                         <option value="rolex">Rolex Raffle Sales</option>
                         <option value="referrers">All Referrers & Totals</option>
                         <option value="donations">Donations</option>
+                        <option value="links">Referral Links (All Pages)</option>
                     </select>
                 </div>
                 <button type="submit" id="downloadCSVButton" class="w-full py-3 text-white bg-blue-600 rounded-lg font-semibold hover:bg-blue-700 transition-colors">
@@ -106,6 +107,7 @@
         let app;
         let auth;
         let functions;
+        let referrerData = []; // Store referrer data globally after fetching
 
         // --- Configuration (Same as Admin Dashboard) ---
         const firebaseConfig = {
@@ -239,6 +241,45 @@
             });
         };
 
+        // --- Export Functions ---
+
+        /**
+         * Fetches and stores the list of all referrers.
+         * @returns {Array} List of referrer objects.
+         */
+        const fetchReferrerData = async () => {
+            try {
+                const getAdminExportDataCallable = httpsCallable(functions, 'getAdminExportData');
+                const response = await getAdminExportDataCallable({ dataType: 'referrers' });
+                referrerData = response.data.exportData;
+                return referrerData;
+            } catch (error) {
+                console.error("Failed to fetch referrer data:", error);
+                throw error;
+            }
+        };
+
+        /**
+         * Generates the CSV data for referrer links across key pages.
+         * @param {Array} referrers - The list of referrer objects.
+         * @returns {Array} Array of objects ready for CSV download.
+         */
+        const generateLinkExportData = (referrers) => {
+            const baseDomain = "https://ydeseniors.com"; // Assumed live domain for sharing
+
+            return referrers.map(r => {
+                const refId = r.refId;
+                return {
+                    Name: r.name,
+                    Ref_ID: refId,
+                    Homepage_Link: `${baseDomain}/?ref=${refId}`,
+                    Split_The_Pot_Link: `${baseDomain}/split-the-pot/?ref=${refId}`,
+                    Rolex_Raffle_Link: `${baseDomain}/rolex-raffle/?ref=${refId}`,
+                };
+            });
+        };
+
+
         // --- Event Handlers ---
 
         const handleLogin = async (e) => {
@@ -281,6 +322,11 @@
             e.preventDefault();
             const exportType = document.getElementById('export-type').value;
 
+            if (exportType === 'links') {
+                await handleLinkExport();
+                return;
+            }
+
             showGlobalLoading(`Fetching ${exportType} data...`);
             
             try {
@@ -295,6 +341,33 @@
             } catch (error) {
                 console.error("Export Failed:", error);
                 showCustomPopup('Export Failed', `Error: ${error.message}. (Did you deploy the new Cloud Function?)`);
+            } finally {
+                hideGlobalLoading();
+            }
+        };
+
+        const handleLinkExport = async () => {
+            showGlobalLoading("Fetching referrer data and generating links...");
+
+            try {
+                // 1. Fetch referrer data (or use cached if available)
+                const referrers = referrerData.length > 0 ? referrerData : await fetchReferrerData();
+                
+                if (referrers.length === 0) {
+                    showCustomPopup('Export Failed', 'No referrer data found in the database.');
+                    return;
+                }
+
+                // 2. Generate the structured link data
+                const linkData = generateLinkExportData(referrers);
+
+                // 3. Download
+                const filename = `Referral_Links_Export_${new Date().toISOString().slice(0, 10)}.csv`;
+                downloadCSV(linkData, filename);
+
+            } catch (error) {
+                console.error("Link Export Failed:", error);
+                showCustomPopup('Link Export Failed', `Error: ${error.message}`);
             } finally {
                 hideGlobalLoading();
             }

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YDE Senior Fund</title>
     <!-- Font Awesome CDN for icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" xintegrity="sha512-SnH5WK+bZxgPHs44uWIX+LLMDJ4yF2Y2gqYhFhR41d3yJ4Q7I9X7T7b4F8b4K4F4w4w4F4w4F4w4F4w4F4w4F4w4F4w4F4w4F4w4F4w4F4w==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" xintegrity="sha512-SnH5WK+bZxgPHs44uWIX+LLMDJ4yF2Y2gqYhFhR41d3yJ4Q7I9X7T7b4F8b4K4F4w4F4w4F4w4F4w4F4w4F4w4F4w4F4w4F4w4F4w4F4w4F4w4F4w4F4w4F4w4F4w4F4w4F4w4F4w4F4w4F4w4F4w4F4w4F4w4F4w4F4w4F4w4F4w==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts -->
@@ -79,9 +79,9 @@
         
         <!-- Home Page (Only this page is active on the root URL) -->
         <section id="home" class="page-content active">
-            <!-- ADJUSTED HEIGHT HERE: h-screen changed to h-[85vh] for visibility of content below -->
-            <div class="relative bg-cover bg-center h-[85vh] min-h-[600px]" style="background-image: url('https://raw.githubusercontent.com/ToratYosef/ToratYosef..github.io/refs/heads/main/assets/kotel.jpg');">
-                <!-- Overlay to darken image for text visibility -->
+            <!-- UPDATED: Changed height to h-screen for full viewport height -->
+            <div class="relative bg-cover bg-center h-screen min-h-[600px]" style="background-image: url('https://raw.githubusercontent.com/ToratYosef/ToratYosef..github.io/refs/heads/main/assets/kotel.jpg');">
+                <!-- Overlay re-added to darken image for text visibility -->
                 <div class="absolute inset-0 bg-slate-950 opacity-60"></div>
                 
                 <div class="relative z-10 flex flex-col items-center justify-center h-full text-center p-4">
@@ -91,9 +91,33 @@
                     <p class="text-lg md:text-2xl text-white mb-8 max-w-2xl">
                         Join us in building a bright future for the Class of 2026. Your generous contribution makes a world of difference.
                     </p>
-                    <a id="main-action-button" href="/spin-the-wheel/" class="py-4 px-8 md:text-lg lg:text-xl rounded-full bg-yellow-400 text-slate-950 font-bold shadow-lg transform transition-transform duration-300 hover:scale-105 hover:shadow-xl">
-                        Support Senior Fund - Spin The Wheel Now!!!
-                    </a>
+                    
+                    <!-- New Button Header/CTA -->
+                    <h2 class="bebas-neue text-2xl sm:text-3xl font-bold text-yellow-400 mb-6 drop-shadow-md">
+                        Choose How You Support Our Seniors:
+                    </h2>
+                    
+                    <!-- Dual Buttons for Spin and Split the Pot - Outline and Centered -->
+                    <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-6">
+                        <!-- Spin The Wheel Button - Updated with flexbox for perfect centering -->
+                        <a id="spin-action-button" href="/spin-the-wheel/" 
+                            class="w-full sm:w-60 py-4 px-8 md:text-lg lg:text-xl rounded-full 
+                                   bg-transparent border-2 border-yellow-400 text-white font-bold 
+                                   shadow-lg transform transition-all duration-300 hover:scale-105 
+                                   hover:bg-yellow-400 hover:text-slate-950
+                                   flex items-center justify-center">
+                            Spin The Wheel
+                        </a>
+                        <!-- Buy Split The Pot Tickets Button - Updated with flexbox for perfect centering -->
+                        <a id="split-action-button" href="/split-the-pot/" 
+                            class="w-full sm:w-60 py-4 px-8 md:text-lg lg:text-xl rounded-full 
+                                   bg-transparent border-2 border-yellow-400 text-white font-bold 
+                                   shadow-lg transform transition-all duration-300 hover:scale-105 
+                                   hover:bg-yellow-400 hover:text-slate-950
+                                   flex items-center justify-center">
+                            Buy Split The Pot Tickets
+                        </a>
+                    </div>
                 </div>
             </div>
 
@@ -135,6 +159,15 @@
                             <p class="text-gray-200">We aim to create memorable senior events and graduation celebrations that will be cherished for a lifetime.</p>
                         </div>
                     </div>
+
+                    <!-- New Donation Affordability Text -->
+                    <div class="mt-16 max-w-3xl mx-auto p-6 bg-slate-900/60 rounded-xl border border-yellow-400/50 shadow-inner">
+                        <p class="text-lg text-yellow-200 font-semibold mb-2">Ensuring Every Student Can Attend</p>
+                        <p class="text-gray-300">
+                            A primary reason we need your generous donations is to cover the full costs of the trip and events, ensuring that financial constraints do not prevent any student from participating. Your support directly funds scholarships and subsidies for students who cannot afford the full cost, making this milestone year inclusive for the entire graduating class.
+                        </p>
+                    </div>
+
                 </div>
             </div>
         </section>
@@ -274,13 +307,13 @@
             // Select all links in the header navigation
             const navLinks = document.querySelectorAll('header a');
             
-            // Select the main action button
-            const mainActionButton = document.getElementById('main-action-button');
+            // Select the action buttons by their new IDs
+            const spinActionButton = document.getElementById('spin-action-button');
+            const splitActionButton = document.getElementById('split-action-button');
 
             const allLinks = [...navLinks];
-            if (mainActionButton) {
-                allLinks.push(mainActionButton);
-            }
+            if (spinActionButton) { allLinks.push(spinActionButton); }
+            if (splitActionButton) { allLinks.push(splitActionButton); }
 
             allLinks.forEach(link => {
                 const currentHref = link.getAttribute('href');

@@ -922,6 +922,7 @@ exports.getAdminDashboardData = functions.https.onCall(async (data, context) => 
         }
 
         // 3. Fetch Transaction Data
+        // IMPORTANT: Exclude the free 'claimed' tickets that don't have a referrerRefId set
         const rolexSnapshot = await rolexQuery
             .where('status', 'in', ['paid', 'claimed'])
             .orderBy('timestamp', 'desc').get();
@@ -929,7 +930,11 @@ exports.getAdminDashboardData = functions.https.onCall(async (data, context) => 
         const raffleSnapshot = await raffleQuery
             .orderBy('timestamp', 'desc').get();
 
-        rolexEntries = rolexSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        rolexEntries = rolexSnapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            // Further filter out free claims that don't belong to a referrer (only affects Super Admin view)
+            .filter(entry => isSuperAdminUser || entry.referrerRefId); 
+
         // Ensure raffle entries include the document ID for the assignment/transfer feature
         raffleEntries = raffleSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
 
@@ -1165,6 +1170,10 @@ exports.assignReferrerToRolexTickets = functions.https.onCall(async (data, conte
                     if (ticket.status !== 'paid' && ticket.status !== 'claimed') {
                         return;
                     }
+                    // CRITICAL FIX: Ignore free claimed tickets for referral assignment/transfer
+                    if (ticket.isFreeClaim === true) {
+                        return;
+                    }
                     
                     const oldRefId = ticket.referrerRefId;
                     const amount = cleanAmount(ticket.amountPaid) || 0; // amountPaid stores the base amount
@@ -1270,6 +1279,11 @@ async function _rebuildAllReferrerTotals(db) {
     rolexTicketsSnapshot.forEach(ticketDoc => {
         const ticket = ticketDoc.data();
         const refId = ticket.referrerRefId;
+        // FIX: Ensure free claims are IGNORED during referral recalculation
+        if (ticket.isFreeClaim === true) {
+            return;
+        }
+
         // Uses amountPaid which is the fee-excluded amount
         const amountPaid = ticket.amountPaid || 0; 
         
@@ -1672,58 +1686,88 @@ exports.deleteRaffleEntry = functions.https.onCall(async (data, context) => {
 
 /**
  * Callable function to claim a free spin-to-win ticket.
- * FIX: Removed unnecessary Promise and corsHandler wrapper.
+ * FIX: Now requires authentication and performs a one-time claim check.
  */
 exports.claimSpinTicket = functions.https.onCall(async (data, context) => {
     const SOURCE_APP_TAG = 'YDE Free Spin Claim'; 
 
-    const { name } = data;
-    const TOTAL_TICKETS = 650;
-
-    if (!name) {
-        throw new functions.https.HttpsError('invalid-argument', 'Missing required field: name.');
+    // --- FIX 1: Require Authentication (Anonymous or credentialed) ---
+    if (!context.auth) {
+        // Updated error message to guide client toward anonymous authentication
+        throw new functions.https.HttpsError('unauthenticated', 'Authentication required. Please ensure the user is signed in, even anonymously (using signInAnonymously), to claim a one-time ticket.');
     }
-
+    const uid = context.auth.uid;
     const db = admin.firestore();
+    const TOTAL_TICKETS = 650;
+    
     let ticketNumber;
     let foundUniqueTicket = false;
+    let userName = data.name || 'Anonymous Claim'; // Use provided name for the ticket if available
 
-    // Retry loop to find an available ticket number
-    for (let i = 0; i < TOTAL_TICKETS * 2; i++) {
-        const randomTicket = Math.floor(Math.random() * TOTAL_TICKETS) + 1;
-        const ticketRef = db.collection('rolex_tickets').doc(randomTicket.toString());
+    try {
+        const userClaimRef = db.collection('user_claims').doc(uid);
+        const userClaimSnapshot = await userClaimRef.get();
 
-        try {
-            await db.runTransaction(async (transaction) => {
-                const docSnapshot = await transaction.get(ticketRef);
-                if (!docSnapshot.exists) {
-                    transaction.set(ticketRef, {
-                        status: 'claimed', // Directly claimed (free ticket)
-                        timestamp: admin.firestore.FieldValue.serverTimestamp(), // Original creation time
-                        name: name,
-                        // Free ticket has $0.00 amountPaid
-                        amountPaid: 0, 
-                        sourceApp: SOURCE_APP_TAG 
-                    });
-                    foundUniqueTicket = true;
+        // --- FIX 2: Check for existing claim ---
+        if (userClaimSnapshot.exists && userClaimSnapshot.data().freeSpinClaimed) {
+            throw new functions.https.HttpsError('failed-precondition', 'You have already claimed your free spin ticket.');
+        }
+
+        // Retry loop to find an available ticket number
+        for (let i = 0; i < TOTAL_TICKETS * 2; i++) {
+            const randomTicket = Math.floor(Math.random() * TOTAL_TICKETS) + 1;
+            const ticketRef = db.collection('rolex_tickets').doc(randomTicket.toString());
+
+            try {
+                await db.runTransaction(async (transaction) => {
+                    const docSnapshot = await transaction.get(ticketRef);
+                    if (!docSnapshot.exists) {
+                        transaction.set(ticketRef, {
+                            status: 'claimed', // Directly claimed (free ticket)
+                            timestamp: admin.firestore.FieldValue.serverTimestamp(), // Original creation time
+                            name: userName,
+                            uid: uid, // FIX: Store the claiming user's UID
+                            // Free ticket has $0.00 amountPaid
+                            amountPaid: 0, 
+                            sourceApp: SOURCE_APP_TAG,
+                            isFreeClaim: true, // FIX: Flag as a free claim
+                        });
+                        // Also update the user's claim status inside the same transaction
+                        transaction.set(userClaimRef, {
+                            freeSpinClaimed: true,
+                            claimedTicketNumber: randomTicket,
+                            claimedAt: admin.firestore.FieldValue.serverTimestamp(),
+                            claimedName: userName
+                        }, { merge: true });
+
+                        foundUniqueTicket = true;
+                    }
+                });
+
+                if (foundUniqueTicket) {
+                    ticketNumber = randomTicket;
+                    break;
                 }
-            });
-
-            if (foundUniqueTicket) {
-                ticketNumber = randomTicket;
-                break;
+            } catch (e) {
+                console.error(`Transaction failed during free ticket claim for UID ${uid}: `, e);
+                // Ignore transient transaction failures and retry
             }
-        } catch (e) {
-            console.error("Transaction failed during free ticket claim: ", e);
-            // Ignore transient transaction failures and retry
+        }
+
+        if (!foundUniqueTicket) {
+            throw new functions.https.HttpsError('resource-exhausted', 'All tickets have been claimed. Please try again later.');
+        }
+
+        return { success: true, ticketNumber };
+        
+    } catch (error) {
+        console.error("Error in claimSpinTicket:", error);
+        if (error.code && error.message) {
+             throw new functions.https.HttpsError(error.code, error.message);
+        } else {
+            throw new functions.https.HttpsError('internal', 'An unexpected error occurred during claim process.');
         }
     }
-
-    if (!foundUniqueTicket) {
-        throw new functions.https.HttpsError('resource-exhausted', 'All tickets have been claimed. Please try again later.');
-    }
-
-    return { success: true, ticketNumber };
 });
 
 /**

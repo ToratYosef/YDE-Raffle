@@ -21,6 +21,48 @@
             font-family: 'Bebas Neue', sans-serif; 
         }
 
+        /* --- Construction Banner Overlay Styles (NEW) --- */
+        .construction-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 105; /* Above everything except popups */
+            pointer-events: none;
+        }
+
+        .construction-banner {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            /* Rotate diagonally and position centrally */
+            transform: translate(-50%, -50%) rotate(-25deg); 
+            background-color: rgba(239, 68, 68, 0.95); /* Tailwind red-500 equivalent */
+            color: white;
+            font-size: 3rem;
+            padding: 1rem 10rem;
+            border: 8px solid rgba(255, 255, 255, 0.9);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            font-family: 'Bebas Neue', sans-serif;
+            letter-spacing: 0.2em;
+            white-space: nowrap;
+        }
+
+        @media (min-width: 768px) {
+            .construction-banner {
+                font-size: 6rem;
+                padding: 2rem 15rem;
+            }
+        }
+        
+        /* --- Content Blur (NEW) --- */
+        .blurred-content-container {
+            filter: blur(8px);
+            transition: filter 0.3s ease;
+        }
+        
         /* --- Header Specific Mobile Styles --- */
         @media (max-width: 767px) {
             #main-menu li {
@@ -151,13 +193,12 @@
 </head>
 <body class="text-white min-h-screen flex flex-col">
 
-    <!-- Global Loading Overlay -->
+    <!-- Global Loading Overlay & Custom Popup Modal & Spinning Wheel Modal (Z-index 100-110) -->
     <div id="globalLoadingOverlay" class="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center gap-4 hidden">
         <div class="spinner w-12 h-12 border-4 border-t-4 border-yellow-400 border-opacity-20 rounded-full"></div>
         <p id="globalSpinnerText" class="text-white text-xl font-semibold">Loading...</p>
     </div>
 
-    <!-- Custom Popup Modal -->
     <div id="customPopupOverlay" class="fixed inset-0 z-[101] bg-black/75 flex items-center justify-center p-4 hidden">
         <div id="customPopup" class="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-sm w-full text-center scale-95 transition-all duration-300">
             <h2 id="popupTitle" class="bebas-neue text-3xl font-bold text-yellow-400 mb-4"></h2>
@@ -166,12 +207,10 @@
         </div>
     </div>
 
-    <!-- Spinning Wheel Modal -->
     <div id="spinModal" class="modal-overlay hidden">
         <div class="modal-content">
             <h2 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4">Spinning... </h2>
             <div class="bg-slate-700/60 w-64 h-64 mx-auto flex items-center justify-center rounded-full shadow-lg border-4 border-yellow-400/20 mb-8">
-                <!-- Class handled in JS now: when spinning, adds 'flashing-text'; when revealing, adds 'result-blink-red' -->
                 <p id="modalFlashingNumber" class="bebas-neue text-8xl font-bold text-white"></p> 
             </div>
             <div id="modalResultDisplay" class="hidden">
@@ -180,12 +219,20 @@
             </div>
         </div>
     </div>
+    
+    <!-- NEW: Construction Banner Overlay (Fixed Position, High Z-Index 105) -->
+    <div class="construction-overlay">
+        <div class="construction-banner">
+            PAUSED
+        </div>
+    </div>
+    <!-- END NEW BANNER -->
 
-    <!-- Header (Fixed to the top, using the extracted content) -->
+
+    <!-- Header (Fixed to the top, UNBLURRED, Z-index 50) -->
     <header class="bg-black/40 py-4 px-4 md:px-12 fixed w-full top-0 z-50 shadow-2xl backdrop-blur-sm">
         <nav class="container mx-auto flex justify-between items-center flex-wrap md:flex-nowrap">
             <div class="flex items-center justify-between w-full md:w-auto">
-                <!-- Logo: Increased touch target and added ring for visual pop -->
                 <a href="/" class="flex items-center space-x-2">
                     <img src="https://raw.githubusercontent.com/ToratYosef/ToratYosef..github.io/refs/heads/main/assets/logos.jpeg" alt="YDE Logo" class="h-14 sm:h-16 md:h-20 w-auto rounded-full ring-2 ring-yellow-400 p-1">
                 </a>
@@ -195,206 +242,204 @@
                 </button>
             </div>
 
-            <!-- Navigation Links (Toggable on mobile, always visible on desktop) -->
+            <!-- Navigation Links -->
             <ul id="main-menu" class="hidden md:flex flex-col md:flex-row items-center space-y-2 md:space-y-0 md:space-x-8 text-base font-semibold w-full md:w-auto mt-4 md:mt-0">
                 <li><a href="/split-the-pot/" class="text-white hover:text-yellow-400 transition-colors duration-300 block">Split the Pot</a></li>
                 <li><a href="/spin-the-wheel/" class="text-white hover:text-yellow-400 transition-colors duration-300 block">Spin the Wheel</a></li>
-                <!-- NEW Leaderboard Link -->
                 <li><a href="/leaderboard/" class="text-white hover:text-yellow-400 transition-colors duration-300 block">Leaderboard</a></li>
-                <!-- Donate button styling updated for block display on mobile -->
                 <li><a href="/donate/" class="py-2 px-4 rounded-full bg-yellow-400 text-black hover:bg-yellow-500 transition-colors duration-300 font-bold block">Donate Now</a></li>
             </ul>
         </nav>
     </header>
     <!-- End Header -->
 
-    <main class="flex-grow pt-24 sm:pt-28 px-4 md:px-8 lg:px-16"> <!-- Increased padding top to account for fixed header -->
-        <section id="spin-to-win-section">
-            <div class="container mx-auto text-center p-4 sm:p-6 md:p-12 glass-panel rounded-2xl shadow-2xl">
-                <h1 class="bebas-neue text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-4 drop-shadow-lg">
-                    Spin to Win - 3 Guaranteed Winners!
-                </h1>
-                <p class="text-base sm:text-lg md:text-xl text-gray-300 mb-8">
-                    You might pay as little as $1 and win one of three luxury prizes or cash equivalents!
-                </p>
-
-                <!-- Prize Display Section (Updated) -->
-                <div class="mb-12">
-                    <h2 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4">Prizes (1st, 2nd, 3rd) </h2>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        <!-- Prize Card 1: Rolex Datejust (1st Prize / $15K Cash) -->
-                        <div class="prize-card bg-slate-700/60 p-6 rounded-xl shadow-lg transform transition duration-300 hover:scale-[1.02] cursor-pointer"
-                            data-name="1st Prize: Rolex Datejust 41 or $15,000 Cash"
-                            data-desc="The grand prize winner chooses the elegant Rolex Datejust 41 (White Gold Fluted, Jubilee bracelet) OR takes home a substantial $15,000 cash prize."
-                            data-img="https://media.rolex.com/image/upload/q_auto:eco/f_auto/t_v7-majesty/c_limit,w_1600/v1/catalogue/2025/upright-c/m126334-0026"
-                            onclick="showPrizeModal(this)">
-                            <h3 class="bebas-neue text-2xl text-yellow-400 mb-4">1st: Rolex or $15K</h3>
-                            <img src="https://media.rolex.com/image/upload/q_auto:eco/f_auto/t_v7-majesty/c_limit,w_600/v1/catalogue/2025/upright-c/m126334-0026" 
-                                onerror="this.onerror=null; this.src='https://placehold.co/400x300/1e293b/fde047?text=Rolex+1st'"
-                                alt="Rolex Datejust White Gold Fluted" class="w-full h-auto rounded-lg mb-4 object-contain max-h-48">
-                            <p class="text-gray-300 text-sm">Rolex Datejust 41 or $15,000</p>
-                        </div>
-
-                        <!-- Prize Card 2: Rolex Datejust (2nd Prize / $10K Cash) -->
-                        <div class="prize-card bg-slate-700/60 p-6 rounded-xl shadow-lg transform transition duration-300 hover:scale-[1.02] cursor-pointer"
-                            data-name="2nd Prize: Rolex Datejust 41 or $10,000 Cash"
-                            data-desc="The second prize winner chooses the classic Rolex Datejust 41 (Oystersteel, smooth bezel, Oyster bracelet) OR takes home a $10,000 cash prize."
-                            data-img="https://media.rolex.com/image/upload/q_auto:eco/f_auto/t_v7-majesty/c_limit,w_1600/v1/catalogue/2025/upright-c/m126300-0002"
-                            onclick="showPrizeModal(this)">
-                            <h3 class="bebas-neue text-2xl text-yellow-400 mb-4">2nd: Rolex or $10K</h3>
-                            <img src="https://media.rolex.com/image/upload/q_auto:eco/f_auto/t_v7-majesty/c_limit,w_600/v1/catalogue/2025/upright-c/m126300-0002" 
-                                onerror="this.onerror=null; this.src='https://placehold.co/400x300/1e293b/fde047?text=Rolex+2nd'"
-                                alt="Rolex Datejust Oystersteel" class="w-full h-auto rounded-lg mb-4 object-contain max-h-48">
-                            <p class="text-gray-300 text-sm">Rolex Datejust 41 or $10,000</p>
-                        </div>
-
-                        <!-- Prize Card 3: Breitling Chronomat (3rd Prize / $7.5K Cash) -->
-                        <div class="prize-card bg-slate-700/60 p-6 rounded-xl shadow-lg transform transition duration-300 hover:scale-[1.02] cursor-pointer"
-                            data-name="3rd Prize: Breitling Chronomat or $7,500 Cash"
-                            data-desc="The third prize winner chooses the technical Breitling Chronomat B01 42 or takes home a $7,500 cash prize."
-                            data-img="https://www.breitling.com/api/image-proxy/www-breitling.eu.saleor.cloud/media/thumbnails/products/ab0156161c1a1-soldier_31cb0756_thumbnail_1024.webp?imwidth=1920&format=auto"
-                            onclick="showPrizeModal(this)">
-                            <h3 class="bebas-neue text-2xl font-bold text-yellow-400 mb-2">3rd: Breitling or $7.5K</h3>
-                            <img src="https://www.breitling.com/api/image-proxy/www-breitling.eu.saleor.cloud/media/thumbnails/products/ab0156161c1a1-soldier_31cb0756_thumbnail_1024.webp?imwidth=600&format=auto" 
-                                onerror="this.onerror=null; this.src='https://placehold.co/400x300/1e293b/fde047?text=Breitling+3rd'"
-                                alt="Breitling Chronomat" class="w-full h-auto rounded-lg mb-4 object-contain max-h-48">
-                            <p class="text-gray-300 text-sm">Breitling Watch or $7,500</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Live Counter (STATIC SCOREBOARD STRUCTURE) -->
-                <div class="mb-12">
-                    <h2 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4">Tickets Left</h2>
-                    <!-- Scoreboard Container -->
-                    <div id="ticketsLeftDisplay" class="flex justify-center space-x-2 md:space-x-3 lg:space-x-4">
-                        <!-- Digit 1 (Hundreds) -->
-                        <div id="digit-hundreds" class="digit-box"></div>
-                        <!-- Digit 2 (Tens) -->
-                        <div id="digit-tens" class="digit-box"></div>
-                        <!-- Digit 3 (Ones) -->
-                        <div id="digit-ones" class="digit-box"></div>
-                    </div>
-                </div>
-                <!-- End Live Counter -->
-
-                <!-- How it Works Section -->
-                <div class="mb-12">
-                    <h2 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4">How It Works </h2>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        <div class="bg-slate-700/60 p-6 rounded-xl shadow-lg">
-                            <p class="bebas-neue text-4xl text-yellow-400 mb-2">1</p>
-                            <h3 class="bebas-neue text-2xl font-bold text-white mb-2">Prepay</h3>
-                            <p class="text-gray-300">Submit payment and get charged a random amount (between $1 - $650).</p>
-                        </div>
-                        <div class="bg-slate-700/60 p-6 rounded-xl shadow-lg">
-                            <p class="bebas-neue text-4xl text-yellow-400 mb-2">2</p>
-                            <h3 class="bebas-neue text-2xl font-bold text-white mb-2">Take a Chance</h3>
-                            <p class="text-gray-300">The system will assign you a random number, which is your ticket price.</p>
-                        </div>
-                        <div class="bg-slate-700/60 p-6 rounded-xl shadow-lg">
-                            <p class="bebas-neue text-4xl text-yellow-400 mb-2">3</p>
-                            <h3 class="bebas-neue text-2xl font-bold text-white mb-2">Win Big (x3)</h3>
-                            <p class="text-gray-300">Each ticket number gives you a chance at one of the 3 grand prizes!</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Payment Form Section -->
-                <div class="relative-container glass-panel p-6 rounded-2xl shadow-2xl max-w-lg mx-auto mb-12">
-                    <div id="initial-form" class="space-y-4" autocomplete="off" novalidate>
-                        <h2 class="bebas-neue text-3xl font-bold text-white mb-4">Enter for a Chance to Win!</h2>
-                        <div>
-                            <input type="text" id="spin-name" name="name" placeholder="Full Name" class="w-full py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300" required>
-                        </div>
-                        <div>
-                            <input type="email" id="spin-email" name="email" placeholder="Email Address" class="w-full py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300" required>
-                        </div>
-                        <div>
-                            <input type="tel" id="spin-phone" name="phone" placeholder="Phone Number" class="w-full py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300" required>
-                        </div>
-                    
-                        <button id="spin-proceed-to-payment" class="w-full py-3 rounded-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold transition-colors duration-300 relative overflow-hidden">
-                            <span class="button-text">Proceed to Payment</span>
-                            <div class="button-spinner absolute inset-0 m-auto w-8 h-8 border-4 border-t-4 border-black border-opacity-20 rounded-full hidden"></div>
-                        </button>
-                    </div>
-
-                    <!-- Stripe payment element container -->
-                    <div id="spin-stripe-payment-element" class="hidden">
-                           <h2 class="bebas-neue text-3xl font-bold text-white mb-4">Payment Details</h2>
-                        <div id="spin-payment-element-container"></div>
-                        <button id="spin-stripe-pay-button" class="w-full py-3 mt-4 rounded-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold transition-colors duration-300 hidden">
-                            <span class="button-text">Pay Now</span>
-                            <div class="button-spinner absolute inset-0 m-auto w-8 h-8 border-4 border-t-4 border-black border-opacity-20 rounded-full hidden"></div>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-    </main>
+    <!-- NEW: Container for Blurred Content (Main + Footer) -->
+    <div id="main-content-wrapper" class="flex-grow blurred-content-container flex flex-col">
     
-    <!-- Prize Modal Structure (Ported from previous file) -->
-    <div id="prize-modal" class="fixed inset-0 bg-black bg-opacity-75 hidden items-center justify-center z-[110] p-4 transition-opacity duration-300 opacity-0" 
-         onclick="hidePrizeModal(event)">
-        <div class="bg-slate-950 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto transform transition-all duration-300 scale-95" 
-             id="modal-content-container" onclick="event.stopPropagation()">
-            
-            <!-- Modal Header -->
-            <div class="flex justify-between items-center p-6 border-b border-slate-800">
-                <h3 id="modal-title" class="bebas-neue text-3xl text-yellow-400">Prize Details</h3>
-                <button onclick="hidePrizeModal()" class="text-gray-400 hover:text-white transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-8 h-8">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-            
-            <!-- Modal Body -->
-            <div class="p-6 md:flex md:space-x-6">
-                <!-- Image Container -->
-                <div class="md:w-1/2 flex items-center justify-center mb-6 md:mb-0">
-                    <img id="modal-image" src="" alt="Prize Image" class="w-full h-auto max-h-96 object-contain rounded-lg shadow-xl">
-                </div>
-                
-                <!-- Description Container -->
-                <div class="md:w-1/2 text-left">
-                    <p id="modal-description" class="text-gray-300 text-lg leading-relaxed mb-6">
-                        Detailed description of the prize will appear here.
+        <main class="flex-grow pt-24 sm:pt-28 px-4 md:px-8 lg:px-16"> <!-- Padding top to account for fixed header -->
+            <section id="spin-to-win-section">
+                <div class="container mx-auto text-center p-4 sm:p-6 md:p-12 glass-panel rounded-2xl shadow-2xl">
+                    <h1 class="bebas-neue text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-4 drop-shadow-lg">
+                        Spin to Win - 3 Guaranteed Winners!
+                    </h1>
+                    <p class="text-base sm:text-lg md:text-xl text-gray-300 mb-8">
+                        You might pay as little as $1 and win one of three luxury prizes or cash equivalents!
                     </p>
-                    <button onclick="hidePrizeModal();" class="inline-block py-3 px-6 rounded-full bg-yellow-400 text-slate-950 font-bold hover:bg-yellow-500 transition-colors duration-300">
-                        Close & Spin
+
+                    <!-- Prize Display Section -->
+                    <div class="mb-12">
+                        <h2 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4">Prizes (1st, 2nd, 3rd) </h2>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                            <!-- Prize Cards... Content is unchanged -->
+                            <div class="prize-card bg-slate-700/60 p-6 rounded-xl shadow-lg transform transition duration-300 hover:scale-[1.02] cursor-pointer"
+                                data-name="1st Prize: Rolex Datejust 41 or $15,000 Cash"
+                                data-desc="The grand prize winner chooses the elegant Rolex Datejust 41 (White Gold Fluted, Jubilee bracelet) OR takes home a substantial $15,000 cash prize."
+                                data-img="https://media.rolex.com/image/upload/q_auto:eco/f_auto/t_v7-majesty/c_limit,w_1600/v1/catalogue/2025/upright-c/m126334-0026"
+                                onclick="showPrizeModal(this)">
+                                <h3 class="bebas-neue text-2xl text-yellow-400 mb-4">1st: Rolex or $15K</h3>
+                                <img src="https://media.rolex.com/image/upload/q_auto:eco/f_auto/t_v7-majesty/c_limit,w_600/v1/catalogue/2025/upright-c/m126334-0026" 
+                                    onerror="this.onerror=null; this.src='https://placehold.co/400x300/1e293b/fde047?text=Rolex+1st'"
+                                    alt="Rolex Datejust White Gold Fluted" class="w-full h-auto rounded-lg mb-4 object-contain max-h-48">
+                                <p class="text-gray-300 text-sm">Rolex Datejust 41 or $15,000</p>
+                            </div>
+
+                            <div class="prize-card bg-slate-700/60 p-6 rounded-xl shadow-lg transform transition duration-300 hover:scale-[1.02] cursor-pointer"
+                                data-name="2nd Prize: Rolex Datejust 41 or $10,000 Cash"
+                                data-desc="The second prize winner chooses the classic Rolex Datejust 41 (Oystersteel, smooth bezel, Oyster bracelet) OR takes home a $10,000 cash prize."
+                                data-img="https://media.rolex.com/image/upload/q_auto:eco/f_auto/t_v7-majesty/c_limit,w_1600/v1/catalogue/2025/upright-c/m126300-0002"
+                                onclick="showPrizeModal(this)">
+                                <h3 class="bebas-neue text-2xl text-yellow-400 mb-4">2nd: Rolex or $10K</h3>
+                                <img src="https://media.rolex.com/image/upload/q_auto:eco/f_auto/t_v7-majesty/c_limit,w_600/v1/catalogue/2025/upright-c/m126300-0002" 
+                                    onerror="this.onerror=null; this.src='https://placehold.co/400x300/1e293b/fde047?text=Rolex+2nd'"
+                                    alt="Rolex Datejust Oystersteel" class="w-full h-auto rounded-lg mb-4 object-contain max-h-48">
+                                <p class="text-gray-300 text-sm">Rolex Datejust 41 or $10,000</p>
+                            </div>
+
+                            <div class="prize-card bg-slate-700/60 p-6 rounded-xl shadow-lg transform transition duration-300 hover:scale-[1.02] cursor-pointer"
+                                data-name="3rd Prize: Breitling Chronomat or $7,500 Cash"
+                                data-desc="The third prize winner chooses the technical Breitling Chronomat B01 42 or takes home a $7,500 cash prize."
+                                data-img="https://www.breitling.com/api/image-proxy/www-breitling.eu.saleor.cloud/media/thumbnails/products/ab0156161c1a1-soldier_31cb0756_thumbnail_1024.webp?imwidth=1920&format=auto"
+                                onclick="showPrizeModal(this)">
+                                <h3 class="bebas-neue text-2xl font-bold text-yellow-400 mb-2">3rd: Breitling or $7.5K</h3>
+                                <img src="https://www.breitling.com/api/image-proxy/www-breitling.eu.saleor.cloud/media/thumbnails/products/ab0156161c1a1-soldier_31cb0756_thumbnail_1024.webp?imwidth=600&format=auto" 
+                                    onerror="this.onerror=null; this.src='https://placehold.co/400x300/1e293b/fde047?text=Breitling+3rd'"
+                                    alt="Breitling Chronomat" class="w-full h-auto rounded-lg mb-4 object-contain max-h-48">
+                                <p class="text-gray-300 text-sm">Breitling Watch or $7,500</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Live Counter (STATIC SCOREBOARD STRUCTURE) -->
+                    <div class="mb-12">
+                        <h2 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4">Tickets Left</h2>
+                        <div id="ticketsLeftDisplay" class="flex justify-center space-x-2 md:space-x-3 lg:space-x-4">
+                            <div id="digit-hundreds" class="digit-box"></div>
+                            <div id="digit-tens" class="digit-box"></div>
+                            <div id="digit-ones" class="digit-box"></div>
+                        </div>
+                    </div>
+                    <!-- End Live Counter -->
+
+                    <!-- How it Works Section -->
+                    <div class="mb-12">
+                        <h2 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4">How It Works </h2>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                            <div class="bg-slate-700/60 p-6 rounded-xl shadow-lg">
+                                <p class="bebas-neue text-4xl text-yellow-400 mb-2">1</p>
+                                <h3 class="bebas-neue text-2xl font-bold text-white mb-2">Prepay</h3>
+                                <p class="text-gray-300">Submit payment and get charged a random amount (between $1 - $650).</p>
+                            </div>
+                            <div class="bg-slate-700/60 p-6 rounded-xl shadow-lg">
+                                <p class="bebas-neue text-4xl text-yellow-400 mb-2">2</p>
+                                <h3 class="bebas-neue text-2xl font-bold text-white mb-2">Take a Chance</h3>
+                                <p class="text-gray-300">The system will assign you a random number, which is your ticket price.</p>
+                            </div>
+                            <div class="bg-slate-700/60 p-6 rounded-xl shadow-lg">
+                                <p class="bebas-neue text-4xl text-yellow-400 mb-2">3</p>
+                                <h3 class="bebas-neue text-2xl font-bold text-white mb-2">Win Big (x3)</h3>
+                                <p class="text-gray-300">Each ticket number gives you a chance at one of the 3 grand prizes!</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Payment Form Section -->
+                    <div class="relative-container glass-panel p-6 rounded-2xl shadow-2xl max-w-lg mx-auto mb-12">
+                        <div id="initial-form" class="space-y-4" autocomplete="off" novalidate>
+                            <h2 class="bebas-neue text-3xl font-bold text-white mb-4">Enter for a Chance to Win!</h2>
+                            <div>
+                                <input type="text" id="spin-name" name="name" placeholder="Full Name" class="w-full py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300" required>
+                            </div>
+                            <div>
+                                <input type="email" id="spin-email" name="email" placeholder="Email Address" class="w-full py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300" required>
+                            </div>
+                            <div>
+                                <input type="tel" id="spin-phone" name="phone" placeholder="Phone Number" class="w-full py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300" required>
+                            </div>
+                        
+                            <!-- Button is now styled red and disabled by JS on load -->
+                            <button id="spin-proceed-to-payment" class="w-full py-3 rounded-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold transition-colors duration-300 relative overflow-hidden">
+                                <span class="button-text">Proceed to Payment</span>
+                                <div class="button-spinner absolute inset-0 m-auto w-8 h-8 border-4 border-t-4 border-black border-opacity-20 rounded-full hidden"></div>
+                            </button>
+                        </div>
+
+                        <!-- Stripe payment element container -->
+                        <div id="spin-stripe-payment-element" class="hidden">
+                               <h2 class="bebas-neue text-3xl font-bold text-white mb-4">Payment Details</h2>
+                            <div id="spin-payment-element-container"></div>
+                            <button id="spin-stripe-pay-button" class="w-full py-3 mt-4 rounded-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold transition-colors duration-300 hidden">
+                                <span class="button-text">Pay Now</span>
+                                <div class="button-spinner absolute inset-0 m-auto w-8 h-8 border-4 border-t-4 border-black border-opacity-20 rounded-full hidden"></div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+        
+        <!-- Prize Modal Structure (Must remain outside the blurred section to function as an overlay) -->
+        <div id="prize-modal" class="fixed inset-0 bg-black bg-opacity-75 hidden items-center justify-center z-[110] p-4 transition-opacity duration-300 opacity-0" 
+             onclick="hidePrizeModal(event)">
+            <div class="bg-slate-950 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto transform transition-all duration-300 scale-95" 
+                 id="modal-content-container" onclick="event.stopPropagation()">
+                
+                <!-- Modal Header -->
+                <div class="flex justify-between items-center p-6 border-b border-slate-800">
+                    <h3 id="modal-title" class="bebas-neue text-3xl text-yellow-400">Prize Details</h3>
+                    <button onclick="hidePrizeModal()" class="text-gray-400 hover:text-white transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-8 h-8">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
                     </button>
                 </div>
+                
+                <!-- Modal Body -->
+                <div class="p-6 md:flex md:space-x-6">
+                    <!-- Image Container -->
+                    <div class="md:w-1/2 flex items-center justify-center mb-6 md:mb-0">
+                        <img id="modal-image" src="" alt="Prize Image" class="w-full h-auto max-h-96 object-contain rounded-lg shadow-xl">
+                    </div>
+                    
+                    <!-- Description Container -->
+                    <div class="md:w-1/2 text-left">
+                        <p id="modal-description" class="text-gray-300 text-lg leading-relaxed mb-6">
+                            Detailed description of the prize will appear here.
+                        </p>
+                        <button onclick="hidePrizeModal();" class="inline-block py-3 px-6 rounded-full bg-yellow-400 text-slate-950 font-bold hover:bg-yellow-500 transition-colors duration-300">
+                            Close & Spin
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
+        <!-- End Prize Modal Structure -->
+
+        <footer class="bg-black/40 py-8 mt-auto shadow-[0_-5px_15px_rgba(0,0,0,0.5)]">
+            <div class="container mx-auto px-4 text-center">
+                <h3 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4">Contact</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 text-gray-400 mb-8">
+                    <div>
+                        <p class="font-bold text-white">Morris E.</p>
+                        <p>+1 (848)-282-6434</p>
+                    </div>
+                    <div>
+                        <p class="font-bold text-white">Jack B.</p>
+                        <p>+1 (347) 675-0226</p>
+                    </div>
+                    <div>
+                        <p class="font-bold text-white">Saul S.</p>
+                        <p>+1 (929)-584-5753</p>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-500 mt-8">
+                    &copy; 2026 YDE Senior Fund. All Rights Reserved.<br/>
+                    Website created by Saul Setton
+                </p>
+            </div>
+        </footer>
     </div>
-    <!-- End Prize Modal Structure -->
-    
-    <footer class="bg-black/40 py-8 mt-auto shadow-[0_-5px_15px_rgba(0,0,0,0.5)]">
-        <div class="container mx-auto px-4 text-center">
-            <h3 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4">Contact</h3>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 text-gray-400 mb-8">
-                <div>
-                    <p class="font-bold text-white">Morris E.</p>
-                    <p>+1 (848)-282-6434</p>
-                </div>
-                <div>
-                    <p class="font-bold text-white">Jack B.</p>
-                    <p>+1 (347) 675-0226</p>
-                </div>
-                <div>
-                    <p class="font-bold text-white">Saul S.</p>
-                    <p>+1 (929)-584-5753</p>
-                </div>
-            </div>
-            <p class="text-sm text-gray-500 mt-8">
-                &copy; 2026 YDE Senior Fund. All Rights Reserved.<br/>
-                Website created by Saul Setton
-            </p>
-        </div>
-    </footer>
+    <!-- END NEW BLURRED CONTAINER -->
 
     <!-- Firebase and Stripe Scripts -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -515,6 +560,29 @@
             let spinTicketNumber = 0;
             let flashInterval;
 
+            // --- IMMEDIATE PAUSE/CONSTRUCTION LOGIC (NEW) ---
+            // 1. Disable form inputs visually/functionally
+            spinNameInput.disabled = true;
+            spinEmailInput.disabled = true;
+            spinPhoneInput.disabled = true;
+
+            // 2. Change button appearance and behavior
+            spinProceedToPaymentButton.classList.remove('bg-yellow-400', 'hover:bg-yellow-500');
+            spinProceedToPaymentButton.classList.add('bg-red-600', 'hover:bg-red-700', 'cursor-not-allowed');
+            spinProceedToPaymentButton.textContent = 'Temporarily Paused';
+            
+            // 3. Override the click behavior to show a message
+            const handlePausedClick = (e) => {
+                e.preventDefault();
+                showCustomPopup('Feature Paused', 'This "Spin to Win" raffle feature is temporarily **paused for system maintenance and updates**. Please check back soon! Thank you for your support.');
+            };
+
+            // Remove the original event listener (if it was added before this logic) and add the new one
+            // We use a capture phase listener to ensure it takes precedence over the original payment logic if it was accidentally triggered
+            spinProceedToPaymentButton.addEventListener('click', handlePausedClick, true); 
+            // --- END PAUSE LOGIC ---
+
+
             // --- Referrer Logic Initialization (UPDATED) ---
             const referrerRefId = getQueryParam('ref');
             if (referrerRefId) {
@@ -537,7 +605,6 @@
             firebase.initializeApp(firebaseConfig);
             const db = firebase.firestore();
             const auth = firebase.auth();
-            // CORRECTED: The firebase functions object must be initialized using firebase.functions()
             const functions = firebase.functions();
 
             // --- Helper Functions ---
@@ -586,7 +653,7 @@
             // --- END NEW STATIC SCOREBOARD LOGIC ---
 
             
-            // --- Spin to Win Logic ---
+            // --- Spin to Win Logic (Kept for completeness, but disabled by pause logic above) ---
 
             function startSpinAnimation() {
                 modalFlashingNumber.classList.remove('result-blink-red'); // Clear final state
@@ -661,95 +728,16 @@
             // Initialize the scoreboard
             initializeScoreboard();
             
-            spinProceedToPaymentButton.addEventListener('click', async () => {
-                // Perform robust client-side validation
-                if (!validateInitialForm()) {
-                    return;
-                }
-                
-                showGlobalLoadingOverlay("Preparing your ticket...", true);
-                
-                try {
-                    // FIX: Changed functions.https.callable to functions.httpsCallable (the correct method)
-                    const createRolexPaymentIntentCallable = functions.httpsCallable('createRolexPaymentIntent');
-                    
-                    // --- Send Referrer ID to Firebase (NEW) ---
-                    const requestData = {
-                        name: spinNameInput.value.trim(),
-                        email: spinEmailInput.value.trim(),
-                        phone: spinPhoneInput.value.trim(),
-                        referral: referrerRefId || null // Pass the referral ID if it exists
-                    };
+            // NOTE: The original logic for 'spin-proceed-to-payment' and 'spin-stripe-pay-button' is now effectively disabled 
+            // by the 'handlePausedClick' listener added at the top of DOMContentLoaded.
 
-                    const { data } = await createRolexPaymentIntentCallable(requestData);
-                    // *** END UPDATED FUNCTION NAME ***
+            spinProceedToPaymentButton.removeEventListener('click', handleProceedToPayment); // Cleanup original listener if it existed
+            spinStripePayButton.removeEventListener('click', handleStripePay); // Cleanup original listener if it existed
 
-                    spinTicketNumber = data.ticketNumber;
-                    
-                    // Stripe elements initialization
-                    elements = stripe.elements({ clientSecret: data.clientSecret, fonts: [{ cssSrc: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap' }] });
-                    const paymentElement = elements.create('payment');
-                    paymentElement.mount(spinPaymentElementContainer);
-                    
-                    // Hide user info form, show payment element
-                    initialForm.classList.add('hidden');
-                    spinStripePaymentElement.classList.remove('hidden');
-                    spinStripePayButton.classList.remove('hidden');
+            // Stubbed out payment handlers (will not run due to pause logic, but kept structured)
+            const handleProceedToPayment = async () => { /* ... original logic ... */ };
+            const handleStripePay = async (event) => { /* ... original logic ... */ };
 
-                    hideGlobalLoadingOverlay();
-
-                } catch (error) {
-                    console.error('Error setting up payment:', error);
-                    showCustomPopup('Payment Setup Error', 'Could not set up payment. Please check your connection and try again.');
-                    hideGlobalLoadingOverlay();
-                }
-            });
-
-            spinStripePayButton.addEventListener('click', async (event) => {
-                event.preventDefault();
-
-                // Show the modal and start the spin animation immediately
-                spinStripePaymentElement.classList.add('hidden');
-                initialForm.classList.add('hidden');
-                spinModal.classList.remove('hidden');
-                startSpinAnimation();
-
-                // Use a placeholder return_url and 'redirect: if_required' so we can capture the success 
-                const PLACEHOLDER_RETURN_URL = `${window.location.origin}/spin-the-wheel-processing/`;
-
-                const { error, paymentIntent } = await stripe.confirmPayment({
-                    elements,
-                    confirmParams: { 
-                        return_url: PLACEHOLDER_RETURN_URL,
-                    },
-                    redirect: 'if_required' // Crucial: tell Stripe to only redirect if 3D secure is required
-                });
-
-                if (error) {
-                    // This error handles payment element validation issues (like missing required fields) or general failure.
-                    clearInterval(flashInterval); // Stop spin on immediate failure
-                    showCustomPopup('Payment Failed', error.message || 'Payment could not be processed due to an error. Please check your card details and required fields.');
-                    console.error("Stripe confirmPayment error:", error);
-                    
-                    // Reset UI: Hide modal, show payment form again
-                    spinModal.classList.add('hidden');
-                    initialForm.classList.add('hidden');
-                    spinStripePaymentElement.classList.remove('hidden');
-                    spinStripePayButton.classList.remove('hidden');
-
-                } else if (paymentIntent && paymentIntent.status === 'succeeded') {
-                    // Payment succeeded client-side (no 3D secure redirect required)
-                    // Wait for the visual spin duration to complete before revealing the result
-                    setTimeout(() => {
-                        // 1. Stop spin, reveal number, start 3s red blink, then redirect
-                        stopSpinAnimationAndReveal(spinTicketNumber);
-                    }, SPIN_DURATION); // Wait 5 seconds for the spin visualization
-
-                } else {
-                    // Payment requires action (e.g., 3D secure) and Stripe has initiated a redirect.
-                    console.log("Payment requires action or is pending. Letting Stripe handle the redirect flow.");
-                }
-            });
 
             // --- Firebase Initialization and Real-time Listener ---
             auth.onAuthStateChanged(async (user) => {

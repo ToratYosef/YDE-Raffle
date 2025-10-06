@@ -231,10 +231,10 @@
         </div>
     </div>
     
-    <!-- Apply Rolex Tickets Modal (Spin the Wheel) - Super Admin Only -->
+    <!-- Apply Rolex Tickets Modal (Rolex Raffle) - Super Admin Only -->
     <div id="applyRolexTicketsModalOverlay" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-2 sm:p-4 hidden">
         <div class="bg-gray-800 p-4 sm:p-8 rounded-lg shadow-2xl w-full max-w-lg md:max-w-4xl max-h-[95vh] overflow-y-auto">
-            <h2 class="text-xl sm:text-2xl font-bold text-white mb-2">Assign/Transfer Spin The Wheel Tickets to: <span id="targetRolexReferrerName" class="text-purple-400"></span></h2>
+            <h2 class="text-xl sm:text-2xl font-bold text-white mb-2">Assign/Transfer Rolex Raffle Tickets to: <span id="targetRolexReferrerName" class="text-purple-400"></span></h2>
             <p class="text-xs sm:text-sm text-gray-400 mb-4">Select tickets below to assign or transfer them to this referrer's ID (<span id="targetRolexReferrerId"></span>). Tickets must be Paid or Claimed.</p>
 
             <!-- Search and Action Bar -->
@@ -265,7 +265,7 @@
                         </tr>
                     </thead>
                     <tbody id="rolexAssignmentTableBody">
-                        <tr><td colspan="7" class="text-center py-4 text-gray-400">Loading Spin The Wheel data...</td></tr>
+                        <tr><td colspan="7" class="text-center py-4 text-gray-400">Loading Rolex Raffle data...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -368,7 +368,7 @@
         <nav class="flex space-x-2 sm:space-x-4 mb-6 border-b border-gray-700 overflow-x-auto whitespace-nowrap">
             <button data-tab="referrers" class="tab-button py-3 px-2 sm:px-4 text-sm sm:text-base text-gray-400 hover:text-white transition-colors hidden">Referrers</button>
             <button data-tab="raffle" class="tab-button py-3 px-2 sm:px-4 text-sm sm:text-base text-gray-400 hover:text-white transition-colors">Split The Pot Sales</button>
-            <button data-tab="rolex" class="tab-button py-3 px-2 sm:px-4 text-sm sm:text-base text-gray-400 hover:text-white transition-colors hidden">Spin The Wheel Sales</button>
+            <button data-tab="rolex" class="tab-button py-3 px-2 sm:px-4 text-sm sm:text-base text-gray-400 hover:text-white transition-colors hidden">Rolex Raffle Sales</button>
             <button data-tab="donations" class="tab-button py-3 px-2 sm:px-4 text-sm sm:text-base text-gray-400 hover:text-white transition-colors hidden">Donations</button>
             <button data-tab="users" class="tab-button py-3 px-2 sm:px-4 text-sm sm:text-base text-gray-400 hover:text-white transition-colors hidden">User Management</button>
             <button data-tab="tools" class="tab-button py-3 px-2 sm:px-4 text-sm sm:text-base text-gray-400 hover:text-white transition-colors hidden">Admin Tools</button>
@@ -517,12 +517,12 @@
                 </div>
             </div>
 
-            <!-- Spin The Wheel Sales Tab Content (Super Admin Only) -->
+            <!-- Rolex Raffle Sales Tab Content (Super Admin Only) -->
             <div id="tab-rolex" class="tab-pane hidden">
                 <div class="dashboard-card p-4 overflow-x-auto">
                     <!-- Filter and Header Controls -->
                     <div class="flex flex-wrap justify-between items-center mb-3 gap-3">
-                        <h3 class="text-xl font-semibold text-white" id="rolexSalesHeader">Spin The Wheel Sales (SA Only)</h3>
+                        <h3 class="text-xl font-semibold text-white" id="rolexSalesHeader">Rolex Raffle Sales (SA Only)</h3>
                         <!-- NEW FILTER DROPDOWN -->
                         <div id="rolexFilterControls" class="flex items-center space-x-2">
                             <label for="rolexFilter" class="text-sm font-medium text-gray-400">Filter:</label>
@@ -548,7 +548,7 @@
                                 </tr>
                             </thead>
                             <tbody id="rolexTableBody">
-                                <tr><td colspan="7" class="text-center py-4 text-gray-400">No Spin The Wheel sales found.</td></tr>
+                                <tr><td colspan="7" class="text-center py-4 text-gray-400">No Rolex Raffle sales found.</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -584,7 +584,7 @@
                     
                     <!-- Reserved Ticket Cleanup -->
                     <div class="border p-4 rounded-lg bg-red-900/50 border-red-700">
-                        <h4 class="font-semibold text-lg text-red-400 mb-2">Reserved Ticket Cleanup (Spin The Wheel)</h4>
+                        <h4 class="font-semibold text-lg text-red-400 mb-2">Reserved Ticket Cleanup (Rolex Raffle)</h4>
                         <div id="reservedTicketInfo" class="text-sm text-gray-300 mb-3">Loading counts...</div>
                         <button id="deleteExpiredTicketsButton" class="px-4 py-2 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 text-sm">
                             Manually Run Cleanup
@@ -612,9 +612,9 @@
                             </button>
                         </div>
 
-                        <!-- Recalculate Spin The Wheel Totals (NEW) -->
+                        <!-- Recalculate Rolex Raffle Totals (NEW) -->
                         <div id="recalculateRolexTotalsCard" class="border p-4 rounded-lg bg-purple-900/50 border-purple-700">
-                            <h4 class="font-semibold text-lg text-purple-400 mb-2">Recalculate Spin The Wheel Totals (Global)</h4>
+                            <h4 class="font-semibold text-lg text-purple-400 mb-2">Recalculate Rolex Raffle Totals (Global)</h4>
                             <p class="text-sm text-gray-300 mb-3">Resets and sums all Spin tickets to update **Global** <code>rolexTicketsTotal</code> (Spin Count) and the combined <code>totalAmount</code> ($).</p>
                             <button id="recalculateRolexTotalsButton" class="px-4 py-2 bg-purple-500 text-white font-semibold rounded-lg hover:bg-purple-600 transition-colors disabled:opacity-50 text-sm">
                                 Recalculate Global Wheel
@@ -1528,14 +1528,14 @@
             // 1. Filter based on current filter state
             let displayEntries = filterSalesEntries(entries, rolexFilter);
             
-            let headerText = "Spin The Wheel Sales (SA Only)";
+            let headerText = "Rolex Raffle Sales (SA Only)";
 
             // Apply direct referrer filter (Rolex must also be filtered by the active referrer if set)
             if (activeRefIdFilter) {
                 displayEntries = displayEntries.filter(e => e.referrerRefId === activeRefIdFilter);
-                headerText = `Spin The Wheel Sales for ${activeRefNameFilter}`;
+                headerText = `Rolex Raffle Sales for ${activeRefNameFilter}`;
             } else {
-                headerText = "Spin The Wheel Sales (SA Only)";
+                headerText = "Rolex Raffle Sales (SA Only)";
             }
 
             // Set header text and add 'Clear Filter' button if filter is active
@@ -1554,7 +1554,7 @@
 
 
             if (displayEntries.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-400">No Spin The Wheel sales found matching current criteria.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-400">No Rolex Raffle sales found matching current criteria.</td></tr>';
                 return;
             }
             displayEntries.forEach(e => {
@@ -1862,7 +1862,7 @@
         const handleRecalculateRolexTotals = async () => {
             if (!isSuperAdmin) return;
             
-            showGlobalLoading("Recalculating Spin The Wheel totals (Global Counter)...");
+            showGlobalLoading("Recalculating Rolex Raffle totals (Global Counter)...");
             try {
                 const recalculateRolexTotalsCallable = httpsCallable(functions, 'recalculateRolexTotals');
                 const response = await recalculateRolexTotalsCallable({});
@@ -2291,7 +2291,7 @@
             }
         };
         
-        // --- Spin the Wheel (Rolex) Assignment Logic ---
+        // --- Rolex Raffle (Rolex) Assignment Logic ---
         
         const fetchAssignmentRolexSales = async () => {
             // Use local data as source, no extra fetch needed
@@ -2307,7 +2307,7 @@
 
         const openApplyRolexTicketsModal = async (refId, refName) => {
             if (!isSuperAdmin) {
-                showCustomPopup('Permission Denied', 'Only Super Admins can assign Spin The Wheel tickets.');
+                showCustomPopup('Permission Denied', 'Only Super Admins can assign Rolex Raffle tickets.');
                 return;
             }
             
@@ -2345,7 +2345,7 @@
             selectAllCheckbox.checked = allDisplayedSelected;
 
             if (filteredRolexSales.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-400">No Paid or Claimed Spin The Wheel tickets found matching the criteria.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-400">No Paid or Claimed Rolex Raffle tickets found matching the criteria.</td></tr>';
                 applyButton.disabled = true;
                 selectedCountDisplay.textContent = '0 tickets selected';
                 return;
@@ -2452,7 +2452,7 @@
             const refId = targetRolexRefId;
             
             closeApplyRolexTicketsModal();
-            showGlobalLoading(`Processing transfer/assignment of ${ticketIds.length} Spin The Wheel tickets to ${refId}...`);
+            showGlobalLoading(`Processing transfer/assignment of ${ticketIds.length} Rolex Raffle tickets to ${refId}...`);
 
             try {
                 const assignReferrerToRolexTicketsCallable = httpsCallable(functions, 'assignReferrerToRolexTickets');
@@ -2744,7 +2744,7 @@
                 }
 
 
-                // --- Spin the Wheel (Rolex) Assignment Modal listeners ---
+                // --- Rolex Raffle (Rolex) Assignment Modal listeners ---
                 if (document.getElementById('closeApplyRolexTicketsModal')) {
                     document.getElementById('closeApplyRolexTicketsModal').addEventListener('click', closeApplyRolexTicketsModal);
                 }

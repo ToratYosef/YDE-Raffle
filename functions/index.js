@@ -450,7 +450,7 @@ exports.adminResetPasswordByEmail = functions.https.onRequest((req, res) => {
  */
 exports.createRolexPaymentIntent = functions.https.onCall(async (data, context) => {
     let ticketNumber;
-    const SOURCE_APP_TAG = 'YDE Spin The Wheel';
+    const SOURCE_APP_TAG = 'YDE Rolex Raffle';
 
     try {
         const { name, email, phone, referral } = data;
@@ -509,7 +509,7 @@ exports.createRolexPaymentIntent = functions.https.onCall(async (data, context) 
         const paymentIntent = await stripe.paymentIntents.create({
             amount: amountInCents,
             currency: 'usd',
-            description: `YDE Spin The Wheel - Ticket ${ticketNumber}`, 
+            description: `YDE Rolex Raffle - Ticket ${ticketNumber}`, 
             payment_method_types: ['card'],
             metadata: {
                 name,
@@ -750,7 +750,7 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
                 // Store fee-excluded amount (now cleaned)
                 amountPaid: amountForSaleRecord, 
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(), // FIX: Use new updatedAt field
-                sourceApp: sourceApp || 'YDE Spin The Wheel (Webhook)',
+                sourceApp: sourceApp || 'YDE Rolex Raffle (Webhook)',
                 referrerRefId: referrerRefId || null 
             });
 
@@ -1108,7 +1108,7 @@ exports.assignReferrerToSales = functions.https.onCall(async (data, context) => 
 
 
 /**
- * Callable function to assign or transfer a batch of Spin The Wheel (Rolex) sales to a specific referrer.
+ * Callable function to assign or transfer a batch of Rolex Raffle (Rolex) sales to a specific referrer.
  * Requires Super Admin role. This function handles decrementing the old referrer's totals
  * and incrementing the new referrer's totals.
  */
@@ -1248,7 +1248,7 @@ exports.assignReferrerToRolexTickets = functions.https.onCall(async (data, conte
 
         return { 
             success: true, 
-            message: `Successfully assigned/transferred ${targetTicketCount} Spin The Wheel tickets to ${targetReferrerName} (${refId}).` 
+            message: `Successfully assigned/transferred ${targetTicketCount} Rolex Raffle tickets to ${targetReferrerName} (${refId}).` 
         };
 
     } catch (error) {
@@ -1365,7 +1365,7 @@ async function _rebuildAllReferrerTotals(db) {
 // --- RECALCULATION FUNCTIONS (Public) ---
 
 /**
- * Callable function to recalculate the Spin The Wheel (Rolex) totals for all referrers.
+ * Callable function to recalculate the Rolex Raffle (Rolex) totals for all referrers.
  * This function now uses the shared rebuild logic.
  */
 exports.recalculateRolexTotals = functions.https.onCall(async (data, context) => {
@@ -1799,7 +1799,7 @@ exports.createReferrer = functions.https.onCall(async (data, context) => {
             goal: cleanAmount(goal) || 0, // Ensure goal is rounded
             totalTickets: 0, // Split the Pot Tickets
             totalAmount: 0, // Combined Amount (Split the Pot + Rolex) (Base amounts only)
-            rolexTicketsTotal: 0, // NEW: Spin the Wheel Tickets
+            rolexTicketsTotal: 0, // NEW: Rolex Raffle Tickets
             clickCount: 0, 
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });

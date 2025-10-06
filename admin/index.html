@@ -99,38 +99,10 @@
         </div>
     </div>
 
-    <!-- NEW: Export Referral Links Modal -->
-    <div id="exportLinksModalOverlay" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4 hidden">
-        <div class="bg-gray-800 p-6 rounded-lg shadow-2xl max-w-xs sm:max-w-md w-full">
-            <h2 class="text-xl sm:text-2xl font-bold text-yellow-400 mb-4">Export Referral Links</h2>
-            <p class="text-gray-300 mb-4 text-sm sm:text-base">
-                Select the target page to generate links for all active referrers.
-            </p>
-            <form id="exportLinksForm" class="space-y-4">
-                <div>
-                    <label for="export-page-select" class="block text-sm font-medium text-gray-300 mb-1">Target Raffle Page:</label>
-                    <select id="export-page-select" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white" required>
-                        <option value="/split-the-pot/" data-filename="SplitThePot">Split The Pot</option>
-                        <option value="/rolex-raffle/" data-filename="RolexRaffle">Rolex Raffle</option>
-                        <option value="/" data-filename="Homepage">Homepage</option>
-                        <option value="/donate/" data-filename="DonationPage">Donation Page</option>
-                    </select>
-                </div>
-                <div class="pt-4 flex justify-end space-x-3">
-                    <button type="button" id="closeExportLinksModal" class="px-4 py-2 text-gray-300 bg-gray-600 rounded-lg hover:bg-gray-500 transition-colors">Cancel</button>
-                    <button type="submit" id="submitExportLinks" class="px-4 py-2 text-black bg-yellow-500 rounded-lg hover:bg-yellow-600 transition-colors font-semibold">
-                        Generate & Download CSV
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-
     <!-- Batch Password Reset Modal (Super Admin Only) -->
     <div id="batchResetModalOverlay" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4 hidden">
         <div class="bg-gray-800 p-6 rounded-lg shadow-2xl max-w-xs sm:max-w-md w-full">
-            <h2 class="text-xl sm:text-2xl font-bold text-red-400 mb-4">Batch Password Reset </h2>
+            <h2 class="text-xl sm:text-2xl font-bold text-red-400 mb-4">Batch Password Reset </h2>
             <p class="text-gray-300 mb-4 text-sm sm:text-base">
                 You are about to reset the password for <span id="selectedUserCount" class="font-bold text-red-400">0</span> user(s).
             </p>
@@ -182,7 +154,7 @@
     <!-- Edit Raffle Sale Modal (Super Admin Only) -->
     <div id="editSaleModalOverlay" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4 hidden">
         <div class="bg-gray-800 p-6 rounded-lg shadow-2xl max-w-xs sm:max-w-md w-full">
-            <h2 class="text-xl sm:text-2xl font-bold text-white mb-4">Edit Raffle Sale Entry </h2>
+            <h2 class="text-xl sm:text-2xl font-bold text-white mb-4">Edit Raffle Sale Entry </h2>
             <form id="editSaleForm" class="space-y-4">
                 <input type="hidden" id="edit-sale-id">
                 <div>
@@ -283,12 +255,13 @@
                             <th class="w-12 text-center">
                                 <input type="checkbox" id="selectAllRolex" class="rounded text-purple-400 focus:ring-purple-400 bg-gray-700 border-gray-600">
                             </th>
+                            <th>Ticket #</th>
                             <th>Date</th>
                             <th>Full Name</th>
                             <th>Phone/Email</th> <!-- Updated Header -->
                             <th>Status</th>
-                            <th class="text-right">Amount Paid</th>
-                            <th>Referrer</th>
+                            <th class="sort-header text-right" data-table="rolex" data-sort-key="amountPaid">Amount Paid <span class="sort-icon ml-1"></span></th>
+                            <th class="sort-header" data-table="rolex" data-sort-key="referrerRefId">Referrer <span class="sort-icon ml-1"></span></th>
                         </tr>
                     </thead>
                     <tbody id="rolexAssignmentTableBody">
@@ -328,18 +301,12 @@
         
         <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b border-gray-700 pb-4">
             <h1 class="text-2xl sm:text-3xl font-bold text-white mb-2 md:mb-0">
-                Admin Dashboard 
+                Admin Dashboard 
                 <span id="userRoleDisplay" class="text-base font-normal text-yellow-400"></span>
             </h1>
             <!-- Added flex-wrap and adjusted spacing for smaller screens -->
             <div class="flex flex-wrap items-center gap-2 mt-2 md:mt-0">
-                <!-- EXPORT REFERRAL LINKS BUTTON -->
-                <button id="exportLinksButton" class="flex items-center px-3 py-2 text-sm bg-yellow-500 text-black font-semibold rounded-lg shadow-md hover:bg-yellow-600 transition-colors hidden" title="Export referral links for all referrers">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.672A4.5 4.5 0 0115 12a4.5 4.5 0 01-1.802 3.328M12 21a9 9 0 100-18 9 9 0 000 18zM12 9a3 3 0 110 6 3 3 0 010-6z"/></svg>
-                    <span class="hidden sm:inline">Export Links</span>
-                    <span class="inline sm:hidden">Links</span>
-                </button>
-                <!-- EXPORT DATA BUTTON (Triggers new confirmation modal) -->
+                <!-- EXPORT BUTTON (Triggers new modal) -->
                 <button id="exportDataButton" class="flex items-center px-3 py-2 text-sm bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 transition-colors hidden" title="Export current table view to CSV">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                     <span class="hidden sm:inline">Export CSV</span>
@@ -364,11 +331,11 @@
         <div id="referrerOverview" class="dashboard-card p-4 sm:p-6 mb-6 hidden">
             <!-- New Referral Link Section -->
             <div id="referrerLinkContainer" class="mb-4">
-                <p class="text-sm font-medium text-gray-400 mb-1">Your Referral Link (Homepage):</p>
+                <p class="text-sm font-medium text-gray-400 mb-1">Your Referral Link:</p>
                 <div class="flex items-center bg-gray-700 p-2 rounded-lg border border-gray-600">
                     <span id="referralLink" class="text-xs sm:text-base font-mono text-blue-400 truncate mr-3 select-all"></span>
                     <button id="copyLinkButton" class="ml-auto p-1 text-gray-400 hover:text-blue-500 transition-colors" title="Copy Link">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M7.75 3.75a.75.75 0 0 1 1.5 0v3.5h3.5a.75.75 0 0 1 0 1.5h-3.5v3.5a.75.75 0 0 1-1.5 0v-3.5h-3.5a.75.75 0 0 1 0-1.5h3.5v-3.5Z" clip-rule="evenodd" /></svg>
+                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M7.75 3.75a.75.75 0 0 1 1.5 0v3.5h3.5a.75.75 0 0 1 0 1.5h-3.5v3.5a.75.75 0 0 1-1.5 0v-3.5h-3.5a.75.75 0 0 1 0-1.5h3.5v-3.5Z" clip-rule="evenodd" /></svg>
                     </button>
                 </div>
             </div>
@@ -1068,8 +1035,7 @@
                 const raffleTab = document.querySelector('[data-tab="raffle"]');
                 const addManualSaleButton = document.getElementById('addManualSaleButton');
                 const overviewCard = document.getElementById('referrerOverview');
-                const exportDataButton = document.getElementById('exportDataButton');
-                const exportLinksButton = document.getElementById('exportLinksButton');
+                const exportButton = document.getElementById('exportDataButton');
                 const raffleFilterControls = document.getElementById('raffleFilterControls');
 
                 // --- Access Control Logic ---
@@ -1082,8 +1048,7 @@
                 usersTab.classList.add('hidden'); 
                 addManualSaleButton.classList.add('hidden');
                 overviewCard.classList.add('hidden');
-                exportDataButton.classList.add('hidden');
-                exportLinksButton.classList.add('hidden'); // NEW: Links button hidden by default
+                exportButton.classList.add('hidden');
                 raffleTab.classList.add('hidden'); 
 
                 
@@ -1094,13 +1059,10 @@
                     toolsTab.classList.remove('hidden');
                     rolexTab.classList.remove('hidden'); 
                     usersTab.classList.remove('hidden'); 
-                    raffleTab.classList.remove('hidden'); 
-                    
                     addManualSaleButton.classList.remove('hidden');
-                    exportDataButton.classList.remove('hidden');
-                    exportLinksButton.classList.remove('hidden'); // NEW: Show Links button for SA
+                    exportButton.classList.remove('hidden');
                     overviewCard.classList.remove('hidden');
-                    
+                    raffleTab.classList.remove('hidden'); 
                     raffleFilterControls.classList.remove('hidden'); // SA uses the filter control
                     currentTab = currentTab || 'referrers'; 
                     await fetchAllUsers(); // Fetch users list for SA
@@ -1110,7 +1072,7 @@
                     overviewCard.classList.remove('hidden');
                     raffleTab.classList.remove('hidden'); 
                     raffleFilterControls.classList.add('hidden'); // Hide filter dropdown for non-SA Referrers
-                    activeRefIdFilter = null; // Clear manual filter if automatic filter is active
+                    activeRefIdFilter = null; // Ensure no lingering SA filter
                     currentTab = currentTab || 'raffle';
                     
                 } else if (isLoggedInAdmin) { 
@@ -1244,7 +1206,7 @@
             
             // Check if all displayed users are selected to tick the selectAll box
             const allDisplayedSelected = filteredAuthUsers.length > 0 && 
-                                            filteredAuthUsers.every(u => selectedUserUids.has(u.uid));
+                                             filteredAuthUsers.every(u => selectedUserUids.has(u.uid));
             if (allDisplayedSelected) {
                 selectAllCheckbox.checked = true;
             }
@@ -1300,8 +1262,8 @@
 
             const selectAllCheckbox = document.getElementById('selectAllUsers');
             const allDisplayedSelected = filteredAuthUsers.length > 0 && 
-                                            filteredAuthUsers.every(u => selectedUserUids.has(u.uid));
-                                            
+                                             filteredAuthUsers.every(u => selectedUserUids.has(u.uid));
+                                             
             if (allDisplayedSelected) {
                 selectAllCheckbox.checked = true;
             } else {
@@ -1392,8 +1354,8 @@
             
             // Only Super Admins see this table content
             if (!isSuperAdmin) {
-                tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-gray-400">Permission Denied. Only Super Admins can view all referrers.</td></tr>';
-                return;
+                 tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-gray-400">Permission Denied. Only Super Admins can view all referrers.</td></tr>';
+                 return;
             }
 
             const sortedReferrers = filterReferrers(referrers);
@@ -1413,11 +1375,11 @@
                 if (isSuperAdmin) {
                     // Update: Clicking the name now applies the combined filter and shows sales.
                     nameCellContent = `<span 
-                                            class="text-white font-semibold cursor-pointer hover:underline" 
-                                            data-action="view-referrer-sales" 
-                                            data-refid="${r.refId}" 
-                                            data-refname="${r.name}"
-                                            >${r.name}</span>`;
+                                        class="text-white font-semibold cursor-pointer hover:underline" 
+                                        data-action="view-referrer-sales" 
+                                        data-refid="${r.refId}" 
+                                        data-refname="${r.name}"
+                                        >${r.name}</span>`;
                     
                     // Check if a corresponding Firebase Auth User exists (optional, but good practice)
                     const authUser = allAuthUsers.find(u => u.refId === r.refId);
@@ -1425,23 +1387,23 @@
                     if (authUser && !authUser.isSuperAdmin && authUser.uid !== auth.currentUser?.uid) {
                         upgradeButton = `
                             <button class="px-2 py-1 text-xs bg-red-500 text-white font-semibold rounded-lg shadow-md hover:bg-red-600 transition-colors mb-1"
-                                            data-action="promote-sa"
-                                            data-uid="${authUser.uid}"
-                                            data-refid="${r.refId}"
-                                            data-refname="${r.name}">Promote to SA</button>
+                                         data-action="promote-sa"
+                                         data-uid="${authUser.uid}"
+                                         data-refid="${r.refId}"
+                                         data-refname="${r.name}">Promote to SA</button>
                         `;
                     }
                     
                     actionCellContent = `
                         ${upgradeButton}
                         <button class="px-2 py-1 text-xs bg-purple-500 text-white font-semibold rounded-lg shadow-md hover:bg-purple-600 transition-colors mb-1"
-                                            data-action="assign-rolex-tickets"
-                                            data-refid="${r.refId}"
-                                            data-refname="${r.name}">Assign Spin</button>
+                                         data-action="assign-rolex-tickets"
+                                         data-refid="${r.refId}"
+                                         data-refname="${r.name}">Assign Spin</button>
                         <button class="px-2 py-1 text-xs bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 transition-colors"
-                                            data-action="assign-raffle-tickets"
-                                            data-refid="${r.refId}"
-                                            data-refname="${r.name}">Assign Raffle</button>
+                                         data-action="assign-raffle-tickets"
+                                         data-refid="${r.refId}"
+                                         data-refname="${r.name}">Assign Raffle</button>
                     `;
                 }
 
@@ -1984,7 +1946,7 @@
 
                 // Apply active referrer filter if it exists (only for sales tables)
                 if (activeRefIdFilter && (currentTab === 'raffle' || currentTab === 'rolex')) {
-                    filtered = filtered.filter(e => e.referrerRefId === activeRefIdFilter);
+                     filtered = filtered.filter(e => e.referrerRefId === activeRefIdFilter);
                 }
                 
                 // Apply search filter (for referrer and users tabs)
@@ -2098,56 +2060,6 @@
             openExportConfirmationModal();
         };
 
-        // --- Export Referral Links Logic (NEW FEATURE) ---
-        
-        const openExportLinksModal = () => {
-            if (!isSuperAdmin) {
-                 showCustomPopup('Permission Denied', 'Only Super Admins can export referral links.');
-                 return;
-            }
-            if (dashboardData.referrers.length === 0) {
-                showCustomPopup('No Referrers', 'Cannot export links; no referrer data is currently loaded.');
-                return;
-            }
-            document.getElementById('exportLinksModalOverlay').classList.remove('hidden');
-            document.getElementById('exportLinksForm').reset();
-        };
-
-        const closeExportLinksModal = () => {
-            document.getElementById('exportLinksModalOverlay').classList.add('hidden');
-        };
-
-        const generateReferralLinkCSV = (e) => {
-            e.preventDefault();
-            closeExportLinksModal();
-            showGlobalLoading("Generating referral links...");
-
-            try {
-                const selectElement = document.getElementById('export-page-select');
-                const selectedOption = selectElement.options[selectElement.selectedIndex];
-                const pagePath = selectedOption.value; // e.g., /rolex-raffle/
-                const fileNamePrefix = selectedOption.dataset.filename; // e.g., RolexRaffle
-
-                const baseDomain = "https://ydeseniors.com"; // Assumed base domain for sharing
-
-                const dataToExport = dashboardData.referrers.map(r => ({
-                    Name: r.name,
-                    Ref_ID: r.refId,
-                    Link: `${baseDomain}${pagePath}?ref=${r.refId}`
-                }));
-
-                const filename = `${fileNamePrefix}_Referral_Links_${new Date().toISOString().slice(0, 10)}.csv`;
-                
-                downloadCSV(dataToExport, filename);
-
-            } catch (error) {
-                console.error("Link Export Failed:", error);
-                showCustomPopup('Link Export Failed', `An unexpected error occurred: ${error.message}`);
-            } finally {
-                hideGlobalLoading();
-            }
-        };
-
 
         // --- Other Modal and Form Handlers ---
 
@@ -2252,7 +2164,7 @@
             
             // Recheck state to ensure correct select-all state
             const allDisplayedSelected = filteredRaffleSales.length > 0 && 
-                                            filteredRaffleSales.every(s => selectedRaffleSaleIds.has(s.id));
+                                             filteredRaffleSales.every(s => selectedRaffleSaleIds.has(s.id));
             selectAllCheckbox.checked = allDisplayedSelected;
             
             if (filteredRaffleSales.length === 0) {
@@ -2322,8 +2234,8 @@
             
             const selectAllCheckbox = document.getElementById('selectAllUnassigned');
             const allDisplayedSelected = filteredRaffleSales.length > 0 && 
-                                            filteredRaffleSales.every(s => selectedRaffleSaleIds.has(s.id));
-                                            
+                                             filteredRaffleSales.every(s => selectedRaffleSaleIds.has(s.id));
+                                             
             if (allDisplayedSelected) {
                 selectAllCheckbox.checked = true;
             } else {
@@ -2429,7 +2341,7 @@
             
             // Recheck state to ensure correct select-all state
             const allDisplayedSelected = filteredRolexSales.length > 0 && 
-                                            filteredRolexSales.every(s => selectedRolexSaleIds.has(s.id));
+                                             filteredRolexSales.every(s => selectedRolexSaleIds.has(s.id));
             selectAllCheckbox.checked = allDisplayedSelected;
 
             if (filteredRolexSales.length === 0) {
@@ -2502,8 +2414,8 @@
             
             const selectAllCheckbox = document.getElementById('selectAllRolex');
             const allDisplayedSelected = filteredRolexSales.length > 0 && 
-                                            filteredRolexSales.every(s => selectedRolexSaleIds.has(s.id));
-                                            
+                                             filteredRolexSales.every(s => selectedRolexSaleIds.has(s.id));
+                                             
             if (allDisplayedSelected) {
                 selectAllCheckbox.checked = true;
             } else {
@@ -2763,11 +2675,6 @@
                 document.getElementById('closeExportConfirmationModal').addEventListener('click', closeExportConfirmationModal);
                 document.getElementById('exportAllRowsButton').addEventListener('click', () => performExport('all'));
                 document.getElementById('exportFilteredRowsButton').addEventListener('click', () => performExport('filtered'));
-                
-                // NEW EXPORT LINKS LISTENERS
-                document.getElementById('exportLinksButton').addEventListener('click', openExportLinksModal);
-                document.getElementById('closeExportLinksModal').addEventListener('click', closeExportLinksModal);
-                document.getElementById('exportLinksForm').addEventListener('submit', generateReferralLinkCSV);
                 
                 // NEW: Refresh Data Button
                 document.getElementById('refreshDataButton').addEventListener('click', handleRefreshClick);

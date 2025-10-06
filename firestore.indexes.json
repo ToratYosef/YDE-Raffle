@@ -7,26 +7,26 @@
         {"fieldPath": "status", "order": "ASCENDING"},
         {"fieldPath": "timestamp", "order": "ASCENDING"}
       ],
-      "description": "Required for scheduled/manual cleanup (status == reserved AND timestamp < X)"
+      "description": "Legacy: Cleanup of old 1-per-document reserved tickets (status == reserved AND timestamp < X)"
     },
     {
-      "collectionGroup": "rolex_tickets",
+      "collectionGroup": "rolex_entries",
       "queryScope": "COLLECTION",
       "fields": [
         {"fieldPath": "status", "order": "ASCENDING"},
         {"fieldPath": "timestamp", "order": "DESCENDING"}
       ],
-      "description": "Required for General/Super Admin Rolex Dashboard ('status' IN ['paid', 'claimed'] ORDER BY 'timestamp' DESC)"
+      "description": "NEW: Required for General/Super Admin Rolex Dashboard ('status' == 'paid' ORDER BY 'timestamp' DESC)"
     },
     {
-      "collectionGroup": "rolex_tickets",
+      "collectionGroup": "rolex_entries",
       "queryScope": "COLLECTION",
       "fields": [
-        {"fieldPath": "referrerRefId", "order": "ASCENDING"},
+        {"fieldPath": "referrerUid", "order": "ASCENDING"},
         {"fieldPath": "status", "order": "ASCENDING"},
         {"fieldPath": "timestamp", "order": "DESCENDING"}
       ],
-      "description": "Required for Referrer Rolex Dashboard (filter by 'referrerRefId', status IN, and ORDER BY 'timestamp' DESC)"
+      "description": "NEW: Required for Referrer Rolex Dashboard (filter by 'referrerUid', status, and ORDER BY 'timestamp' DESC)"
     },
     {
       "collectionGroup": "splitThePotTickets",

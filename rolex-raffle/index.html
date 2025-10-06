@@ -83,6 +83,7 @@
             line-height: 1; 
             font-family: 'Bebas Neue', sans-serif;
             text-align: center;
+            /* Adjust vertical alignment slightly */
             transform: translateY(10%); 
         }
         @media (min-width: 768px) {
@@ -91,13 +92,13 @@
             }
         }
 
-        /* Checkbox Styling (Updated to look more like the screenshot) */
+        /* Checkbox Styling */
         #cover-fee-checkbox {
             appearance: none;
             -webkit-appearance: none;
             cursor: pointer;
             border-radius: 0.25rem;
-            border: 2px solid #a3a3a3; /* Light gray border for better contrast */
+            border: 2px solid #a3a3a3; 
             background-color: transparent;
             transition: all 0.2s;
         }
@@ -217,7 +218,7 @@
                     Win a Rolex Sky-Dweller or $26,000 Cash!
                 </h1>
                 <p class="text-base sm:text-lg md:text-xl text-gray-300 mb-8">
-                   Win a prestigious Rolex Sky-Dweller or $26,000 in Cash!
+                    Win a prestigious Rolex Sky-Dweller or $26,000 in Cash!
                 </p>
 
                 <!-- Prize Display Section (Smaller, clickable) -->
@@ -235,7 +236,7 @@
                     </div>
                 </div>
                 
-                <!-- Payment Form Section (UPDATED FOR NEW STYLE) -->
+                <!-- Payment Form Section (UPDATED STYLING FROM SECOND FILE) -->
                 <div class="relative-container bg-[#2d3340] p-6 rounded-2xl shadow-2xl max-w-lg mx-auto mb-12 border border-slate-700">
                     <div id="initial-form" class="space-y-4" autocomplete="off" novalidate>
                         <!-- Title -->
@@ -243,45 +244,41 @@
 
                         <!-- Full Name -->
                         <div id="raffle-name-container">
-                            <!-- Input Styling updated to match screenshot -->
                             <input type="text" id="raffle-name" name="name" placeholder="Full Name" 
-                                class="w-full py-3 px-4 rounded-xl bg-[#495163] text-white placeholder-gray-300 border-none focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300" required>
+                                class="w-full py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 border-none focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300" required>
                         </div>
                         
                         <!-- Email Address -->
                         <div id="raffle-email-container">
-                            <!-- Input Styling updated to match screenshot -->
                             <input type="email" id="raffle-email" name="email" placeholder="Email Address" 
-                                class="w-full py-3 px-4 rounded-xl bg-[#495163] text-white placeholder-gray-300 border-none focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300" required>
+                                class="w-full py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 border-none focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300" required>
                         </div>
                         
                         <!-- Phone Number -->
                         <div id="raffle-phone-container">
-                            <!-- Input Styling updated to match screenshot -->
                             <input type="tel" id="raffle-phone" name="phone" placeholder="Phone Number" 
-                                class="w-full py-3 px-4 rounded-xl bg-[#495163] text-white placeholder-gray-300 border-none focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300" required>
+                                class="w-full py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 border-none focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300" required>
                         </div>
                         
-                        <!-- Ticket Quantity Input with +/- Buttons (UPDATED STYLING) -->
+                        <!-- Ticket Quantity Input with +/- Buttons (FIXED SIZING) -->
                         <div id="raffle-controls-container" class="flex items-center justify-between pt-4">
                             <label class="text-gray-300 font-semibold text-lg flex-shrink-0 uppercase">Tickets:</label>
                             
-                            <!-- Quantity Controls - COMBINED INTO A SINGLE UNIT -->
-                            <!-- Use flex-items-stretch and h-12 to align all elements perfectly -->
-                            <div class="flex items-stretch h-12 w-40"> 
-                                <!-- Minus Button - UPDATED to yellow fill -->
+                            <!-- Quantity Controls - FIXED to match desired style -->
+                            <div class="flex items-center justify-center gap-4"> 
+                                <!-- Minus Button - Now rounded-full and larger (w-12 h-12) -->
                                 <button id="decrement-ticket" type="button" 
-                                    class="w-10 h-full bg-yellow-400 text-black rounded-l-xl items-center justify-center font-bold text-2xl hover:bg-yellow-500 transition-colors flex-shrink-0 flex">
+                                    class="flex w-12 h-12 bg-yellow-400 text-black rounded-full items-center justify-center font-bold text-2xl hover:bg-yellow-500 transition-colors flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed">
                                     &minus;
                                 </button>
                                 
-                                <!-- Input Field - uses the dark input color, no rounded corners, centered text -->
+                                <!-- Input Field - Now rounded-lg and narrower (w-20) -->
                                 <input type="number" id="ticket-quantity" name="quantity" value="1" min="1" max="999999" 
-                                    class="flex-grow h-full text-center p-0 bg-[#495163] text-white focus:outline-none focus:ring-0 transition-all duration-300 text-xl font-bold" required>
+                                    class="w-20 h-12 text-center py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300 text-xl font-bold" required>
                                 
-                                <!-- Plus Button - uses yellow background and rounded-r-xl -->
+                                <!-- Plus Button - Now rounded-full and larger (w-12 h-12) -->
                                 <button id="increment-ticket" type="button" 
-                                    class="w-10 h-full bg-yellow-400 text-black rounded-r-xl items-center justify-center font-bold text-2xl hover:bg-yellow-500 transition-colors flex-shrink-0 flex">
+                                    class="flex w-12 h-12 bg-yellow-400 text-black rounded-full items-center justify-center font-bold text-2xl hover:bg-yellow-500 transition-colors flex-shrink-0">
                                     +
                                 </button>
                             </div>
@@ -289,7 +286,7 @@
                         
                         <!-- Processing Fee Checkbox -->
                         <div id="raffle-fee-checkbox-container" class="flex items-center pt-2">
-                            <input type="checkbox" id="cover-fee-checkbox" class="h-4 w-4 focus:ring-yellow-500" unchecked>
+                            <input type="checkbox" id="cover-fee-checkbox" class="h-4 w-4 focus:ring-yellow-500" checked>
                             <label for="cover-fee-checkbox" class="ml-3 text-sm text-gray-300">I would like to cover the processing fees</label>
                         </div>
 
@@ -325,10 +322,10 @@
                     <h2 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4" id="ticketsSoldTitle">TICKETS SOLD: 0</h2>
                     <!-- Scoreboard Container (4 Digits) -->
                     <div id="ticketsSoldDisplay" class="flex justify-center space-x-2 md:space-x-3 lg:space-x-4">
-                        <div id="digit-thousands" class="digit-box"></div>
-                        <div id="digit-hundreds" class="digit-box"></div>
-                        <div id="digit-tens" class="digit-box"></div>
-                        <div id="digit-ones" class="digit-box"></div>
+                        <div id="digit-thousands" class="digit-box"><span class="digit-text">0</span></div>
+                        <div id="digit-hundreds" class="digit-box"><span class="digit-text">0</span></div>
+                        <div id="digit-tens" class="digit-box"><span class="digit-text">0</span></div>
+                        <div id="digit-ones" class="digit-box"><span class="digit-text">0</span></div>
                     </div>
                 </div>
                 <!-- End Live Counter -->
@@ -369,15 +366,39 @@
         </div>
     </footer>
 
-    <!-- Firebase and Stripe Scripts -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
+    <!-- Stripe Script -->
     <script src="https://js.stripe.com/v3/"></script>
+    
+    <!-- Firebase Module Scripts (Required for Canvas Environment) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, onSnapshot, collection, query, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
-    <script>
-        // --- Referrer Helper Function (KEPT) ---
+        // --- Firebase Initialization (Using Placeholder/Hardcoded Values) ---
+        // NOTE: This uses placeholder values. If running in a live Canvas environment, 
+        // this connection will need valid keys and rules configured in the Firebase project.
+        const appId = 'yde-rolex-raffle';
+        const initialAuthToken = null;
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAT539nr_s2OxHPTAmkxwMpaWt-FiDTgQs", // Placeholder Key
+            authDomain: "yderaffle.firebaseapp.com",
+            projectId: "yderaffle",
+            storageBucket: "yderaffle.firebasestorage.app",
+            messagingSenderId: "967768309102",
+            appId: "1:967768309102:web:c89d61a747e8cb941f557f"
+        };
+        
+        // Initialize Firebase instances
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const functions = getFunctions(app);
+        // --- End Firebase Initialization ---
+        
+        // --- Referrer Helper Function ---
         function getQueryParam(param) {
             const urlParams = new URLSearchParams(window.location.search);
             return urlParams.get(param);
@@ -385,9 +406,7 @@
 
         function updateNavLinks(refId) {
             if (!refId) return;
-
             const navLinks = document.querySelectorAll('header a');
-
             navLinks.forEach(link => {
                 const currentHref = link.getAttribute('href');
                 if (currentHref && currentHref.startsWith('/') && !currentHref.includes('ref=')) {
@@ -396,7 +415,7 @@
                 }
             });
         }
-        // --- END Referrer Helper Functions ---
+        // --- End Referrer Helper Functions ---
 
         // --- Utility Functions ---
         function formatCurrency(amount) {
@@ -408,7 +427,7 @@
         }
         // --- End Utility Functions ---
 
-        // --- Modal Functions (NEW/UPDATED) ---
+        // --- Modal Functions ---
         function showPrizeModal() {
             const modal = document.getElementById('prizeModal');
             modal.classList.remove('hidden');
@@ -428,7 +447,6 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             // --- UI Elements ---
-            const initialForm = document.getElementById('initial-form');
             const raffleFormTitle = document.getElementById('raffle-form-title');
             const raffleProceedToPaymentButton = document.getElementById('raffle-proceed-to-payment');
             const raffleStripePayButton = document.getElementById('raffle-stripe-pay-button');
@@ -455,7 +473,7 @@
             const incrementTicketButton = document.getElementById('increment-ticket');
             const coverFeeCheckbox = document.getElementById('cover-fee-checkbox');
 
-            // Flip Clock Digit IDs (updated for 4 digits)
+            // Flip Clock Digit IDs
             const digitThousandsId = 'digit-thousands';
             const digitHundredsId = 'digit-hundreds';
             const digitTensId = 'digit-tens';
@@ -473,17 +491,19 @@
             const menuToggle = document.getElementById('menu-toggle');
             const mainMenu = document.getElementById('main-menu');
 
-            // --- Global State & Constants (UPDATED - MAX_TICKETS REMOVED) ---
+            // --- Global State & Constants ---
             const TICKET_PRICE = 150;
-            // Using Stripe's US rates for calculation: 2.9% + $0.30
             const FEE_PERCENTAGE = 0.029;
             const FEE_FLAT = 0.30; 
             const MIN_TICKETS = 1;
-            const DISPLAY_MAX_SCORE = 9999; // Visual maximum for the 4-digit display
+            const DISPLAY_MAX_SCORE = 9999; 
             let elements;
-            let currentTicketQuantity = 1;
+            let currentTicketQuantity = MIN_TICKETS;
             let currentTotalAmount = TICKET_PRICE;
             let clientSecret;
+
+            // Set default checkbox state as checked
+            coverFeeCheckbox.checked = true;
 
             // --- Referrer Logic Initialization ---
             const referrerRefId = getQueryParam('ref');
@@ -493,24 +513,8 @@
             }
             // --- END Referrer Logic Initialization ---
 
-            // --- Stripe & Firebase Initialization ---
+            // --- Stripe Initialization ---
             const stripe = Stripe('pk_live_51JFiZnKhiMP0wjNsMlHMg2o7Eo6xaWczALlQ0eu0GVpnWel1Pgz1AbUVXUJGs2pFaavhaln5jKpHSrRhxrBppBDq00Hijyiu4V');
-
-            // NOTE: Placeholder Firebase Config
-            const firebaseConfig = {
-              apiKey: "AIzaSyAT539nr_s2OxHPTAmkxwMpaWt-FiDTgQs",
-              authDomain: "yderaffle.firebaseapp.com",
-              projectId: "yderaffle",
-              storageBucket: "yderaffle.firebasestorage.app",
-              messagingSenderId: "967768309102",
-              appId: "1:967768309102:web:c89d61a747e8cb941f557f"
-            };
-
-            const app = firebase.initializeApp(firebaseConfig);
-            const db = firebase.firestore();
-            const auth = firebase.auth();
-            const functions = firebase.functions();
-            firebase.firestore.setLogLevel('debug'); // Added for Firebase logging
 
             // --- Helper Functions ---
             function showCustomPopup(title, message) {
@@ -527,7 +531,8 @@
 
             function setFormInputsDisabled(disabled) {
                 formInputs.forEach(input => input.disabled = disabled);
-                decrementTicketButton.disabled = disabled;
+                // Ensure decrement button is re-enabled but only if quantity is > MIN_TICKETS
+                decrementTicketButton.disabled = disabled || (currentTicketQuantity <= MIN_TICKETS);
                 incrementTicketButton.disabled = disabled;
                 coverFeeCheckbox.disabled = disabled;
             }
@@ -542,18 +547,18 @@
 
             function hideGlobalLoadingOverlay() {
                 globalLoadingOverlay.classList.add('hidden');
-                // Don't re-enable form here, let the transition logic handle it
             }
 
             function toggleInitialFormVisibility(hide) {
                 const action = hide ? 'add' : 'remove';
                 raffleFormTitle.textContent = hide ? 'CONFIRM PAYMENT' : 'BUY YOUR TICKETS!';
+                
                 raffleNameContainer.classList[action]('hidden');
                 raffleEmailContainer.classList[action]('hidden');
                 rafflePhoneContainer.classList[action]('hidden');
                 raffleControlsContainer.classList[action]('hidden');
                 raffleFeeCheckboxContainer.classList[action]('hidden');
-                // Adjust vertical padding/margin for total display when showing/hiding other elements
+
                 if (hide) {
                     raffleTotalDisplayContainer.classList.remove('pt-4', 'mb-4');
                     raffleTotalDisplayContainer.classList.add('mb-0');
@@ -570,27 +575,26 @@
                 } else {
                     raffleStripePaymentElement.classList.add('hidden');
                     raffleStripePayButton.classList.add('hidden');
-                    setFormInputsDisabled(false); // Re-enable if we show the initial form again
+                    setFormInputsDisabled(false); 
                 }
             }
             
-            // New function to handle total calculation including fee
+            // Function to handle total calculation including fee
             function calculateTotal() {
                 let quantity = parseInt(ticketQuantityInput.value, 10);
                 
-                // Enforce minimum, rely on HTML max for upper limit (999999)
+                // Enforce minimum and maximum limits
                 if (isNaN(quantity) || quantity < MIN_TICKETS) quantity = MIN_TICKETS;
                 if (quantity > 999999) quantity = 999999;
+                
                 ticketQuantityInput.value = quantity; 
-                
                 currentTicketQuantity = quantity;
+
                 let subtotal = currentTicketQuantity * TICKET_PRICE;
-                
                 let total = subtotal;
                 
                 if (coverFeeCheckbox.checked) {
-                    // Formula to ensure that the fee covers the full Stripe charge
-                    // Charged Amount = (Base Amount + Flat Fee) / (1 - Percentage Fee)
+                    // Formula to cover the fee: (Subtotal + Flat Fee) / (1 - Percentage Fee)
                     total = (subtotal + FEE_FLAT) / (1 - FEE_PERCENTAGE);
                 }
 
@@ -601,17 +605,14 @@
                 decrementTicketButton.disabled = quantity <= MIN_TICKETS;
             }
 
-            // --- SCOREBOARD LOGIC (Updated to show TICKETS SOLD without max) ---
+            // --- SCOREBOARD LOGIC ---
             function updateScoreboardDisplay(ticketsSold) {
-                // Determine display count (capped at DISPLAY_MAX_SCORE for the 4-digit display)
                 const displayCount = Math.min(DISPLAY_MAX_SCORE, ticketsSold);
                 const countString = displayCount.toString().padStart(4, '0');
                 const digits = countString.split('');
 
-                // Update the title: removed the / max part
                 ticketsSoldTitle.textContent = `TICKETS SOLD: ${ticketsSold.toLocaleString()}`;
 
-                // Update the text content of the four digit boxes
                 document.getElementById(digitThousandsId).innerHTML = `<span class="digit-text">${digits[0]}</span>`;
                 document.getElementById(digitHundredsId).innerHTML = `<span class="digit-text">${digits[1]}</span>`;
                 document.getElementById(digitTensId).innerHTML = `<span class="digit-text">${digits[2]}</span>`;
@@ -619,7 +620,6 @@
             }
             
             function initializeScoreboard() {
-                // Initialize with 0 tickets sold
                 updateScoreboardDisplay(0);
             }
             // --- END SCOREBOARD LOGIC ---
@@ -630,15 +630,12 @@
                 const email = raffleEmailInput.value.trim();
                 const phone = rafflePhoneInput.value.trim();
                 
-                // Recalculate total immediately before validation
                 calculateTotal(); 
 
                 const quantity = currentTicketQuantity;
-
                 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                 const phoneDigits = phone.replace(/\D/g, '');
 
-                // Validation only checks for minimum now
                 if (isNaN(quantity) || quantity < MIN_TICKETS) { showCustomPopup('Invalid Quantity', `Please enter a valid number of tickets (at least ${MIN_TICKETS}).`); return false; }
                 if (!name) { showCustomPopup('Missing Field', 'Please enter your full name.'); return false; }
                 if (!email) { showCustomPopup('Missing Field', 'Please enter your email address.'); return false; }
@@ -656,7 +653,7 @@
                 mainMenu.classList.toggle('hidden'); 
             });
 
-            // Add Event Listeners for quantity control
+            // FIXED: Ensure decrement/increment directly update the input value and calculate total
             decrementTicketButton.addEventListener('click', () => {
                 let quantity = parseInt(ticketQuantityInput.value, 10);
                 if (quantity > MIN_TICKETS) {
@@ -671,10 +668,7 @@
                 calculateTotal();
             });
 
-            // Update total amount display whenever quantity changes
             ticketQuantityInput.addEventListener('input', calculateTotal);
-
-            // Add listener for fee checkbox
             coverFeeCheckbox.addEventListener('change', calculateTotal);
 
 
@@ -686,21 +680,19 @@
                 showGlobalLoadingOverlay("Setting up secure payment...", true);
                 
                 try {
-                    // This function is assumed to be defined in Firebase Cloud Functions
-                    const createRolexPaymentIntentCallable = functions.httpsCallable('createRolexPaymentIntent');
+                    const createRolexPaymentIntentCallable = httpsCallable(functions, 'createRolexPaymentIntent');
                     
                     const requestData = {
                         name: raffleNameInput.value.trim(),
                         email: raffleEmailInput.value.trim(),
                         phone: rafflePhoneInput.value.trim(),
-                        quantity: currentTicketQuantity, // Pass quantity
-                        amount: currentTotalAmount,      // Pass fixed total amount
-                        referral: referrerRefId || null // Pass the referral ID
+                        quantity: currentTicketQuantity, 
+                        amount: currentTotalAmount,      
+                        referral: referrerRefId || null 
                     };
 
                     const { data } = await createRolexPaymentIntentCallable(requestData);
                     
-                    // Store client secret for confirmation later
                     clientSecret = data.clientSecret;
                     
                     // Stripe elements initialization
@@ -712,20 +704,18 @@
                     const paymentElement = elements.create('payment');
                     paymentElement.mount(rafflePaymentElementContainer);
                     
-                    // Update pay button text to reflect the actual amount
                     raffleStripePayButton.querySelector('.button-text').textContent = `Pay ${formatCurrency(currentTotalAmount)}`;
 
-                    // Hide user info form, show payment element
                     toggleInitialFormVisibility(true);
 
                     hideGlobalLoadingOverlay();
-                    setFormInputsDisabled(false); // Re-enable for Stripe fields
+                    setFormInputsDisabled(false); 
 
                 } catch (error) {
                     console.error('Error setting up payment:', error);
-                    showCustomPopup('Payment Setup Error', 'Could not set up payment. Please check your connection and try again.');
                     hideGlobalLoadingOverlay();
-                    toggleInitialFormVisibility(false); // Show initial form again
+                    toggleInitialFormVisibility(false); 
+                    showCustomPopup('Payment Setup Error', error.message || 'Could not set up payment. Please check your connection and try again.');
                 }
             });
 
@@ -734,29 +724,23 @@
 
                 showGlobalLoadingOverlay("Processing Payment...", true);
 
-                // Define the success URL with relevant parameters
                 const successRedirectUrl = `${window.location.origin}/successful/?name=${encodeURIComponent(raffleNameInput.value.trim())}&tickets=${currentTicketQuantity}&amount=${currentTotalAmount}${referrerRefId ? `&ref=${referrerRefId}` : ''}`;
 
                 const { error, paymentIntent } = await stripe.confirmPayment({
                     elements,
                     confirmParams: { 
-                        // Use the success URL directly
                         return_url: successRedirectUrl,
                     },
-                    // No need for 'if_required' as we always want to redirect on success/failure to the final page
                 });
 
                 if (error) {
-                    // This error handles payment element validation issues or general failure.
                     showGlobalLoadingOverlay("Payment Error...");
                     console.error("Stripe confirmPayment error:", error);
-                    // Hide loading overlay and show error popup
                     hideGlobalLoadingOverlay(); 
                     showCustomPopup('Payment Failed', error.message || 'Payment could not be processed due to an error. Please check your card details and try again.');
                     
                 } else if (paymentIntent && paymentIntent.status === 'succeeded') {
                     // Payment succeeded client-side (unlikely, as Stripe usually redirects, but good practice)
-                    // The return_url set above should handle the final redirect.
                     console.log("Payment succeeded client-side. Redirecting...");
                     window.location.href = successRedirectUrl;
                 } else {
@@ -765,28 +749,30 @@
                 }
             });
 
-            // --- Firebase Initialization and Real-time Listener (UPDATED TO COUNT SOLD) ---
-            auth.onAuthStateChanged(async (user) => {
+            // --- Firebase Authentication and Real-time Listener (FIXED TO USE AGGREGATE DOCUMENT) ---
+            onAuthStateChanged(auth, async (user) => {
                 if (user) {
-                    // If the user object is ready, attach the listener
-                    db.collection('rolex_tickets').onSnapshot((querySnapshot) => { 
+                    // Reading the aggregate total from the document provided by the user: /counters/rolex_totals
+                    const counterDocRef = doc(db, 'counters', 'rolex_totals');
+                    
+                    onSnapshot(counterDocRef, (docSnap) => { 
                         let totalTicketsSold = 0;
-                        querySnapshot.forEach(doc => {
-                            const ticket = doc.data();
-                            // Sum the 'quantity' field for all successfully 'paid' tickets
-                            if (ticket.status === 'paid' && ticket.quantity) {
-                                totalTicketsSold += ticket.quantity;
-                            }
-                        });
+                        if (docSnap.exists()) {
+                             const data = docSnap.data();
+                             // Assuming the aggregate document holds the total count in a field named 'totalTicketsSold'
+                             totalTicketsSold = data.totalTicketsSold || 0; 
+                             
+                             // If the aggregate field is named 'totalTickets' (a common convention), use that instead:
+                             // totalTicketsSold = data.totalTickets || 0; 
+                        }
 
-                        // Update the visual display using the simple scoreboard function (now showing tickets sold)
                         updateScoreboardDisplay(totalTicketsSold);
 
-                    }, (error) => { console.error("Error listening to tickets:", error); });
+                    }, (error) => { console.error("Error listening to total tickets:", error); });
                 } else {
                     try {
                         // Sign in anonymously if no user is signed in
-                        await auth.signInAnonymously();
+                        await signInAnonymously(auth);
                     } catch (error) {
                         console.error('Anonymous sign-in failed:', error);
                         showCustomPopup('Authentication Error', 'Could not sign you in. Please try again later.');
@@ -794,12 +780,9 @@
                 }
             });
             
-            // Initialize the scoreboard on load
+            // Initialize the scoreboard and calculation on load
             initializeScoreboard();
-            
-            // Initial calculation with the fee checkbox checked by default
             calculateTotal();
-
         });
     </script>
 </body>

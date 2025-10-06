@@ -397,9 +397,9 @@
             }, (error) => { console.error("Donations Snapshot Error:", error); });
 
 
-            // 2. Spin Wheel Tickets: /rolex_tickets/ (Filtering by status == 'paid')
+            // 2. Spin Wheel Tickets: /rolex_entries/ (Filtering by status == 'paid')
             const qSpin = query(
-                collection(dbInstance, 'rolex_tickets'),
+                collection(dbInstance, 'rolex_entries'),
                 where('status', '==', 'paid') // Filtered by 'status' field as per doc format
             );
             onSnapshot(qSpin, (snapshot) => {

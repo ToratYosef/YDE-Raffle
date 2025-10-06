@@ -102,7 +102,7 @@
     <!-- Batch Password Reset Modal (Super Admin Only) -->
     <div id="batchResetModalOverlay" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4 hidden">
         <div class="bg-gray-800 p-6 rounded-lg shadow-2xl max-w-xs sm:max-w-md w-full">
-            <h2 class="text-xl sm:text-2xl font-bold text-red-400 mb-4">Batch Password Reset </h2>
+            <h2 class="text-xl sm:text-2xl font-bold text-red-400 mb-4">Batch Password Reset </h2>
             <p class="text-gray-300 mb-4 text-sm sm:text-base">
                 You are about to reset the password for <span id="selectedUserCount" class="font-bold text-red-400">0</span> user(s).
             </p>
@@ -139,7 +139,7 @@
                     <input type="number" id="manual-tickets" placeholder="Tickets Bought" min="1" class="w-1/2 p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white" required>
                     <input type="number" id="manual-amount" placeholder="Amount Paid ($)" step="0.01" min="0.01" class="w-1/2 p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white" required>
                 </div>
-                <div id="manual-referrer-container" class="hidden">
+                <div id="manual-referrer-container">
                     <input type="text" id="manual-refId" placeholder="Referrer ID (e.g., A1B2C3)" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white">
                     <p class="text-xs text-gray-400 mt-1">Credited to this Ref ID.</p>
                 </div>
@@ -151,10 +151,39 @@
         </div>
     </div>
     
+    <!-- NEW: Manual Donation Modal (Super Admin Only) -->
+    <div id="manualDonationModalOverlay" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4 hidden">
+        <div class="bg-gray-800 p-6 rounded-lg shadow-2xl max-w-xs sm:max-w-md w-full">
+            <h2 class="text-xl sm:text-2xl font-bold text-white mb-4">Add Manual General Donation (SA Only)</h2>
+            <form id="manualDonationForm" class="space-y-4">
+                <div>
+                    <input type="text" id="donation-name" placeholder="Donor Full Name" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white" required>
+                </div>
+                <div>
+                    <input type="email" id="donation-email" placeholder="Donor Email (Optional)" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white">
+                </div>
+                <div>
+                    <input type="tel" id="donation-phone" placeholder="Donor Phone (Optional)" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white">
+                </div>
+                <div>
+                    <input type="number" id="donation-amount" placeholder="Donation Amount ($)" step="0.01" min="0.01" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white" required>
+                </div>
+                <div>
+                    <input type="text" id="donation-refId" placeholder="Referrer ID to Credit (e.g., A1B2C3)" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white">
+                    <p class="text-xs text-gray-400 mt-1">Credited to this Ref ID.</p>
+                </div>
+                <div class="pt-4 flex justify-end space-x-3">
+                    <button type="button" id="closeManualDonationModal" class="px-4 py-2 text-gray-300 bg-gray-600 rounded-lg hover:bg-gray-500 transition-colors">Cancel</button>
+                    <button type="submit" id="submitManualDonation" class="px-4 py-2 text-white bg-green-500 rounded-lg hover:bg-green-600 transition-colors font-semibold">Add Donation</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
     <!-- Edit Raffle Sale Modal (Super Admin Only) -->
     <div id="editSaleModalOverlay" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4 hidden">
         <div class="bg-gray-800 p-6 rounded-lg shadow-2xl max-w-xs sm:max-w-md w-full">
-            <h2 class="text-xl sm:text-2xl font-bold text-white mb-4">Edit Raffle Sale Entry </h2>
+            <h2 class="text-xl sm:text-2xl font-bold text-white mb-4">Edit Raffle Sale Entry </h2>
             <form id="editSaleForm" class="space-y-4">
                 <input type="hidden" id="edit-sale-id">
                 <div>
@@ -186,7 +215,73 @@
             </form>
         </div>
     </div>
+    
+    <!-- NEW: Ticket Conversion Tool Modal (Super Admin Only) -->
+    <div id="conversionToolModalOverlay" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4 hidden">
+        <div class="bg-gray-800 p-6 rounded-lg shadow-2xl max-w-lg w-full">
+            <h2 class="text-xl sm:text-2xl font-bold text-yellow-400 mb-4">Old Ticket Conversion Tool</h2>
+            <form id="conversionForm" class="space-y-4">
+                <div class="border-b border-gray-700 pb-4">
+                    <label for="conversion-search-email" class="block text-sm font-medium text-gray-300 mb-1">1. Find Old Rolex Ticket Purchase (by Email):</label>
+                    <div class="flex space-x-2">
+                        <input type="email" id="conversion-search-email" placeholder="Customer Email" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white">
+                        <button type="button" id="searchOldTicketButton" class="px-4 py-2 bg-yellow-500 text-black font-semibold rounded-lg hover:bg-yellow-600 transition-colors">Search</button>
+                    </div>
+                </div>
 
+                <div id="conversion-details-container" class="space-y-4 hidden pt-4">
+                    <h3 class="text-lg font-semibold text-white">Customer and Old Sale Details:</h3>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-sm font-medium text-gray-400">Name:</p>
+                            <p id="conversion-name" class="font-bold text-white"></p>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-400">Old Amount Paid:</p>
+                            <p id="conversion-old-amount" class="font-bold text-red-400"></p>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-400">Email:</p>
+                            <p id="conversion-email" class="text-gray-300"></p>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-400">Referrer ID:</p>
+                            <p id="conversion-refId" class="text-gray-300"></p>
+                        </div>
+                    </div>
+                    
+                    <div class="border-t border-gray-700 pt-4 space-y-4">
+                        <label for="conversion-new-tickets" class="block text-sm font-medium text-gray-300 mb-1">2. New Rolex Raffle Tickets ($150 each):</label>
+                        <input type="number" id="conversion-new-tickets" placeholder="How many new tickets?" min="1" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white" required>
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-sm font-medium text-gray-400">New Required Cost:</p>
+                                <p id="conversion-required-amount" class="font-bold text-white text-xl">\$0.00</p>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-400">Outstanding Balance Due:</p>
+                                <p id="conversion-outstanding-balance" class="font-bold text-red-500 text-xl">\$0.00</p>
+                            </div>
+                        </div>
+                        
+                        <input type="hidden" id="conversion-entry-id">
+                        <input type="hidden" id="conversion-original-amount-value">
+
+                        <div class="pt-4">
+                            <button type="submit" id="convertTicketsButton" class="w-full py-3 text-black bg-yellow-500 rounded-lg font-semibold hover:bg-yellow-600 transition-colors disabled:opacity-50" disabled>Convert & Finalize Tickets</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-4 flex justify-end">
+                    <button type="button" id="closeConversionToolModal" class="px-4 py-2 text-gray-300 bg-gray-600 rounded-lg hover:bg-gray-500 transition-colors">Close</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
     <!-- Apply Raffle Tickets Modal (Split the Pot) - Super Admin Only -->
     <div id="applyTicketsModalOverlay" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-2 sm:p-4 hidden">
         <div class="bg-gray-800 p-4 sm:p-8 rounded-lg shadow-2xl w-full max-w-lg md:max-w-4xl max-h-[95vh] overflow-y-auto">
@@ -301,7 +396,7 @@
         
         <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b border-gray-700 pb-4">
             <h1 class="text-2xl sm:text-3xl font-bold text-white mb-2 md:mb-0">
-                Admin Dashboard 
+                Admin Dashboard 
                 <span id="userRoleDisplay" class="text-base font-normal text-yellow-400"></span>
             </h1>
             <!-- Added flex-wrap and adjusted spacing for smaller screens -->
@@ -318,6 +413,13 @@
                     <span class="hidden sm:inline">Refresh Data</span>
                     <span class="inline sm:hidden">Refresh</span>
                 </button>
+                <!-- ADD MANUAL DONATION BUTTON (NEW) -->
+                <button id="addManualDonationButton" class="flex items-center px-3 py-2 text-sm bg-green-700 text-white font-semibold rounded-lg shadow-md hover:bg-green-600 transition-colors hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor"><path d="M4 12a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H4zM10 12a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2h-2zM16 12a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2h-2zM4 6a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V8a2 2 0 00-2-2H4zM10 6a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V8a2 2 0 00-2-2h-2zM16 6a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V8a2 2 0 00-2-2h-2z" /></svg>
+                    <span class="hidden sm:inline">Add Manual Donation</span>
+                    <span class="inline sm:hidden">Add Donation</span>
+                </button>
+                <!-- ADD MANUAL SALE BUTTON -->
                 <button id="addManualSaleButton" class="flex items-center px-3 py-2 text-sm bg-green-500 text-white font-semibold rounded-lg shadow-md hover:bg-green-600 transition-colors hidden">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
                     <span class="hidden sm:inline">Add Manual Sale</span>
@@ -582,6 +684,15 @@
                 <div class="dashboard-card p-6 space-y-4">
                     <h3 class="text-2xl font-bold text-white">System Tools (SA Only)</h3>
                     
+                    <!-- NEW: Conversion Tool Card -->
+                    <div class="border p-4 rounded-lg bg-yellow-900/50 border-yellow-700">
+                        <h4 class="font-semibold text-lg text-yellow-400 mb-2">Ticket Conversion Tool (Old Raffle to New Rolex)</h4>
+                        <p class="text-sm text-gray-300 mb-3">Converts old ticket purchases (based on amount paid) to the new \$150 Rolex Raffle tickets, applying the old amount as credit.</p>
+                        <button id="openConversionToolButton" class="px-4 py-2 bg-yellow-500 text-black font-semibold rounded-lg hover:bg-yellow-600 transition-colors disabled:opacity-50 text-sm">
+                            Open Conversion Tool
+                        </button>
+                    </div>
+
                     <!-- Reserved Ticket Cleanup -->
                     <div class="border p-4 rounded-lg bg-red-900/50 border-red-700">
                         <h4 class="font-semibold text-lg text-red-400 mb-2">Reserved Ticket Cleanup (Rolex Raffle)</h4>
@@ -660,7 +771,9 @@
         } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
         import { 
             getFirestore, 
-            setLogLevel 
+            setLogLevel,
+            doc,
+            onSnapshot
         } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
         import { 
             getFunctions, 
@@ -714,18 +827,19 @@
 
         // ---------------------------------------------
 
-        // Configuration and App ID (MUST be present in Canvas environment)
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        // Note: The API Key and other config details are left as placeholders for the user to insert their actual configuration.
+        // Configuration and App ID (Hardcoded for request compliance)
+        const appId = 'yde-senior-fund';
+        const initialAuthToken = null;
+        
+        // NOTE: Placeholder Firebase Config
         const firebaseConfig = {
-            apiKey: "AIzaSyAT539nr_s2OxHPTAmkxwMpaWt-FiDTgQs",
+            apiKey: "AIzaSyAT539nr_s2OxHPTAmkxwMpaWt-FiDTgQs", // Placeholder Key
             authDomain: "yderaffle.firebaseapp.com",
             projectId: "yderaffle",
             storageBucket: "yderaffle.firebasestorage.app",
             messagingSenderId: "967768309102",
             appId: "1:967768309102:web:c89d61a747e8cb941f557f"
         };
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         
         // --- Utility Functions ---
 
@@ -904,8 +1018,8 @@
             let filtered = data.filter(r => {
                 const searchLower = searchTerm.toLowerCase();
                 return r.name.toLowerCase().includes(searchLower) ||
-                       (r.refId || '').toLowerCase().includes(searchLower) ||
-                       (r.email || '').toLowerCase().includes(searchLower);
+                        (r.refId || '').toLowerCase().includes(searchLower) ||
+                        (r.email || '').toLowerCase().includes(searchLower);
             });
             return sortEntries(filtered, referrerSortConfig);
         };
@@ -914,8 +1028,8 @@
             let filtered = data.filter(u => {
                 const searchLower = userSearchTerm.toLowerCase();
                 return (u.displayName || '').toLowerCase().includes(searchLower) ||
-                       (u.email || '').toLowerCase().includes(searchLower) ||
-                       (u.uid || '').toLowerCase().includes(searchLower);
+                        (u.email || '').toLowerCase().includes(searchLower) ||
+                        (u.uid || '').toLowerCase().includes(searchLower);
             });
             return sortEntries(filtered, userSortConfig);
         };
@@ -960,9 +1074,7 @@
             data.referrers = Array.from(referrerMap.values());
             
             // FIX: Ensure data.userData gets the fully calculated/parsed metrics from the map.
-            // This is only guaranteed for SA where data.referrers is populated.
             if (currentUserRefId && referrerMap.has(currentUserRefId)) {
-                // If the map has the entry (i.e., we are SA or this referrer was explicitly loaded)
                 // Overwrite the userData with the richer object that contains combinedTotalAmount
                 data.userData = referrerMap.get(currentUserRefId);
             }
@@ -1034,6 +1146,7 @@
                 const usersTab = document.querySelector('[data-tab="users"]');
                 const raffleTab = document.querySelector('[data-tab="raffle"]');
                 const addManualSaleButton = document.getElementById('addManualSaleButton');
+                const addManualDonationButton = document.getElementById('addManualDonationButton'); // NEW
                 const overviewCard = document.getElementById('referrerOverview');
                 const exportButton = document.getElementById('exportDataButton');
                 const raffleFilterControls = document.getElementById('raffleFilterControls');
@@ -1047,6 +1160,7 @@
                 rolexTab.classList.add('hidden'); 
                 usersTab.classList.add('hidden'); 
                 addManualSaleButton.classList.add('hidden');
+                addManualDonationButton.classList.add('hidden'); // NEW
                 overviewCard.classList.add('hidden');
                 exportButton.classList.add('hidden');
                 raffleTab.classList.add('hidden'); 
@@ -1060,6 +1174,7 @@
                     rolexTab.classList.remove('hidden'); 
                     usersTab.classList.remove('hidden'); 
                     addManualSaleButton.classList.remove('hidden');
+                    addManualDonationButton.classList.remove('hidden'); // NEW
                     exportButton.classList.remove('hidden');
                     overviewCard.classList.remove('hidden');
                     raffleTab.classList.remove('hidden'); 
@@ -1375,11 +1490,11 @@
                 if (isSuperAdmin) {
                     // Update: Clicking the name now applies the combined filter and shows sales.
                     nameCellContent = `<span 
-                                        class="text-white font-semibold cursor-pointer hover:underline" 
-                                        data-action="view-referrer-sales" 
-                                        data-refid="${r.refId}" 
-                                        data-refname="${r.name}"
-                                        >${r.name}</span>`;
+                                         class="text-white font-semibold cursor-pointer hover:underline" 
+                                         data-action="view-referrer-sales" 
+                                         data-refid="${r.refId}" 
+                                         data-refname="${r.name}"
+                                         >${r.name}</span>`;
                     
                     // Check if a corresponding Firebase Auth User exists (optional, but good practice)
                     const authUser = allAuthUsers.find(u => u.refId === r.refId);
@@ -2094,7 +2209,7 @@
             }
 
             closeManualSaleModal();
-            showGlobalLoading("Adding manual entry...");
+            showGlobalLoading("Adding manual raffle entry...");
 
             try {
                 const addManualSaleCallable = httpsCallable(functions, 'addManualSale');
@@ -2108,6 +2223,55 @@
             } catch (error) {
                 console.error("Error adding manual sale:", error);
                 window.showCustomPopup('Error', `Failed to add manual sale: ${error.message}`);
+            } finally {
+                hideGlobalLoading();
+            }
+        };
+
+        // NEW: Manual Donation Logic
+        const openManualDonationModal = () => {
+            if (!isSuperAdmin) {
+                window.showCustomPopup('Permission Denied', 'Only Super Admins can add manual donations.');
+                return;
+            }
+            document.getElementById('manualDonationModalOverlay').classList.remove('hidden');
+            document.getElementById('manualDonationForm').reset();
+        };
+
+        const closeManualDonationModal = () => {
+            document.getElementById('manualDonationModalOverlay').classList.add('hidden');
+        };
+
+        const handleManualDonationSubmit = async (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('donation-name').value.trim();
+            const email = document.getElementById('donation-email').value.trim();
+            const phone = document.getElementById('donation-phone').value.trim();
+            const amount = document.getElementById('donation-amount').value.trim();
+            const refId = document.getElementById('donation-refId').value.trim();
+
+            if (!name || !amount) {
+                window.showCustomPopup('Missing Fields', 'Donor Name and Donation Amount are required.');
+                return;
+            }
+
+            closeManualDonationModal();
+            showGlobalLoading("Adding manual donation entry...");
+
+            try {
+                // Assuming a new Cloud Function 'addManualDonation' handles this
+                const addManualDonationCallable = httpsCallable(functions, 'addManualDonation'); 
+                const response = await addManualDonationCallable({
+                    name, email: email || null, phone: phone || null,
+                    amount: parseFloat(amount), refId: refId || null
+                });
+
+                window.showCustomPopup('Success', response.data.message);
+                await fetchDashboardData(); // Refresh dashboard data
+            } catch (error) {
+                console.error("Error adding manual donation:", error);
+                window.showCustomPopup('Error', `Failed to add manual donation: ${error.message}`);
             } finally {
                 hideGlobalLoading();
             }
@@ -2470,6 +2634,143 @@
             }
         };
 
+        // --- NEW: Ticket Conversion Tool Logic ---
+        
+        const TICKET_PRICE_NEW = 150.00; // New Rolex Raffle ticket price
+
+        const openConversionToolModal = () => {
+            if (!isSuperAdmin) {
+                window.showCustomPopup('Permission Denied', 'Only Super Admins can access the Conversion Tool.');
+                return;
+            }
+            document.getElementById('conversionToolModalOverlay').classList.remove('hidden');
+            document.getElementById('conversionForm').reset();
+            document.getElementById('conversion-details-container').classList.add('hidden');
+        };
+
+        const closeConversionToolModal = () => {
+            document.getElementById('conversionToolModalOverlay').classList.add('hidden');
+        };
+
+        const updateConversionCalculation = () => {
+            const oldAmount = parseFloat(document.getElementById('conversion-original-amount-value').value) || 0;
+            const newTickets = parseInt(document.getElementById('conversion-new-tickets').value, 10) || 0;
+            
+            const requiredAmount = newTickets * TICKET_PRICE_NEW;
+            const outstandingBalance = requiredAmount - oldAmount;
+            
+            document.getElementById('conversion-required-amount').textContent = formatCurrency(requiredAmount);
+            document.getElementById('conversion-outstanding-balance').textContent = formatCurrency(Math.max(0, outstandingBalance));
+            
+            const balanceElement = document.getElementById('conversion-outstanding-balance');
+            balanceElement.classList.remove('text-red-500', 'text-green-500');
+            
+            if (outstandingBalance > 0) {
+                balanceElement.classList.add('text-red-500');
+            } else if (outstandingBalance <= 0) {
+                balanceElement.classList.add('text-green-500');
+                // If paid or overpaid, disable the Convert button to enforce action
+            }
+
+            document.getElementById('convertTicketsButton').disabled = newTickets <= 0;
+        };
+
+        const searchOldTicketEntry = async () => {
+            const email = document.getElementById('conversion-search-email').value.trim();
+            if (!email) {
+                showCustomPopup('Missing Email', 'Please enter a customer email to search old purchases.');
+                return;
+            }
+            
+            showGlobalLoading("Searching old ticket purchases...");
+            
+            try {
+                // Assuming a new Cloud Function 'getOldRaffleTicketDetails' exists
+                const getOldRaffleTicketDetailsCallable = httpsCallable(functions, 'getOldRaffleTicketDetails');
+                const response = await getOldRaffleTicketDetailsCallable({ email });
+                const oldEntry = response.data.entry;
+                
+                if (!oldEntry || !oldEntry.id) {
+                    showCustomPopup('Not Found', 'No relevant old ticket purchase found for this email.');
+                    document.getElementById('conversion-details-container').classList.add('hidden');
+                    return;
+                }
+                
+                // Populate fields
+                document.getElementById('conversion-entry-id').value = oldEntry.id;
+                document.getElementById('conversion-original-amount-value').value = oldEntry.amountPaid || 0;
+                document.getElementById('conversion-name').textContent = oldEntry.name || oldEntry.fullName || 'N/A';
+                document.getElementById('conversion-email').textContent = oldEntry.email;
+                document.getElementById('conversion-refId').textContent = oldEntry.referrerRefId || 'N/A';
+                document.getElementById('conversion-old-amount').textContent = formatCurrency(oldEntry.amountPaid || 0);
+                
+                // Show calculator section and run initial calc
+                document.getElementById('conversion-new-tickets').value = 1; // Default to 1 ticket
+                document.getElementById('conversion-details-container').classList.remove('hidden');
+                updateConversionCalculation();
+
+                showCustomPopup('Success', `Found purchase of ${formatCurrency(oldEntry.amountPaid || 0)} for ${oldEntry.name}. Ready for conversion.`);
+
+            } catch (error) {
+                console.error("Error searching old entry:", error);
+                showCustomPopup('Search Failed', `Error: ${error.message}`);
+                document.getElementById('conversion-details-container').classList.add('hidden');
+            } finally {
+                hideGlobalLoading();
+            }
+        };
+
+        const handleConvertTicketsSubmit = async (e) => {
+            e.preventDefault();
+            
+            const entryId = document.getElementById('conversion-entry-id').value;
+            const newTickets = parseInt(document.getElementById('conversion-new-tickets').value, 10);
+            const outstandingBalance = parseFloat(document.getElementById('conversion-outstanding-balance').textContent.replace(/[$,]/g, ''));
+            const requiredAmount = newTickets * TICKET_PRICE_NEW;
+            const originalAmount = parseFloat(document.getElementById('conversion-original-amount-value').value) || 0;
+            
+            const name = document.getElementById('conversion-name').textContent;
+            const email = document.getElementById('conversion-email').textContent;
+            const refId = document.getElementById('conversion-refId').textContent;
+
+
+            if (newTickets <= 0) {
+                 showCustomPopup('Invalid Quantity', 'Please select at least 1 new ticket.');
+                 return;
+            }
+            
+            if (outstandingBalance > 0) {
+                 showCustomPopup('Outstanding Balance', `You must manually collect the outstanding balance of ${formatCurrency(outstandingBalance)} before finalizing this conversion.`);
+                 // Admin needs to perform the manual collection first, then can proceed.
+                 return;
+            }
+
+            closeConversionToolModal();
+            showGlobalLoading(`Finalizing conversion for ${name} to ${newTickets} new tickets...`);
+
+            try {
+                // Assuming a new Cloud Function 'convertOldTicketsToNewRaffleEntry' exists
+                const convertOldTicketsToNewRaffleEntryCallable = httpsCallable(functions, 'convertOldTicketsToNewRaffleEntry');
+                const response = await convertOldTicketsToNewRaffleEntryCallable({
+                    oldEntryId: entryId,
+                    newTicketQuantity: newTickets,
+                    originalAmountPaid: originalAmount,
+                    newRequiredAmount: requiredAmount,
+                    customerName: name,
+                    customerEmail: email,
+                    referrerRefId: refId === 'N/A' ? null : refId
+                });
+
+                showCustomPopup('Conversion Complete', response.data.message);
+                await fetchDashboardData(); // Refresh dashboard data
+            } catch (error) {
+                console.error("Conversion Failed:", error);
+                showCustomPopup('Conversion Failed', `Error: ${error.message}`);
+            } finally {
+                hideGlobalLoading();
+            }
+        };
+
 
         // --- Authentication and Initialization ---
 
@@ -2698,6 +2999,17 @@
                     document.getElementById('manualSaleForm').addEventListener('submit', handleManualSaleSubmit);
                 }
                 
+                // NEW: Manual Donation Modal listeners
+                if (document.getElementById('addManualDonationButton')) {
+                    document.getElementById('addManualDonationButton').addEventListener('click', openManualDonationModal);
+                }
+                if (document.getElementById('closeManualDonationModal')) {
+                    document.getElementById('closeManualDonationModal').addEventListener('click', closeManualDonationModal);
+                }
+                if (document.getElementById('manualDonationForm')) {
+                    document.getElementById('manualDonationForm').addEventListener('submit', handleManualDonationSubmit);
+                }
+                
                 // Edit Sale Modal listeners
                 if (document.getElementById('closeEditSaleModal')) {
                     document.getElementById('closeEditSaleModal').addEventListener('click', closeEditSaleModal);
@@ -2720,6 +3032,24 @@
                 if (document.getElementById('recalculateRolexTotalsButton')) {
                     document.getElementById('recalculateRolexTotalsButton').addEventListener('click', handleRecalculateRolexTotals); 
                 }
+
+                // NEW: Conversion Tool listeners
+                if (document.getElementById('openConversionToolButton')) {
+                    document.getElementById('openConversionToolButton').addEventListener('click', openConversionToolModal);
+                }
+                if (document.getElementById('closeConversionToolModal')) {
+                    document.getElementById('closeConversionToolModal').addEventListener('click', closeConversionToolModal);
+                }
+                if (document.getElementById('searchOldTicketButton')) {
+                    document.getElementById('searchOldTicketButton').addEventListener('click', searchOldTicketEntry);
+                }
+                if (document.getElementById('conversion-new-tickets')) {
+                    document.getElementById('conversion-new-tickets').addEventListener('input', updateConversionCalculation);
+                }
+                if (document.getElementById('conversionForm')) {
+                    document.getElementById('conversionForm').addEventListener('submit', handleConvertTicketsSubmit);
+                }
+
 
                 // --- Split the Pot Assignment Modal listeners ---
                 if (document.getElementById('closeApplyTicketsModal')) {

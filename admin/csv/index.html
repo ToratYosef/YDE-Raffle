@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YDE Admin CSV Export Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+            color: #ffffff;
+            background-color: #0d1222;
+            background-image: linear-gradient(135deg, #0d1222 0%, #151a2d 100%);
+            min-height: 100vh;
+        }
+        .container-box {
+            background-color: #1f2937;
+            border-radius: 0.75rem;
+            box-shadow: 0 8px 16px -4px rgba(0, 0, 0, 0.5);
+        }
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(8px);
+        }
+        .spinner {
+            border-top-color: #facc15;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center p-4">
+
+    <!-- Global Loading Overlay -->
+    <div id="globalLoadingOverlay" class="fixed inset-0 z-50 modal-overlay flex flex-col items-center justify-center gap-4 hidden">
+        <div class="spinner w-10 h-10 border-4 border-yellow-400 border-opacity-20 rounded-full"></div>
+        <p id="globalSpinnerText" class="text-white font-semibold">Loading...</p>
+    </div>
+
+    <!-- Custom Popup Modal (Alert/Success) -->
+    <div id="customPopupOverlay" class="fixed inset-0 z-[101] modal-overlay flex items-center justify-center p-4 hidden">
+        <div id="customPopup" class="bg-gray-800 p-6 rounded-lg shadow-2xl max-w-xs sm:max-w-sm w-full text-center scale-95 transition-all duration-300">
+            <h2 id="popupTitle" class="text-xl sm:text-2xl font-bold text-yellow-400 mb-3"></h2>
+            <p id="popupMessage" class="text-gray-300 mb-5 text-sm sm:text-base"></p>
+            <button id="popupCloseButton" class="w-full py-2 rounded-lg bg-yellow-500 text-black font-semibold hover:bg-yellow-600 transition-colors">OK</button>
+        </div>
+    </div>
+
+    <div class="container-box w-full max-w-lg p-8">
+        <h1 class="text-3xl font-bold text-white text-center mb-6">Admin Data Export</h1>
+        <p class="text-sm text-gray-400 mb-6 text-center">
+            Secure export tool for high-volume sales data. You must be signed in as a **Super Admin** or **Admin** to use this tool.
+        </p>
+
+        <form id="exportForm" class="space-y-6">
+            <div id="authRequired" class="text-red-400 text-center border border-red-700 p-3 rounded-lg hidden">
+                Authentication Required. Please sign in below.
+            </div>
+
+            <!-- Login Fields (Always visible for sign-in attempt) -->
+            <div id="loginFields" class="space-y-4">
+                <input type="email" id="loginEmail" placeholder="Admin Email" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white" required>
+                <input type="password" id="loginPassword" placeholder="Password" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white" required>
+                <button type="button" id="loginButton" class="w-full py-3 text-black bg-yellow-500 rounded-lg font-semibold hover:bg-yellow-600 transition-colors">Sign In</button>
+                <p id="loginError" class="text-red-400 text-sm mt-3 text-center hidden"></p>
+            </div>
+
+            <!-- Export Options (Visible after successful login) -->
+            <div id="exportOptions" class="space-y-4 hidden">
+                <p id="signedInUser" class="text-sm text-green-400 text-center">Signed in as: N/A</p>
+                <div>
+                    <label for="export-type" class="block text-sm font-medium text-gray-300 mb-1">Select Data Set:</label>
+                    <select id="export-type" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-gray-700 text-white" required>
+                        <option value="raffle">Split The Pot Sales</option>
+                        <option value="rolex">Rolex Raffle Sales</option>
+                        <option value="referrers">All Referrers & Totals</option>
+                        <option value="donations">Donations</option>
+                    </select>
+                </div>
+                <button type="submit" id="downloadCSVButton" class="w-full py-3 text-white bg-blue-600 rounded-lg font-semibold hover:bg-blue-700 transition-colors">
+                    Download All Data (CSV)
+                </button>
+                <button type="button" id="logoutButton" class="w-full py-2 text-gray-400 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">Logout</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Firebase Scripts -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+        import { 
+            getAuth, 
+            onAuthStateChanged, 
+            signInWithEmailAndPassword, 
+            signOut 
+        } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+        import { 
+            getFunctions, 
+            httpsCallable 
+        } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-functions.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js"; // Needed for setLogLevel
+
+        let app;
+        let auth;
+        let functions;
+
+        // --- Configuration (Same as Admin Dashboard) ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyAT539nr_s2OxHPTAmkxwMpaWt-FiDTgQs",
+            authDomain: "yderaffle.firebaseapp.com",
+            projectId: "yderaffle",
+            storageBucket: "yderaffle.firebasestorage.app",
+            messagingSenderId: "967768309102",
+            appId: "1:967768309102:web:c89d61a747e8cb941f557f"
+        };
+        // --- Utility Functions (for UI and CSV) ---
+
+        const showGlobalLoading = (message = "Loading...") => {
+            document.getElementById('globalSpinnerText').textContent = message;
+            document.getElementById('globalLoadingOverlay').classList.remove('hidden');
+        };
+        const hideGlobalLoading = () => {
+            document.getElementById('globalLoadingOverlay').classList.add('hidden');
+        };
+        
+        const hideCustomPopup = () => {
+            document.getElementById('customPopup').classList.remove('scale-100');
+            setTimeout(() => { document.getElementById('customPopupOverlay').classList.add('hidden'); }, 300);
+        };
+        const showCustomPopup = (title, message) => {
+            document.getElementById('popupTitle').textContent = title;
+            document.getElementById('popupMessage').textContent = message;
+            document.getElementById('customPopupOverlay').classList.remove('hidden');
+            setTimeout(() => { document.getElementById('customPopup').classList.add('scale-100'); }, 10);
+        };
+
+        const formatDateForCSV = (timestamp) => {
+             if (!timestamp) return '';
+             let date;
+             // Handle raw server-serialized timestamp object if necessary
+             const seconds = timestamp.seconds || timestamp._seconds;
+             if (typeof seconds === 'number') {
+                 date = new Date(seconds * 1000);
+             } else if (typeof timestamp === 'string' || timestamp instanceof Date) {
+                 date = new Date(timestamp);
+             } else {
+                 return '';
+             }
+
+             if (isNaN(date.getTime())) return '';
+             // YYYY-MM-DD HH:MM:SS format
+             const isoString = date.toISOString().replace('T', ' ').slice(0, 19);
+             return isoString;
+        };
+
+        const downloadCSV = (data, filename) => {
+            if (!data || data.length === 0) {
+                showCustomPopup('No Data', 'The selected data set is empty.');
+                return;
+            }
+
+            const headers = Object.keys(data[0]);
+            const csvContent = [
+                headers.join(','),
+                ...data.map(row => headers.map(fieldName => {
+                    let value = row[fieldName] === null || row[fieldName] === undefined ? '' : row[fieldName];
+                    
+                    if (fieldName.toLowerCase().includes('date') || fieldName.toLowerCase().includes('timestamp') || fieldName.toLowerCase().includes('createdat') || fieldName.toLowerCase().includes('time')) {
+                        value = formatDateForCSV(value);
+                    } else if (typeof value === 'object') {
+                        value = JSON.stringify(value).replace(/,/g, ';').replace(/"/g, '""'); 
+                    } else if (typeof value === 'string') {
+                        value = value.replace(/"/g, '""');
+                        if (value.includes(',')) {
+                            value = `"${value}"`;
+                        }
+                    }
+                    return value;
+                }).join(','))
+            ].join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            if (link.download !== undefined) { 
+                link.setAttribute("href", URL.createObjectURL(blob));
+                link.setAttribute("download", filename);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                showCustomPopup('Export Success', `Downloaded ${filename}`);
+            } else {
+                showCustomPopup('Export Error', 'Your browser does not support automatic CSV download.');
+            }
+        };
+
+
+        // --- Authentication and UI State Management ---
+
+        const updateUIForAuth = (user, claims) => {
+            const loginFields = document.getElementById('loginFields');
+            const exportOptions = document.getElementById('exportOptions');
+            const authRequired = document.getElementById('authRequired');
+            const signedInUser = document.getElementById('signedInUser');
+
+            const isAuthenticatedAdmin = claims.superAdmin === true || claims.admin === true;
+
+            if (user && isAuthenticatedAdmin) {
+                loginFields.classList.add('hidden');
+                exportOptions.classList.remove('hidden');
+                authRequired.classList.add('hidden');
+                signedInUser.textContent = `Signed in as: ${user.email} (${claims.superAdmin ? 'Super Admin' : 'Admin'})`;
+            } else {
+                loginFields.classList.remove('hidden');
+                exportOptions.classList.add('hidden');
+                authRequired.classList.remove('hidden');
+                signedInUser.textContent = `Signed in as: N/A`;
+            }
+            hideGlobalLoading();
+        };
+
+        const setupAuthListeners = () => {
+            onAuthStateChanged(auth, async (user) => {
+                showGlobalLoading("Checking permissions...");
+                if (user) {
+                    try {
+                        const idTokenResult = await user.getIdTokenResult(true); 
+                        const claims = idTokenResult.claims;
+                        updateUIForAuth(user, claims);
+                    } catch (error) {
+                        console.error("Failed to get ID token claims:", error);
+                        updateUIForAuth(user, {});
+                    }
+                } else {
+                    updateUIForAuth(null, {});
+                }
+            });
+        };
+
+        // --- Event Handlers ---
+
+        const handleLogin = async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const loginError = document.getElementById('loginError');
+            
+            loginError.classList.add('hidden');
+            document.getElementById('loginButton').disabled = true;
+            showGlobalLoading("Signing in...");
+
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                // Auth listener handles success via updateUIForAuth
+            } catch (error) {
+                console.error("Login failed:", error);
+                loginError.textContent = "Login failed: Invalid credentials or insufficient admin rights.";
+                loginError.classList.remove('hidden');
+            } finally {
+                document.getElementById('loginButton').disabled = false;
+                hideGlobalLoading(); 
+            }
+        };
+
+        const handleLogout = async () => {
+            showGlobalLoading("Logging out...");
+            try {
+                await signOut(auth);
+                // Auth listener handles UI update
+            } catch (error) {
+                console.error("Logout failed:", error);
+                showCustomPopup("Logout Failed", "Could not log out.");
+            } finally {
+                hideGlobalLoading();
+            }
+        };
+
+        const handleExportSubmit = async (e) => {
+            e.preventDefault();
+            const exportType = document.getElementById('export-type').value;
+
+            showGlobalLoading(`Fetching ${exportType} data...`);
+            
+            try {
+                const getAdminExportDataCallable = httpsCallable(functions, 'getAdminExportData');
+                const response = await getAdminExportDataCallable({ dataType: exportType });
+                const dataToExport = response.data.exportData;
+
+                const filename = `${exportType}_Export_${new Date().toISOString().slice(0, 10)}.csv`;
+                
+                downloadCSV(dataToExport, filename);
+
+            } catch (error) {
+                console.error("Export Failed:", error);
+                showCustomPopup('Export Failed', `Error: ${error.message}. (Did you deploy the new Cloud Function?)`);
+            } finally {
+                hideGlobalLoading();
+            }
+        };
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            functions = getFunctions(app, 'us-central1'); // Assuming us-central1 for Cloud Functions
+
+            // Set up log level (optional, but useful for debugging)
+            if (typeof setLogLevel === 'function') {
+                setLogLevel('debug');
+            }
+            
+            setupAuthListeners();
+            
+            // Attach all listeners
+            document.getElementById('loginButton').addEventListener('click', handleLogin);
+            document.getElementById('logoutButton').addEventListener('click', handleLogout);
+            document.getElementById('exportForm').addEventListener('submit', handleExportSubmit);
+            document.getElementById('popupCloseButton').addEventListener('click', hideCustomPopup);
+        });
+    </script>
+</body>
+</html>

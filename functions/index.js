@@ -40,6 +40,11 @@ function cleanTicketCount(value) {
     return Math.max(0, num);
 }
 
+// Helper function used to format currency in messages
+const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
+};
+
 
 // --- SECURITY AND ROLE CHECKERS ---
 
@@ -61,6 +66,225 @@ function isAdmin(context) {
         context.auth.token.admin === true
     );
 }
+
+// --- NEW CONVERSION TOOL FUNCTIONS ---
+
+/**
+ * Callable function to fetch ALL old paid ticket/sale entries from 'rolex_tickets'
+ * for the conversion tool list view.
+ */
+exports.getAllOldRaffleTicketsForConversion = functions.https.onCall(async (data, context) => {
+    if (!isSuperAdmin(context)) {
+        throw new functions.https.HttpsError('permission-denied', 'Access denied. Requires Super Admin role.');
+    }
+
+    const db = admin.firestore();
+
+    try {
+        // Fetch all PAID entries from the old collection (rolex_tickets)
+        const snapshot = await db.collection('rolex_tickets')
+            .where('status', '==', 'paid')
+            .orderBy('timestamp', 'desc')
+            .get();
+
+        const entries = snapshot.docs.map(doc => {
+            const entryData = doc.data();
+            return {
+                id: doc.id,
+                name: entryData.name || entryData.fullName || entryData.firstName || 'N/A',
+                email: entryData.email || 'N/A',
+                phoneNumber: entryData.phoneNumber || entryData.phone || 'N/A',
+                amountPaid: cleanAmount(entryData.amountPaid),
+                referrerRefId: entryData.referrerRefId || null,
+                timestamp: entryData.timestamp
+            };
+        });
+
+        return { entries };
+
+    } catch (error) {
+        console.error('Error fetching all old tickets for conversion:', error);
+        // RETHROWING FAILED PRECONDITION TO INCLUDE THE INDEX LINK IF AVAILABLE IN LOGS
+        throw new functions.https.HttpsError('internal', 'Failed to retrieve old ticket list.', error.message);
+    }
+});
+
+
+/**
+ * Callable function to convert an old ticket purchase (from rolex_tickets)
+ * to new rolex_entries, handling credit/surplus/balance.
+ * IMPORTANT: This version DELETES the original rolex_tickets document upon success.
+ */
+exports.convertOldTicketsToNewRaffleEntry = functions.https.onCall(async (data, context) => {
+    if (!isSuperAdmin(context)) {
+        throw new functions.https.HttpsError('permission-denied', 'Access denied. Requires Super Admin role.');
+    }
+
+    const {
+        oldEntryId,
+        newTicketQuantity,
+        originalAmountPaid,
+        newRequiredAmount,
+        customerName,
+        customerEmail,
+        referrerRefId,
+        surplusAction // 'donate' or 'refund'
+    } = data;
+    
+    // New ticket price is assumed to be $150 based on the prompt's context
+    const TICKET_PRICE_NEW = 150.00;
+
+    // Sanitize Inputs
+    const newTickets = cleanTicketCount(newTicketQuantity);
+    const oldAmount = cleanAmount(originalAmountPaid); // Base amount from old record
+    const requiredAmount = cleanAmount(newRequiredAmount);
+    
+    // Positive balance means user owes, Negative balance means user has surplus credit
+    const balance = cleanAmount(requiredAmount - oldAmount); 
+    const surplusCredit = cleanAmount(Math.abs(Math.min(0, balance)));
+
+    if (!oldEntryId || newTickets <= 0) {
+        throw new functions.https.HttpsError('invalid-argument', 'Missing old ticket ID or invalid new ticket quantity.');
+    }
+    
+    // Precondition check: Fail if the client tried to finalize with an outstanding balance
+    if (balance > 0.01) { 
+        throw new functions.https.HttpsError('failed-precondition', `Outstanding balance detected (${formatCurrency(balance)}). Please collect payment manually before re-running conversion.`);
+    }
+
+    const db = admin.firestore();
+    const batch = db.batch();
+    
+    // --- 1. Fetch Old Ticket Data ---
+    const oldTicketRef = db.collection('rolex_tickets').doc(oldEntryId);
+    const oldTicketDoc = await oldTicketRef.get();
+
+    if (!oldTicketDoc.exists) {
+        // Updated error message as deletion is now the expected behavior post-conversion.
+        throw new functions.https.HttpsError('not-found', 'Old ticket entry not found. It may have already been converted or deleted.');
+    }
+    
+    const oldTicketData = oldTicketDoc.data();
+    // Use data passed from the client as fallback for better consistency if the ticket data is sparse
+    const name = oldTicketData.name || oldTicketData.fullName || customerName;
+    const email = oldTicketData.email || customerEmail;
+    const phone = oldTicketData.phoneNumber || oldTicketData.phone || null;
+    const originalRefId = oldTicketData.referrerRefId || referrerRefId; 
+
+    // Determine the Referrer's UID
+    let referrerUid = null;
+    if (originalRefId) {
+        const referrerQuerySnapshot = await db.collection('referrers')
+            .where('refId', '==', originalRefId)
+            .limit(1)
+            .get();
+        if (!referrerQuerySnapshot.empty) {
+            referrerUid = referrerQuerySnapshot.docs[0].id;
+        }
+    }
+
+    // --- 2. Create the NEW Rolex Entry Document (in rolex_entries collection) ---
+    const newEntryRef = db.collection('rolex_entries').doc(); 
+    const amountUsedForTickets = requiredAmount; 
+
+    batch.set(newEntryRef, {
+        paymentIntentId: oldTicketData.paymentIntentId || oldEntryId, 
+        name: name,
+        firstName: name.split(' ')[0] || name,
+        email: email,
+        phoneNumber: phone,
+        ticketsBought: newTickets, 
+        amountPaid: amountUsedForTickets, 
+        chargedAmount: amountUsedForTickets, 
+        status: 'converted', // Flag new status
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        sourceApp: 'YDE Admin Conversion Tool',
+        referrerRefId: originalRefId || null,
+        referrerUid: referrerUid || null,
+        conversionSourceId: oldEntryId // Link back to the original document ID
+    });
+
+    // --- 3. Process the Surplus (if any) ---
+    let surplusMessage = '';
+    let donationAmount = 0;
+    
+    if (surplusCredit > 0.01) { 
+        if (surplusAction === 'donate') {
+            donationAmount = surplusCredit;
+            
+            // Create a manual donation entry for the surplus
+            batch.collection('stripe_donation_payment_intents').add({
+                name: name,
+                email: email,
+                phone: phone,
+                amount: donationAmount,
+                // Custom status to easily identify conversion surpluses in the donation table
+                status: 'MANUAL_DONATED_CONVERSION_SURPLUS', 
+                sourceApp: 'YDE Admin Conversion Surplus',
+                referrerRefId: originalRefId || null,
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                conversionSourceId: oldEntryId 
+            });
+            surplusMessage = `Surplus of ${formatCurrency(donationAmount)} converted to a **General Donation**.`;
+        
+        } else if (surplusAction === 'refund') {
+            // Log the refund due in a separate collection for audit/manual processing
+            batch.collection('conversion_audits').add({
+                oldEntryId: oldEntryId,
+                newEntryId: newEntryRef.id,
+                customerName: name,
+                customerEmail: email,
+                refundDue: surplusCredit,
+                action: 'REFUND_LOGGED',
+                timestamp: admin.firestore.FieldValue.serverTimestamp()
+            });
+            surplusMessage = `Surplus of ${formatCurrency(surplusCredit)} logged as **Refund Due** (check conversion_audits).`;
+        }
+    } else {
+        surplusMessage = 'No surplus credit remaining.';
+    }
+
+    // --- 4. DELETE the Old Ticket Document (rolex_tickets collection) ---
+    // This meets the user requirement to delete the source record only upon successful write to rolex_entries.
+    batch.delete(oldTicketRef);
+    
+    // --- 5. Update Global Counters ---
+    const rolexTotalsRef = db.collection('counters').doc('rolex_totals');
+    
+    // Increment rolex totals by the new ticket count and the amount used for them
+    batch.set(rolexTotalsRef, {
+        totalTicketsSold: admin.firestore.FieldValue.increment(newTickets),
+        totalAmount: admin.firestore.FieldValue.increment(amountUsedForTickets) 
+    }, { merge: true });
+    
+    if (donationAmount > 0) {
+          const donationTotalsRef = db.collection('counters').doc('donation_totals');
+          batch.set(donationTotalsRef, {
+              totalAmount: admin.firestore.FieldValue.increment(donationAmount)
+          }, { merge: true });
+    }
+
+    // --- 6. Update Referrer Totals ---
+    if (referrerUid) {
+        const referrerRef = db.collection('referrers').doc(referrerUid);
+        const referrerTotalAmountIncrement = cleanAmount(amountUsedForTickets + donationAmount);
+
+        const updateData = { 
+            totalAmount: admin.firestore.FieldValue.increment(referrerTotalAmountIncrement) 
+        };
+        updateData.rolexTicketsTotal = admin.firestore.FieldValue.increment(newTickets);
+        
+        batch.set(referrerRef, updateData, { merge: true });
+    }
+
+    await batch.commit();
+
+    return { 
+        success: true, 
+        message: `Conversion complete: ${name} successfully converted to ${newTickets} new Rolex Raffle entries. ${surplusMessage}` 
+    };
+});
+
 
 // --- USER MANAGEMENT FUNCTIONS (NEW) ---
 
@@ -385,8 +609,8 @@ exports.adminResetPasswordByEmail = functions.https.onRequest((req, res) => {
         const providedKey = req.headers['x-admin-api-key'];
 
         if (!providedKey || providedKey !== ADMIN_SECRET_KEY) {
-             // Return HTTP 403 Forbidden for security
-             return res.status(403).send({ message: 'Forbidden. Invalid Admin API Key.' });
+            // Return HTTP 403 Forbidden for security
+            return res.status(403).send({ message: 'Forbidden. Invalid Admin API Key.' });
         }
         // !!! END CRITICAL SECURITY CHECK PLACEHOLDER !!!
 
@@ -534,7 +758,7 @@ exports.createStripePaymentIntent = functions.https.onCall(async (data, context)
         const amountToChargeInCents = Math.round(parseFloat(chargedAmount) * 100);
 
         const paymentIntent = await stripe.paymentIntents.create({
-            amount: amountToChargeInCents,
+            amount: amountInCents,
             currency: 'usd',
             description: `YDE Split The Pot - ${cleanedTicketsBought} Tickets`, 
             payment_method_types: ['card'],
@@ -653,7 +877,7 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
       const { name, email, phone, ticketsBought, baseAmount, chargedAmount, referrerRefId, entryType, sourceApp } = paymentIntent.metadata;
 
       const firstName = name.split(' ')[0] || name;
-      
+        
       try {
         const db = admin.firestore();
 
@@ -662,15 +886,15 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
         if (entryType === 'donation') {
             docRefToCheck = db.collection('stripe_donation_payment_intents').doc(paymentIntent.id);
         }
-        
+          
         const docSnapshot = await docRefToCheck.get();
         if (docSnapshot.data() && docSnapshot.data().webhookProcessed) {
           return res.status(200).send('Webhook event already processed.');
         }
-        
+          
         // --- Shared variables ---
         const amountCharged = cleanAmount(paymentIntent.amount / 100); 
-        
+          
         // amountForSaleRecord is the base amount (excluding fees) to be recorded as the revenue/sale value
         let amountForSaleRecord = 0;
         let ticketsCount = 0;
@@ -835,9 +1059,9 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
         
         // 2. Update the main payment intent document status (whether raffle or donation PI status document)
         await docRefToCheck.update({
-          status: 'succeeded',
-          webhookProcessed: true,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            status: 'succeeded',
+            webhookProcessed: true,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
         res.status(200).send('Webhook processed successfully.');
@@ -1022,208 +1246,6 @@ exports.setSuperAdminClaim = functions.https.onCall(async (data, context) => {
 });
 
 
-// --- NEW: MANUAL DONATION FUNCTION ---
-
-/**
- * Callable function to add a manual general donation entry.
- * Requires Admin role.
- */
-exports.addManualDonation = functions.https.onCall(async (data, context) => {
-    const SOURCE_APP_TAG = 'YDE Manual Donation'; 
-
-    if (!isAdmin(context)) {
-        throw new functions.https.HttpsError('permission-denied', 'You must be an admin to add a manual donation.');
-    }
-
-    const { name, email, phone, amount, refId } = data;
-    if (!name || !amount) {
-        throw new functions.https.HttpsError('invalid-argument', 'Donor name and amount are required.');
-    }
-
-    const db = admin.firestore();
-    let amountPaid = cleanAmount(amount); // The full donation amount
-    
-    const firstName = name.split(' ')[0] || name;
-
-    let referrerUid = null;
-    let actualRefId = refId || null;
-    
-    // Logic to determine who the donation is credited to
-    if (actualRefId) {
-        const referrerQuerySnapshot = await db.collection('referrers')
-            .where('refId', '==', actualRefId)
-            .limit(1)
-            .get();
-
-        if (!referrerQuerySnapshot.empty) {
-            referrerUid = referrerQuerySnapshot.docs[0].id;
-        }
-    }
-
-    const newEntry = {
-        fullName: name, 
-        firstName: firstName, 
-        email: email || null,
-        phone: phone || null, 
-        amount: amountPaid, // The donation amount (base)
-        status: 'PAID', // Manual donations are instantly paid
-        paymentMethod: "Manual",
-        referrerRefId: actualRefId,
-        referrerUid: referrerUid,
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
-        sourceApp: SOURCE_APP_TAG 
-    };
-
-    try {
-        // Save the manual donation to the 'manual_donations' collection or the base donation PI collection
-        // We'll use the PI collection path for consolidation: stripe_donation_payment_intents
-        await db.collection('stripe_donation_payment_intents').add(newEntry);
-
-        // Update overall donations total (assuming a global counter for all donations exists)
-        const donationTotalsRef = db.collection('counters').doc('donation_totals');
-        await donationTotalsRef.set({
-            totalAmount: admin.firestore.FieldValue.increment(amountPaid)
-        }, { merge: true });
-
-        // Update referrer stats (totalAmount only)
-        if (referrerUid) {
-            const referrerRef = db.collection('referrers').doc(referrerUid);
-            // General donations only count toward the monetary total, not the ticket count
-            await referrerRef.set({ 
-                totalAmount: admin.firestore.FieldValue.increment(amountPaid) 
-            }, { merge: true });
-        }
-
-        return { success: true, message: `Manual donation of ${cleanAmount(amount)} added successfully.` };
-    } catch (error) {
-        console.error("Error adding manual donation:", error);
-        throw new functions.https.HttpsError('internal', 'An internal error occurred.', error.message);
-    }
-});
-
-
-// --- NEW: TICKET CONVERSION TOOL FUNCTIONS ---
-
-/**
- * Callable function to search for an old raffle entry by email.
- * Requires Admin role.
- */
-exports.getOldRaffleTicketDetails = functions.https.onCall(async (data, context) => {
-    if (!isAdmin(context)) {
-        throw new functions.https.HttpsError('permission-denied', 'Access denied. Requires Admin role.');
-    }
-    const { email } = data;
-    if (!email) {
-        throw new functions.https.HttpsError('invalid-argument', 'Email is required for lookup.');
-    }
-
-    const db = admin.firestore();
-    
-    // Search the new rolex_entries collection for the most recent paid entry by this email
-    const entrySnapshot = await db.collection('rolex_entries')
-        .where('email', '==', email)
-        .where('status', '==', 'paid')
-        .orderBy('timestamp', 'desc')
-        .limit(1)
-        .get();
-
-    if (entrySnapshot.empty) {
-        throw new functions.https.HttpsError('not-found', 'No paid ticket entry found for this email.');
-    }
-
-    const doc = entrySnapshot.docs[0];
-    return { 
-        entry: { 
-            id: doc.id,
-            ...doc.data() 
-        } 
-    };
-});
-
-/**
- * Callable function to finalize the ticket conversion process.
- * Deletes old entry/updates metrics, creates new ticket details.
- * Requires Super Admin role.
- */
-exports.convertOldTicketsToNewRaffleEntry = functions.https.onCall(async (data, context) => {
-    if (!isSuperAdmin(context)) {
-        throw new functions.https.HttpsError('permission-denied', 'Access denied. Requires Super Admin role for conversion.');
-    }
-
-    const { oldEntryId, newTicketQuantity, originalAmountPaid, customerName, customerEmail, referrerRefId } = data;
-    const db = admin.firestore();
-    
-    const newTickets = cleanTicketCount(newTicketQuantity);
-    const originalAmount = cleanAmount(originalAmountPaid);
-    
-    if (!oldEntryId || newTickets <= 0) {
-        throw new functions.https.HttpsError('invalid-argument', 'Missing old entry ID or invalid new ticket quantity.');
-    }
-
-    const entryRef = db.collection('rolex_entries').doc(oldEntryId);
-
-    try {
-        await db.runTransaction(async (transaction) => {
-            const docSnapshot = await transaction.get(entryRef);
-            if (!docSnapshot.exists) {
-                throw new functions.https.HttpsError('not-found', 'Original entry not found for conversion.');
-            }
-            const originalData = docSnapshot.data();
-            
-            const originalTickets = cleanTicketCount(originalData.ticketsBought);
-            
-            // The amount credited remains the original amount paid. Only the ticket count changes.
-            const ticketDiff = newTickets - originalTickets;
-            const amountDiff = 0; // The monetary value remains constant for this transaction
-            
-            const referrerUid = originalData.referrerUid;
-            
-            // 1. Update the EXISTING entry with new quantity and flag as converted
-            transaction.update(entryRef, {
-                ticketsBought: newTickets,
-                status: 'converted', // Change status to reflect conversion
-                convertedFromTickets: originalTickets,
-                convertedAt: admin.firestore.FieldValue.serverTimestamp(),
-                // Update customer details in case they provided new info during conversion lookup
-                name: customerName,
-                email: customerEmail,
-                referrerRefId: referrerRefId, // Update referrer ID if changed during conversion
-                // amountPaid and referrerUid remain the same
-            });
-
-            // 2. Update Global Counter (rolex_totals) with the net ticket change
-            const rolexTotalsRef = db.collection('counters').doc('rolex_totals');
-            transaction.set(rolexTotalsRef, {
-                totalTicketsSold: admin.firestore.FieldValue.increment(ticketDiff),
-                // totalAmount is unchanged (amountDiff is 0)
-            }, { merge: true });
-
-            // 3. Update Referrer Counter (if a referrer is attached)
-            if (referrerUid) {
-                const referrerRef = db.collection('referrers').doc(referrerUid);
-                
-                // Update the referrer's total ticket count (rolexTicketsTotal)
-                transaction.set(referrerRef, {
-                    rolexTicketsTotal: admin.firestore.FieldValue.increment(ticketDiff),
-                    // totalAmount is unchanged (amountDiff is 0)
-                }, { merge: true });
-            }
-
-            return null; // Transaction successful
-        });
-
-        return { success: true, message: `Successfully converted entry ${oldEntryId} to ${newTickets} new tickets.` };
-
-    } catch (error) {
-        console.error("Error in convertOldTicketsToNewRaffleEntry transaction:", error);
-        if (error.code) {
-            throw new functions.https.HttpsError(error.code, error.message);
-        }
-        throw new functions.https.HttpsError('internal', 'Conversion failed due to a server error.', error.message);
-    }
-});
-
-
 // --- SHARED RECALCULATION LOGIC ---
 
 /**
@@ -1234,7 +1256,7 @@ async function _rebuildAllReferrerTotals(db) {
     // --- 1. Aggregate NEW Rolex Totals (from rolex_entries) by RefId ---
     // NOTE: Changed from rolex_tickets to rolex_entries for quantity-based sales
     const rolexTicketsSnapshot = await db.collection('rolex_entries')
-        .where('status', 'in', ['paid', 'converted']) // Include converted tickets in totals
+        .where('status', 'in', ['paid', 'converted']) 
         .get();
 
     // Map: { refId: { amount: number, tickets: number } }
@@ -1295,25 +1317,11 @@ async function _rebuildAllReferrerTotals(db) {
             newSplitPotAmount = cleanAmount(newSplitPotAmount + cleanedAmount); // Use cleaned intermediate sum
             newSplitPotTickets += cleanTicketCount(saleDoc.data().ticketCount); // Ensure ticket count is clean
         });
-        
-        // 2c. Re-read the Donation totals for this referrer
-        const donationSales = await db.collection('stripe_donation_payment_intents')
-            .where('referrerUid', '==', uid)
-            .where('status', '==', 'succeeded')
-            .get();
-        
-        let newDonationAmount = 0;
-        donationSales.forEach(donationDoc => {
-            const amount = donationDoc.data().amount || 0;
-            const cleanedAmount = cleanAmount(amount);
-            newDonationAmount = cleanAmount(newDonationAmount + cleanedAmount);
-        });
 
-        // 2d. Calculate the FINAL Combined Total Amount (base amounts only)
-        // Combine Split Pot + Rolex + Donations monetary value
-        const newCombinedTotalAmount = cleanAmount(newSplitPotAmount + newRolexTotals.amount + newDonationAmount); // Final rounding
+        // 2c. Calculate the FINAL Combined Total Amount (base amounts only)
+        const newCombinedTotalAmount = cleanAmount(newSplitPotAmount + newRolexTotals.amount); // Final rounding
         
-        // 2e. Set the complete, accurate data in the batch
+        // 2d. Set the complete, accurate data in the batch
         // We SET the new values; no dangerous incrementing/decrementing is needed.
         updateBatch.set(referrerRef, {
             // Split The Pot data
@@ -1526,7 +1534,7 @@ exports.addManualSale = functions.https.onCall(async (data, context) => {
         // Update overall totals
         if (counterRef) {
             await counterRef.set({
-                totalTicketsSold: admin.firestore.FieldValue.increment(ticketCount),
+                totalTickets: admin.firestore.FieldValue.increment(ticketCount),
                 totalAmount: admin.firestore.FieldValue.increment(amountPaid)
             }, { merge: true });
         }
@@ -1623,7 +1631,7 @@ exports.updateRaffleEntry = functions.https.onCall(async (data, context) => {
         // 1. Update Global Counter
         const totalsRef = db.collection('counters').doc(counterDocId);
         await totalsRef.set({
-            totalTicketsSold: admin.firestore.FieldValue.increment(ticketDiff),
+            totalTickets: admin.firestore.FieldValue.increment(ticketDiff),
             totalAmount: admin.firestore.FieldValue.increment(amountDiff)
         }, { merge: true });
 
@@ -1694,7 +1702,7 @@ exports.deleteRaffleEntry = functions.https.onCall(async (data, context) => {
         // 1. Update Global Counter
         const totalsRef = db.collection('counters').doc(counterDocId);
         await totalsRef.set({
-            totalTicketsSold: admin.firestore.FieldValue.increment(-tickets),
+            totalTickets: admin.firestore.FieldValue.increment(-tickets),
             totalAmount: admin.firestore.FieldValue.increment(-amount)
         }, { merge: true });
 
@@ -1777,7 +1785,7 @@ exports.getAdminDashboardData = functions.https.onCall(async (data, context) => 
         // 3. Fetch Transaction Data
         // IMPORTANT: Exclude the free 'claimed' tickets that don't have a referrerRefId set
         const rolexSnapshot = await rolexQuery
-            .where('status', 'in', ['paid', 'converted']) // Include paid and converted entries
+            .where('status', 'in', ['paid', 'converted']) // Include 'converted' for visibility after tool use
             .orderBy('timestamp', 'desc').get();
             
         const raffleSnapshot = await raffleQuery
@@ -1796,8 +1804,8 @@ exports.getAdminDashboardData = functions.https.onCall(async (data, context) => 
             referrers = referrerSnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
 
             const donationSnapshot = await db.collection('stripe_donation_payment_intents')
-                                             .where('status', 'in', ['succeeded', 'PAID']) // Include paid status from both webhook and manual
-                                             .orderBy('createdAt', 'desc').get();
+                                         .where('status', 'in', ['succeeded', 'MANUAL_DONATED', 'MANUAL_DONATED_CONVERSION_SURPLUS'])
+                                         .orderBy('createdAt', 'desc').get();
             donationEntries = donationSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         }
 

@@ -1,6 +1,30 @@
 {
   "indexes": [
     {
+      "collectionId": "mock_reviews",
+      "fields": [
+        { "fieldPath": "companyId", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionId": "warranty_reviews",
+      "fields": [
+        { "fieldPath": "companyId", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "rolex_entries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "email", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ],
+      "description": "Required for Conversion Tool Lookup (filter by email, status, and ORDER BY timestamp DESC)"
+    },
+    {
       "collectionGroup": "rolex_tickets",
       "queryScope": "COLLECTION",
       "fields": [
@@ -16,7 +40,7 @@
         {"fieldPath": "status", "order": "ASCENDING"},
         {"fieldPath": "timestamp", "order": "DESCENDING"}
       ],
-      "description": "NEW: Required for General/Super Admin Rolex Dashboard ('status' == 'paid' ORDER BY 'timestamp' DESC)"
+      "description": "Required for General/Super Admin Rolex Dashboard (filter by 'status' IN ['paid', 'converted'] ORDER BY 'timestamp' DESC)"
     },
     {
       "collectionGroup": "rolex_entries",
@@ -26,7 +50,7 @@
         {"fieldPath": "status", "order": "ASCENDING"},
         {"fieldPath": "timestamp", "order": "DESCENDING"}
       ],
-      "description": "NEW: Required for Referrer Rolex Dashboard (filter by 'referrerUid', status, and ORDER BY 'timestamp' DESC)"
+      "description": "Required for Referrer Rolex Dashboard (filter by 'referrerUid', status, and ORDER BY 'timestamp' DESC)"
     },
     {
       "collectionGroup": "splitThePotTickets",

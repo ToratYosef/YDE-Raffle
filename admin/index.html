@@ -111,14 +111,15 @@
     <!-- Batch Password Reset Modal (Super Admin Only) -->
     <div id="batchResetModalOverlay" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4 hidden">
         <div class="bg-gray-800 p-6 rounded-lg shadow-2xl max-w-xs sm:max-w-md w-full">
-            <h2 class="text-xl sm:text-2xl font-bold text-red-400 mb-4">Batch Password Reset </h2>
+            <h2 class="text-xl sm:text-2xl font-bold text-red-400 mb-4">Batch Password Reset</h2>
             <p class="text-gray-300 mb-4 text-sm sm:text-base">
                 You are about to reset the password for <span id="selectedUserCount" class="font-bold text-red-400">0</span> user(s).
             </p>
             <form id="batchResetForm" class="space-y-4">
                 <div>
                     <label for="batch-new-password" class="block text-sm font-medium text-gray-300">Temporary New Password (min 6 chars)</label>
-                    <input type="password" id="batch-new-password" placeholder="Enter new password" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-red-500 focus:border-red-500 bg-gray-700 text-white" required minlength="6">
+                    <!-- FIX: Added autocomplete="new-password" -->
+                    <input type="password" id="batch-new-password" autocomplete="new-password" placeholder="Enter new password" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-red-500 focus:border-red-500 bg-gray-700 text-white" required minlength="6">
                 </div>
                 <div class="pt-4 flex justify-end space-x-3">
                     <button type="button" id="closeBatchResetModal" class="px-4 py-2 text-gray-300 bg-gray-600 rounded-lg hover:bg-gray-500 transition-colors">Cancel</button>
@@ -286,7 +287,16 @@
                             </div>
                         </div>
 
-                        <!-- NEW: Surplus Action Options -->
+                        <!-- NEW: Manual Payment Confirmation for Balance Due -->
+                        <div id="balance-due-action-container" class="space-y-2 pt-4 hidden">
+                            <label class="inline-flex items-center text-gray-200">
+                                <input type="checkbox" id="manual-payment-confirmed" class="form-checkbox text-red-500 h-4 w-4 rounded">
+                                <span class="ml-2 font-semibold text-red-400">I confirm the <span id="due-amount-display" class="underline"></span> outstanding balance has been collected (Cash, Venmo, etc.).</span>
+                            </label>
+                            <p class="text-xs text-gray-400 pl-6">Checking this box finalizes the conversion and marks the transaction as complete, assuming the balance has been paid manually.</p>
+                        </div>
+
+                        <!-- Surplus Action Options -->
                         <div id="surplus-action-container" class="space-y-2 pt-4 hidden">
                             <p class="text-sm font-medium text-gray-300">3. Select Action for Surplus Credit:</p>
                             <div class="flex flex-col space-y-2">
@@ -477,7 +487,7 @@
                 <div class="flex items-center bg-gray-700 p-2 rounded-lg border border-gray-600">
                     <span id="referralLink" class="text-xs sm:text-base font-mono text-blue-400 truncate mr-3 select-all"></span>
                     <button id="copyLinkButton" class="ml-auto p-1 text-gray-400 hover:text-blue-500 transition-colors" title="Copy Link">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M7.75 3.75a.75.75 0 0 1 1.5 0v3.5h3.5a.75.75 0 0 1 0 1.5h-3.5v3.5a.75.75 0 0 1-1.5 0v-3.5h-3.5a.75.75 0 0 1 0-1.5h3.5v-3.5Z" clip-rule="evenodd" /></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M7.75 3.75a.75.75 0 0 1 1.5 0v3.5h3.5a.75.75 0 0 1 0 1.5h-3.5v3.5a.75.75 0 0 1-1.5 0v-3.5h-3.5a.75.75 0 0 1 0-1.5h3.5v-3.5Z" clip-rule="evenodd" /></svg>
                     </button>
                 </div>
             </div>
@@ -733,7 +743,7 @@
                     <!-- NEW: Conversion Tool Card -->
                     <div class="border p-4 rounded-lg bg-yellow-900/50 border-yellow-700">
                         <h4 class="font-semibold text-lg text-yellow-400 mb-2">Ticket Conversion Tool (Old Raffle to New Rolex)</h4>
-                        <p class="text-sm text-gray-300 mb-3">Converts old ticket purchases (based on amount paid) to the new $150 Rolex Raffle entries. Handles surplus credit via donation or refund logging. **Note: Original ticket is deleted upon successful conversion.**</p>
+                        <p class="text-sm text-gray-300 mb-3">Converts old ticket purchases (based on amount paid) to the new $150 Rolex Raffle entries. Handles outstanding balance confirmation and surplus credit via donation or refund logging. **Note: Original ticket is deleted upon successful conversion.**</p>
                         <button id="openConversionToolButton" class="px-4 py-2 bg-yellow-500 text-black font-semibold rounded-lg hover:bg-yellow-600 transition-colors disabled:opacity-50 text-sm">
                             Open Conversion Tool
                         </button>
@@ -798,7 +808,8 @@
                     <input type="email" id="loginEmail" placeholder="Email" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white" required>
                 </div>
                 <div>
-                    <input type="password" id="loginPassword" placeholder="Password" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white" required>
+                    <!-- FIX: Added autocomplete="current-password" -->
+                    <input type="password" id="loginPassword" autocomplete="current-password" placeholder="Password" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white" required>
                 </div>
                 <button type="submit" id="loginButton" class="w-full py-3 text-black bg-yellow-500 rounded-lg font-semibold hover:bg-yellow-600 transition-colors">Sign In</button>
             </form>
@@ -1011,7 +1022,7 @@
                  console.error('Fallback copy failed:', e);
                  showCustomPopup('Error', 'Failed to copy link. Please copy it manually.');
              }
-         }
+           }
         
         const getRefIdFromUrl = () => {
             const urlParams = new URLSearchParams(window.location.search);
@@ -1370,7 +1381,7 @@
             
             // Check if all displayed users are selected to tick the selectAll box
             const allDisplayedSelected = filteredAuthUsers.length > 0 && 
-                                                        filteredAuthUsers.every(u => selectedUserUids.has(u.uid));
+                                                 filteredAuthUsers.every(u => selectedUserUids.has(u.uid));
             if (allDisplayedSelected) {
                 selectAllCheckbox.checked = true;
             }
@@ -1426,8 +1437,8 @@
 
             const selectAllCheckbox = document.getElementById('selectAllUsers');
             const allDisplayedSelected = filteredAuthUsers.length > 0 && 
-                                                        filteredAuthUsers.every(u => selectedUserUids.has(u.uid));
-                                                        
+                                                 filteredAuthUsers.every(u => selectedUserUids.has(u.uid));
+                                                 
             if (allDisplayedSelected) {
                 selectAllCheckbox.checked = true;
             } else {
@@ -1539,11 +1550,11 @@
                 if (isSuperAdmin) {
                     // Update: Clicking the name now applies the combined filter and shows sales.
                     nameCellContent = `<span 
-                                                class="text-white font-semibold cursor-pointer hover:underline" 
-                                                data-action="view-referrer-sales" 
-                                                data-refid="${r.refId}" 
-                                                data-refname="${r.name}"
-                                                >${r.name}</span>`;
+                                                 class="text-white font-semibold cursor-pointer hover:underline" 
+                                                 data-action="view-referrer-sales" 
+                                                 data-refid="${r.refId}" 
+                                                 data-refname="${r.name}"
+                                                 >${r.name}</span>`;
                     
                     // Check if a corresponding Firebase Auth User exists (optional, but good practice)
                     const authUser = allAuthUsers.find(u => u.refId === r.refId);
@@ -1551,23 +1562,23 @@
                     if (authUser && !authUser.isSuperAdmin && authUser.uid !== auth.currentUser?.uid) {
                         upgradeButton = `
                             <button class="px-2 py-1 text-xs bg-red-500 text-white font-semibold rounded-lg shadow-md hover:bg-red-600 transition-colors mb-1"
-                                                data-action="promote-sa"
-                                                data-uid="${authUser.uid}"
-                                                data-refid="${r.refId}"
-                                                data-refname="${r.name}">Promote to SA</button>
+                                             data-action="promote-sa"
+                                             data-uid="${authUser.uid}"
+                                             data-refid="${r.refId}"
+                                             data-refname="${r.name}">Promote to SA</button>
                         `;
                     }
                     
                     actionCellContent = `
                         ${upgradeButton}
                         <button class="px-2 py-1 text-xs bg-purple-500 text-white font-semibold rounded-lg shadow-md hover:bg-purple-600 transition-colors mb-1"
-                                                data-action="assign-rolex-tickets"
-                                                data-refid="${r.refId}"
-                                                data-refname="${r.name}">Assign Spin</button>
+                                             data-action="assign-rolex-tickets"
+                                             data-refid="${r.refId}"
+                                             data-refname="${r.name}">Assign Spin</button>
                         <button class="px-2 py-1 text-xs bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 transition-colors"
-                                                data-action="assign-raffle-tickets"
-                                                data-refid="${r.refId}"
-                                                data-refname="${r.name}">Assign Raffle</button>
+                                             data-action="assign-raffle-tickets"
+                                             data-refid="${r.refId}"
+                                             data-refname="${r.name}">Assign Raffle</button>
                     `;
                 }
 
@@ -1772,9 +1783,12 @@
                 // Status Handling
                 let statusText = (e.status || 'N/A').toUpperCase();
                 let statusClass = 'bg-green-700/50 text-green-300';
-                if (statusText === 'MANUAL_DONATED') {
+                if (statusText === 'MANUAL_DONATED_CONVERSION_SURPLUS') {
                      statusClass = 'bg-yellow-700/50 text-yellow-300';
-                } else if (statusText === 'PAID') {
+                     statusText = 'CONV. SURPLUS';
+                } else if (statusText === 'MANUAL_DONATED') {
+                     statusClass = 'bg-yellow-700/50 text-yellow-300';
+                } else if (statusText === 'PAID' || statusText === 'SUCCEEDED') {
                      statusClass = 'bg-green-700/50 text-green-300';
                 }
 
@@ -1899,8 +1913,9 @@
             showGlobalLoading(`Updating sale ${entryId}...`);
 
             try {
+                // Assuming entryType is 'raffle' as this is for splitThePotTickets
                 const updateRaffleEntryCallable = httpsCallable(functions, 'updateRaffleEntry');
-                const response = await updateRaffleEntryCallable({ entryId, updatedData });
+                const response = await updateRaffleEntryCallable({ entryId, updatedData, entryType: 'raffle' });
 
                 showCustomPopup('Success', response.data.message);
                 await fetchDashboardData(); 
@@ -2158,10 +2173,13 @@
                 return cleaned;
             });
 
+            let sortConfigForExport;
+
             switch (currentTab) {
                 case 'users':
+                    sortConfigForExport = userSortConfig;
                     // Users list has special formatting and no 'all' equivalent besides ignoring search
-                    const userList = scope === 'all' ? allAuthUsers : filteredAuthUsers;
+                    const userList = scope === 'all' ? allAuthUsers : filterAuthUsers(allAuthUsers); // Re-run filterAuthUsers if 'filtered' scope is selected
                     data = userList.map(u => ({
                         UID: u.uid,
                         Email: u.email,
@@ -2175,18 +2193,22 @@
                     }));
                     break;
                 case 'referrers':
+                    sortConfigForExport = referrerSortConfig;
                     // Referrers export combines filtering and sorting.
-                    data = cleanData(scope === 'all' ? sortEntries(dashboardData.referrers, referrerSortConfig) : filterReferrers(dashboardData.referrers));
+                    data = cleanData(scope === 'all' ? sortEntries(dashboardData.referrers, sortConfigForExport) : filterReferrers(dashboardData.referrers));
                     break;
                 case 'raffle':
-                    data = cleanData(scope === 'all' ? sortEntries(dashboardData.raffleEntries, raffleSortConfig) : getFilteredView(dashboardData.raffleEntries, raffleSortConfig, raffleFilter));
+                    sortConfigForExport = raffleSortConfig;
+                    data = cleanData(scope === 'all' ? sortEntries(dashboardData.raffleEntries, sortConfigForExport) : getFilteredView(dashboardData.raffleEntries, sortConfigForExport, raffleFilter));
                     break;
                 case 'rolex':
-                    data = cleanData(scope === 'all' ? sortEntries(dashboardData.rolexEntries, rolexSortConfig) : getFilteredView(dashboardData.rolexEntries, rolexSortConfig, rolexFilter));
+                    sortConfigForExport = rolexSortConfig;
+                    data = cleanData(scope === 'all' ? sortEntries(dashboardData.rolexEntries, sortConfigForExport) : getFilteredView(dashboardData.rolexEntries, sortConfigForExport, rolexFilter));
                     break;
                 case 'donations':
+                    sortConfigForExport = donationSortConfig;
                     // Donations data is relatively small, scope='all' ignores sort, scope='filtered' applies sort.
-                    data = cleanData(scope === 'all' ? dashboardData.donationEntries : sortEntries(dashboardData.donationEntries, donationSortConfig));
+                    data = cleanData(scope === 'all' ? dashboardData.donationEntries : sortEntries(dashboardData.donationEntries, sortConfigForExport));
                     break;
                 default:
                     data = [];
@@ -2278,10 +2300,11 @@
             showGlobalLoading("Adding manual raffle entry...");
 
             try {
+                // Assuming 'raffle' entry type for the Split the Pot manual sale
                 const addManualSaleCallable = httpsCallable(functions, 'addManualSale');
                 const response = await addManualSaleCallable({
                     name, email: email || null, phone: phone || null,
-                    ticketsBought, amount, refId: refId || null
+                    ticketsBought, amount, refId: refId || null, entryType: 'raffle'
                 });
 
                 window.showCustomPopup('Success', response.data.message);
@@ -2394,7 +2417,7 @@
             
             // Recheck state to ensure correct select-all state
             const allDisplayedSelected = filteredRaffleSales.length > 0 && 
-                                                        filteredRaffleSales.every(s => selectedRaffleSaleIds.has(s.id));
+                                                 filteredRaffleSales.every(s => selectedRaffleSaleIds.has(s.id));
             selectAllCheckbox.checked = allDisplayedSelected;
             
             if (filteredRaffleSales.length === 0) {
@@ -2464,8 +2487,8 @@
             
             const selectAllCheckbox = document.getElementById('selectAllUnassigned');
             const allDisplayedSelected = filteredRaffleSales.length > 0 && 
-                                                        filteredRaffleSales.every(s => selectedRaffleSaleIds.has(s.id));
-                                                        
+                                                 filteredRaffleSales.every(s => selectedRaffleSaleIds.has(s.id));
+                                                 
             if (allDisplayedSelected) {
                 selectAllCheckbox.checked = true;
             } else {
@@ -2571,7 +2594,7 @@
             
             // Recheck state to ensure correct select-all state
             const allDisplayedSelected = filteredRolexSales.length > 0 && 
-                                                        filteredRolexSales.every(s => selectedRolexSaleIds.has(s.id));
+                                                 filteredRolexSales.every(s => selectedRolexSaleIds.has(s.id));
             selectAllCheckbox.checked = allDisplayedSelected;
 
             if (filteredRolexSales.length === 0) {
@@ -2651,8 +2674,8 @@
             
             const selectAllCheckbox = document.getElementById('selectAllRolex');
             const allDisplayedSelected = filteredRolexSales.length > 0 && 
-                                                        filteredRolexSales.every(s => selectedRolexSaleIds.has(s.id));
-                                                        
+                                                 filteredRolexSales.every(s => selectedRolexSaleIds.has(s.id));
+                                                 
             if (allDisplayedSelected) {
                 selectAllCheckbox.checked = true;
             } else {
@@ -2718,9 +2741,9 @@
 
             const searchLower = searchTerm.toLowerCase().trim();
             const filteredTickets = tickets.filter(t => {
-                const name = t.name.toLowerCase();
-                const email = t.email.toLowerCase();
-                const id = t.id.toLowerCase();
+                const name = (t.name || '').toLowerCase();
+                const email = (t.email || '').toLowerCase();
+                const id = (t.id || '').toLowerCase();
                 return name.includes(searchLower) || email.includes(searchLower) || id.includes(searchLower);
             });
             
@@ -2785,7 +2808,8 @@
 
             } catch (error) {
                 console.error("Error fetching conversion list:", error);
-                showCustomPopup('Error', `Failed to load ticket list: ${error.message}`);
+                // Note: The cloud function was updated to provide a more descriptive error if it's an index issue
+                showCustomPopup('Error', `Failed to load ticket list. Check console for details. (Error: ${error.message})`);
                 hideGlobalLoading();
                 return;
             }
@@ -2794,18 +2818,23 @@
             document.getElementById('conversionForm').reset();
             document.getElementById('conversion-details-container').classList.add('hidden');
             document.getElementById('surplus-action-container').classList.add('hidden');
+            // NEW: Hide balance due section
+            document.getElementById('balance-due-action-container').classList.add('hidden');
+            document.getElementById('manual-payment-confirmed').checked = false;
+
+
             document.getElementById('conversion-list-search').value = '';
             document.getElementById('conversion-list-message').classList.remove('hidden');
             
-            // Initial render of the list
-            renderConversionTicketsList(allOldTickets);
-
             // Reset visual balances
             document.getElementById('conversion-outstanding-balance').textContent = formatCurrency(0);
             document.getElementById('conversion-outstanding-balance').classList.remove('text-green-500');
             document.getElementById('conversion-outstanding-balance').classList.add('text-red-500');
             document.getElementById('balance-label').textContent = 'Outstanding Balance Due:';
             document.getElementById('convertTicketsButton').disabled = true;
+
+            // Initial render of the list
+            renderConversionTicketsList(allOldTickets);
 
             document.getElementById('conversionToolModalOverlay').classList.remove('hidden');
             hideGlobalLoading();
@@ -2833,29 +2862,47 @@
             const balanceLabel = document.getElementById('balance-label');
             const surplusContainer = document.getElementById('surplus-action-container');
 
+            // NEW elements for balance due action
+            const dueActionContainer = document.getElementById('balance-due-action-container');
+            const manualPaymentConfirmed = document.getElementById('manual-payment-confirmed');
+            
             balanceElement.classList.remove('text-red-500', 'text-green-500');
             surplusContainer.classList.add('hidden');
+            dueActionContainer.classList.add('hidden'); // Hide by default
             
-            if (balance > 0) {
+            if (newTickets <= 0) {
+                 // Disable if no tickets requested
+                 balanceElement.textContent = formatCurrency(oldAmount);
+                 balanceElement.classList.add('text-green-500');
+                 balanceLabel.textContent = 'Full Credit Available:';
+                 document.getElementById('convertTicketsButton').disabled = true;
+                 return;
+            }
+            
+            if (balance > 0.01) {
                 // Balance DUE
                 balanceElement.textContent = formatCurrency(balance);
                 balanceElement.classList.add('text-red-500');
                 balanceLabel.textContent = 'Outstanding Balance Due:';
-                document.getElementById('convertTicketsButton').disabled = newTickets <= 0;
-            } else if (balance <= 0) {
+                
+                // Show manual payment confirmation and update display
+                document.getElementById('due-amount-display').textContent = formatCurrency(balance);
+                dueActionContainer.classList.remove('hidden');
+
+                // Button is enabled only if manual payment is confirmed
+                document.getElementById('convertTicketsButton').disabled = !manualPaymentConfirmed.checked;
+                
+            } else if (balance <= 0.01) { // 0 or negative (surplus)
                 // Surplus CREDIT or exact break-even
                 balanceElement.textContent = formatCurrency(Math.abs(balance));
                 balanceElement.classList.add('text-green-500');
                 balanceLabel.textContent = 'Surplus Credit:';
-                document.getElementById('convertTicketsButton').disabled = newTickets <= 0;
+                document.getElementById('convertTicketsButton').disabled = false;
                 
                 // Show surplus action options only if there is a surplus (not exact break-even)
                 if (Math.abs(balance) > 0.01) {
                     surplusContainer.classList.remove('hidden');
                 }
-            } else {
-                // Default check, covers empty field or invalid input
-                 document.getElementById('convertTicketsButton').disabled = newTickets <= 0;
             }
         };
 
@@ -2888,13 +2935,18 @@
                  return;
             }
             
-            if (balance > 0) {
-                 showCustomPopup('Outstanding Balance', `You must manually collect the outstanding balance of ${formatCurrency(balance)} before finalizing this conversion.`);
-                 return;
+            if (balance > 0.01) {
+                 const manualPaymentConfirmed = document.getElementById('manual-payment-confirmed');
+                 if (!manualPaymentConfirmed.checked) {
+                     // This should be caught by the disabled button, but as a final guardrail:
+                     showCustomPopup('Outstanding Balance', `You must check the confirmation box to proceed, assuming the balance of ${formatCurrency(balance)} has been manually collected.`);
+                     return;
+                 }
+                 // If the box is checked, we proceed, treating the "balance due" as collected.
             }
             
             // If there is a surplus (balance is 0 or negative)
-            if (balance < 0) {
+            if (balance < -0.01) { // Check for a meaningful surplus
                 // Get selected surplus action
                 const selectedRadio = document.querySelector('input[name="surplus_action"]:checked');
                 surplusAction = selectedRadio ? selectedRadio.value : 'donate'; // Default to donate if selected
@@ -3213,6 +3265,13 @@
                 if (document.getElementById('conversion-new-tickets')) {
                     document.getElementById('conversion-new-tickets').addEventListener('input', updateConversionCalculation);
                 }
+                
+                // NEW: Listen for manual payment confirmation toggle
+                if (document.getElementById('manual-payment-confirmed')) {
+                    document.getElementById('manual-payment-confirmed').addEventListener('change', updateConversionCalculation);
+                }
+
+
                 if (document.getElementById('conversionForm')) {
                     // Also listen for changes on the radio buttons to trigger calc UI update
                     document.querySelectorAll('input[name="surplus_action"]').forEach(radio => {

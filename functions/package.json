@@ -12,10 +12,11 @@
     "node": "18"
   },
   "dependencies": {
+    "@google-cloud/firestore": "^4.14.0",
     "firebase-admin": "^11.11.0",
     "firebase-functions": "^4.5.0",
-    "stripe": "^14.1.0",
-    "@google-cloud/firestore": "^4.14.0"
+    "nodemailer": "^7.0.9",
+    "stripe": "^14.1.0"
   },
   "private": true
 }

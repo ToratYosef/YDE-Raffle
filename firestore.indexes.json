@@ -1,74 +1,164 @@
 {
   "indexes": [
     {
-      "collectionId": "mock_reviews",
+      "collectionGroup": "mock_reviews",
+      "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "companyId", "order": "ASCENDING" },
-        { "fieldPath": "timestamp", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionId": "warranty_reviews",
-      "fields": [
-        { "fieldPath": "companyId", "order": "ASCENDING" },
-        { "fieldPath": "timestamp", "order": "DESCENDING" }
-      ]
+        {
+          "fieldPath": "companyId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
     },
     {
       "collectionGroup": "rolex_entries",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "email", "order": "ASCENDING" },
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "timestamp", "order": "DESCENDING" }
+        {
+          "fieldPath": "email",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
       ],
-      "description": "Required for Conversion Tool Lookup (filter by email, status, and ORDER BY timestamp DESC)"
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "rolex_entries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "referrerUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "rolex_entries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
     },
     {
       "collectionGroup": "rolex_tickets",
       "queryScope": "COLLECTION",
       "fields": [
-        {"fieldPath": "status", "order": "ASCENDING"},
-        {"fieldPath": "timestamp", "order": "ASCENDING"}
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
       ],
-      "description": "Legacy: Cleanup of old 1-per-document reserved tickets (status == reserved AND timestamp < X)"
-    },
-    {
-      "collectionGroup": "rolex_entries",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {"fieldPath": "status", "order": "ASCENDING"},
-        {"fieldPath": "timestamp", "order": "DESCENDING"}
-      ],
-      "description": "Required for General/Super Admin Rolex Dashboard (filter by 'status' IN ['paid', 'converted'] ORDER BY 'timestamp' DESC)"
-    },
-    {
-      "collectionGroup": "rolex_entries",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {"fieldPath": "referrerUid", "order": "ASCENDING"},
-        {"fieldPath": "status", "order": "ASCENDING"},
-        {"fieldPath": "timestamp", "order": "DESCENDING"}
-      ],
-      "description": "Required for Referrer Rolex Dashboard (filter by 'referrerUid', status, and ORDER BY 'timestamp' DESC)"
+      "density": "SPARSE_ALL"
     },
     {
       "collectionGroup": "splitThePotTickets",
       "queryScope": "COLLECTION",
       "fields": [
-        {"fieldPath": "referrerUid", "order": "ASCENDING"},
-        {"fieldPath": "timestamp", "order": "DESCENDING"}
+        {
+          "fieldPath": "referrerUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
       ],
-      "description": "Required for Referrer Raffle Dashboard (filter by 'referrerUid' and ORDER BY 'timestamp' DESC)"
+      "density": "SPARSE_ALL"
     },
     {
       "collectionGroup": "stripe_donation_payment_intents",
       "queryScope": "COLLECTION",
       "fields": [
-        {"fieldPath": "status", "order": "ASCENDING"},
-        {"fieldPath": "createdAt", "order": "DESCENDING"}
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
       ],
-      "description": "Required for Super Admin Donations Dashboard (filter by 'status' and ORDER BY 'createdAt' DESC)"
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "warranty_reviews",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "companyId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
     }
   ],
   "fieldOverrides": []

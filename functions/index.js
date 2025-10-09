@@ -1,4 +1,5 @@
-const functions = require('firebase-functions');
+const functions = require('firebase-functions/v1');
+const { firestore } = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 const cors = require('cors');
 const nodemailer = require('nodemailer'); // NEW: Nodemailer import
@@ -8,10 +9,10 @@ admin.initializeApp();
 
 // NOTE: It's crucial that the 'stripe' config variable is correctly set in your Firebase environment
 // Example of how to configure: firebase functions:config:set stripe.secret_key="sk_live_..."
-const stripe = require('stripe')(functions.config().stripe.secret_key);
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 // NEW: Nodemailer Setup - Reads config from environment: firebase functions:config:set mail.email="your-email@gmail.com" mail.password="your-app-password"
-const mailConfig = functions.config().mail;
+const mailConfig = { email: process.env.MAIL_EMAIL, password: process.env.MAIL_PASSWORD };
 let transporter = null;
 if (mailConfig && mailConfig.email && mailConfig.password) {
     transporter = nodemailer.createTransport({
@@ -22,7 +23,8 @@ if (mailConfig && mailConfig.email && mailConfig.password) {
         }
     });
 } else {
-    console.warn("Nodemailer configuration (mail.email, mail.password) is missing. Tax receipts will not be sent.");
+    // This is clearer for the new .env file setup
+    console.warn("Nodemailer configuration (MAIL_EMAIL or MAIL_PASSWORD) is missing from environment variables. Tax receipts will not be sent.");
 }
 
 
@@ -764,7 +766,7 @@ exports.adminResetPasswordByEmail = functions.https.onRequest((req, res) => {
         // !!! CRITICAL SECURITY CHECK PLACEHOLDER !!!
         // You MUST implement a strong authentication check here (e.g., validating
         // a secret API key passed in headers, or Firebase App Check).
-        const ADMIN_SECRET_KEY = functions.config().admin?.api_key;
+        const ADMIN_SECRET_KEY = process.env.ADMIN_API_KEY;
         const providedKey = req.headers['x-admin-api-key'];
 
         if (!providedKey || providedKey !== ADMIN_SECRET_KEY) {
@@ -1036,7 +1038,7 @@ exports.createDonationPaymentIntent = functions.https.onCall(async (data, contex
  */
 exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
     const sig = req.headers['stripe-signature'];
-    const webhookSecret = functions.config().stripe.webhook_secret;
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
     let event;
 
     try {

@@ -13,7 +13,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YDE Senior Fund</title>
-    <meta name="description" content="Support the YDE Senior Fund - Help us create unforgettable experiences for the Class of 2026 with your generous donations.">
+    <!-- UPDATED META DESCRIPTION for stronger search snippet influence -->
+    <meta name="description" content="Support the YDE Class of 2026 Senior Fund. Donate now to make the Israel trip, events, and graduation possible for every student. Play our Rolex Raffle or Split the Pot!">
     <meta name="keywords" content="YDE, Senior Fund, Donate, Class of 2026">
     <meta name="author" content="Saul Setton">
     <link rel="icon" type="image/png" href="/favicon/favicon.jpeg">
@@ -27,16 +28,16 @@
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     
     <!-- Schema Markup (JSON-LD) for WebSite and Sitelinks -->
-    <!-- This structure tells Google what your site is about and clearly defines key action pages, which helps Google generate Sitelinks in search results. -->
+    <!-- We've capitalized the domain here. While Google primarily uses the domain, this subtle hint can sometimes encourage Google to display a cleaner, capitalized version like Ydeseniors.com -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "WebSite",
-      "url": "https://ydeseniors.com/", 
+      "url": "https://Ydeseniors.com/", 
       "name": "YDE Senior Fund",
       "potentialAction": {
         "@type": "SearchAction",
-        "target": "https://ydeseniors.com/search?q={search_term_string}",
+        "target": "https://Ydeseniors.com/search?q={search_term_string}",
         "query-input": "required name=search_term_string"
       },
       "mainEntityOfPage": {
@@ -47,28 +48,44 @@
           {
             "@type": "Action",
             "name": "Split The Pot",
-            "url": "https://ydeseniors.com/split-the-pot/"
+            "url": "https://Ydeseniors.com/split-the-pot/"
           },
           {
             "@type": "Action",
             "name": "Rolex Raffle",
-            "url": "https://ydeseniors.com/rolex-raffle/"
+            "url": "https://Ydeseniors.com/rolex-raffle/"
           },
           {
             "@type": "Action",
             "name": "Donate Now",
-            "url": "https://ydeseniors.com/donate/"
+            "url": "https://Ydeseniors.com/donate/"
           },
           {
             "@type": "Action",
             "name": "Leaderboard",
-            "url": "https://ydeseniors.com/leaderboard/"
+            "url": "https://Ydeseniors.com/leaderboard/"
           }
         ]
       }
     }
     </script>
-    <!-- End Schema Markup. REMEMBER TO REPLACE ALL 'YOUR_WEBSITE_URL_HERE' with your actual domain name! -->
+    
+    <!-- BreadcrumbList Schema to influence the display name above the URL in search results -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "YDE Senior Fund",
+          "item": "https://Ydeseniors.com/"
+        }
+      ]
+    }
+    </script>
+    <!-- End Schema Markup. -->
     
     <style>
         /* Apply background gradient from the preferred styling */
@@ -233,7 +250,7 @@
         <!-- Placeholder Pages - These will NOT be displayed unless specifically navigated to by a direct URL load of this file -->
         <section id="leaderboard" class="page-content py-16">
             <div class="container mx-auto text-center p-4 bg-slate-800/80 rounded-2xl shadow-xl max-w-4xl">
-                <h2 class="bebas-neue text-4xl md:text-5xl lg:text-6xl font-bold text-yellow-400 mb-6">Leaderboard</h2>
+                <h2 class="bebas-neue text-4xl md:text-5xl lg:text-6xl font-bold text-yellow-400 mb-6">Leaderboard </h2>
                 <p class="text-lg md:text-xl text-gray-300 mb-8">
                     See who's leading the charge in supporting the YDE Senior Fund! The top supporters will be listed here.
                 </p>

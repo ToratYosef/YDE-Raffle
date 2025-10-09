@@ -145,6 +145,17 @@
                 <div>
                     <input type="tel" id="manual-phone" placeholder="Customer Phone (Optional)" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white">
                 </div>
+                
+                <!-- NEW: Raffle Type Dropdown (Split the Pot/Rolex Raffle) -->
+                <div class="space-y-1">
+                    <label for="manual-entry-type" class="block text-sm font-medium text-gray-300">Sale Type</label>
+                    <select id="manual-entry-type" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white" required>
+                        <option value="raffle">Split The Pot</option>
+                        <option value="rolex_raffle">Rolex Raffle</option>
+                    </select>
+                </div>
+                <!-- END NEW -->
+
                 <div class="flex space-x-2 sm:space-x-4">
                     <input type="number" id="manual-tickets" placeholder="Tickets Bought" min="1" class="w-1/2 p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white" required>
                     <input type="number" id="manual-amount" placeholder="Amount Paid ($)" step="0.01" min="0.01" class="w-1/2 p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white" required>
@@ -267,7 +278,7 @@
                             <p id="conversion-refId" class="text-gray-300 font-mono text-xs"></p>
                         </div>
                         <div class="col-span-2">
-                             <p class="font-medium text-gray-400">Email:</p>
+                            <p class="font-medium text-gray-400">Email:</p>
                             <p id="conversion-email" class="text-gray-300"></p>
                         </div>
                     </div>
@@ -287,7 +298,7 @@
                             </div>
                         </div>
 
-                        <!-- NEW: Manual Payment Confirmation for Balance Due -->
+                        <!-- NEW: Manual Payment Confirmation for Balance Due (The fix for the $50 error) -->
                         <div id="balance-due-action-container" class="space-y-2 pt-4 hidden">
                             <label class="inline-flex items-center text-gray-200">
                                 <input type="checkbox" id="manual-payment-confirmed" class="form-checkbox text-red-500 h-4 w-4 rounded">
@@ -1022,7 +1033,7 @@
                  console.error('Fallback copy failed:', e);
                  showCustomPopup('Error', 'Failed to copy link. Please copy it manually.');
              }
-           }
+            }
         
         const getRefIdFromUrl = () => {
             const urlParams = new URLSearchParams(window.location.search);
@@ -1381,7 +1392,7 @@
             
             // Check if all displayed users are selected to tick the selectAll box
             const allDisplayedSelected = filteredAuthUsers.length > 0 && 
-                                                 filteredAuthUsers.every(u => selectedUserUids.has(u.uid));
+                                            filteredAuthUsers.every(u => selectedUserUids.has(u.uid));
             if (allDisplayedSelected) {
                 selectAllCheckbox.checked = true;
             }
@@ -1414,7 +1425,7 @@
                     <td>${u.displayName || 'N/A'}</td>
                     <td><span class="${u.emailVerified ? 'text-green-400' : 'text-orange-400'}" title="${u.emailVerified ? 'Verified' : 'Unverified'}">${u.email}</span></td>
                     <td class="font-mono text-xs text-gray-400 truncate max-w-[100px] sm:max-w-[150px]">${u.uid}</td>
-                    <td>${formatDate(u.createdAt)}</td>
+                    <td>${u.createdAt ? formatDate(u.createdAt) : 'N/A'}</td>
                     <td>${roles.map(r => `<span class="text-xs font-medium px-2 py-1 rounded-full bg-gray-600 text-gray-300">${r}</span>`).join(' ')}</td>
                     <td>${statusContent}</td>
                 `;
@@ -1437,8 +1448,8 @@
 
             const selectAllCheckbox = document.getElementById('selectAllUsers');
             const allDisplayedSelected = filteredAuthUsers.length > 0 && 
-                                                 filteredAuthUsers.every(u => selectedUserUids.has(u.uid));
-                                                 
+                                            filteredAuthUsers.every(u => selectedUserUids.has(u.uid));
+                                            
             if (allDisplayedSelected) {
                 selectAllCheckbox.checked = true;
             } else {
@@ -1529,8 +1540,8 @@
             
             // Only Super Admins see this table content
             if (!isSuperAdmin) {
-                 tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-gray-400">Permission Denied. Only Super Admins can view all referrers.</td></tr>';
-                 return;
+                tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-gray-400">Permission Denied. Only Super Admins can view all referrers.</td></tr>';
+                return;
             }
 
             const sortedReferrers = filterReferrers(referrers);
@@ -1550,35 +1561,35 @@
                 if (isSuperAdmin) {
                     // Update: Clicking the name now applies the combined filter and shows sales.
                     nameCellContent = `<span 
-                                                 class="text-white font-semibold cursor-pointer hover:underline" 
-                                                 data-action="view-referrer-sales" 
-                                                 data-refid="${r.refId}" 
-                                                 data-refname="${r.name}"
-                                                 >${r.name}</span>`;
+                                            class="text-white font-semibold cursor-pointer hover:underline" 
+                                            data-action="view-referrer-sales" 
+                                            data-refid="${r.refId}" 
+                                            data-refname="${r.name}"
+                                            >${r.name}</span>`;
                     
                     // Check if a corresponding Firebase Auth User exists (optional, but good practice)
-                    const authUser = allAuthUsers.find(u => u.refId === r.refId);
+                    const authUser = allAuthUsers.find(u => u.uid === r.uid);
                     
                     if (authUser && !authUser.isSuperAdmin && authUser.uid !== auth.currentUser?.uid) {
                         upgradeButton = `
                             <button class="px-2 py-1 text-xs bg-red-500 text-white font-semibold rounded-lg shadow-md hover:bg-red-600 transition-colors mb-1"
-                                             data-action="promote-sa"
-                                             data-uid="${authUser.uid}"
-                                             data-refid="${r.refId}"
-                                             data-refname="${r.name}">Promote to SA</button>
+                                            data-action="promote-sa"
+                                            data-uid="${authUser.uid}"
+                                            data-refid="${r.refId}"
+                                            data-refname="${r.name}">Promote to SA</button>
                         `;
                     }
                     
                     actionCellContent = `
                         ${upgradeButton}
                         <button class="px-2 py-1 text-xs bg-purple-500 text-white font-semibold rounded-lg shadow-md hover:bg-purple-600 transition-colors mb-1"
-                                             data-action="assign-rolex-tickets"
-                                             data-refid="${r.refId}"
-                                             data-refname="${r.name}">Assign Spin</button>
+                                            data-action="assign-rolex-tickets"
+                                            data-refid="${r.refId}"
+                                            data-refname="${r.name}">Assign Spin</button>
                         <button class="px-2 py-1 text-xs bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 transition-colors"
-                                             data-action="assign-raffle-tickets"
-                                             data-refid="${r.refId}"
-                                             data-refname="${r.name}">Assign Raffle</button>
+                                            data-action="assign-raffle-tickets"
+                                            data-refid="${r.refId}"
+                                            data-refname="${r.name}">Assign Raffle</button>
                     `;
                 }
 
@@ -2222,8 +2233,8 @@
                  return;
             }
             if (currentTab === 'tools' || currentTab === '') {
-                 showCustomPopup('Export Failed', 'Please navigate to a data tab (Referrers, Sales, Donations, Users) to export.');
-                 return;
+                showCustomPopup('Export Failed', 'Please navigate to a data tab (Referrers, Sales, Donations, Users) to export.');
+                return;
             }
 
             const tabName = document.querySelector(`.tab-button[data-tab="${currentTab}"]`).textContent;
@@ -2290,21 +2301,23 @@
             const ticketsBought = document.getElementById('manual-tickets').value.trim();
             const amount = document.getElementById('manual-amount').value.trim();
             const refId = document.getElementById('manual-refId').value.trim();
+            // NEW: Get selected raffle type
+            const entryType = document.getElementById('manual-entry-type').value;
 
-            if (!name || !ticketsBought || !amount) {
-                window.showCustomPopup('Missing Fields', 'Name, Tickets Bought, and Amount Paid are required.');
+
+            if (!name || !ticketsBought || !amount || !entryType) {
+                window.showCustomPopup('Missing Fields', 'Name, Tickets Bought, Amount Paid, and Sale Type are required.');
                 return;
             }
 
             closeManualSaleModal();
-            showGlobalLoading("Adding manual raffle entry...");
+            showGlobalLoading(`Adding manual ${entryType.replace('_', ' ')} entry...`);
 
             try {
-                // Assuming 'raffle' entry type for the Split the Pot manual sale
                 const addManualSaleCallable = httpsCallable(functions, 'addManualSale');
                 const response = await addManualSaleCallable({
                     name, email: email || null, phone: phone || null,
-                    ticketsBought, amount, refId: refId || null, entryType: 'raffle'
+                    ticketsBought, amount, refId: refId || null, entryType
                 });
 
                 window.showCustomPopup('Success', response.data.message);
@@ -2367,6 +2380,261 @@
         };
 
 
+        // --- NEW: Ticket Conversion Tool Logic ---
+        
+        const TICKET_PRICE_NEW = 150.00; // New Rolex Raffle ticket price
+
+        // Helper function to render the list of tickets in the conversion modal
+        const renderConversionTicketsList = (tickets, searchTerm = '') => {
+            const tbody = document.getElementById('conversionTicketsTableBody');
+            tbody.innerHTML = '';
+
+            const searchLower = searchTerm.toLowerCase().trim();
+            const filteredTickets = tickets.filter(t => {
+                const name = (t.name || '').toLowerCase();
+                const email = (t.email || '').toLowerCase();
+                const id = (t.id || '').toLowerCase();
+                return name.includes(searchLower) || email.includes(searchLower) || id.includes(searchLower);
+            });
+            
+            if (filteredTickets.length === 0) {
+                 tbody.innerHTML = '<tr><td colspan="2" class="py-3 px-3 text-center text-gray-400">No paid tickets found to convert.</td></tr>';
+                 return;
+            }
+
+            filteredTickets.forEach(t => {
+                const isSelected = selectedOldTicketId === t.id;
+                const tr = document.createElement('tr');
+                tr.classList.add('conversion-table-row', 'transition-all');
+                if (isSelected) {
+                     tr.classList.add('selected');
+                }
+                tr.dataset.ticketId = t.id;
+
+                tr.innerHTML = `
+                    <td class="py-2 px-3 text-sm font-medium text-white truncate max-w-[150px]">${t.name} <span class="font-mono text-xs text-gray-400 ml-1">(${t.id})</span></td>
+                    <td class="py-2 px-3 text-right font-semibold text-green-400">${formatCurrency(t.amountPaid)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+
+        const selectConversionTicket = (ticketId) => {
+             const selectedTicket = allOldTickets.find(t => t.id === ticketId);
+             if (!selectedTicket) return;
+
+             selectedOldTicketId = ticketId;
+             
+             // Update UI fields
+             document.getElementById('conversion-entry-id').value = selectedTicket.id;
+             document.getElementById('conversion-original-amount-value').value = selectedTicket.amountPaid;
+             document.getElementById('conversion-name').textContent = selectedTicket.name;
+             document.getElementById('conversion-email').textContent = selectedTicket.email;
+             document.getElementById('conversion-refId').textContent = selectedTicket.referrerRefId || 'N/A';
+             document.getElementById('conversion-old-amount').textContent = formatCurrency(selectedTicket.amountPaid);
+             
+             // Suggest optimal tickets and run calculation
+             document.getElementById('conversion-new-tickets').value = Math.floor(selectedTicket.amountPaid / TICKET_PRICE_NEW) || 1; 
+             document.getElementById('conversion-details-container').classList.remove('hidden');
+             document.getElementById('conversion-list-message').classList.add('hidden');
+             // Reset manual confirmation checkbox
+             document.getElementById('manual-payment-confirmed').checked = false; 
+             updateConversionCalculation();
+             
+             // Re-render list to show selection highlight
+             renderConversionTicketsList(allOldTickets, document.getElementById('conversion-list-search').value);
+        }
+
+        const openConversionToolModal = async () => {
+            if (!isSuperAdmin) {
+                window.showCustomPopup('Permission Denied', 'Only Super Admins can access the Conversion Tool.');
+                return;
+            }
+            showGlobalLoading("Fetching old tickets...");
+
+            try {
+                 const getAllOldRaffleTicketsForConversionCallable = httpsCallable(functions, 'getAllOldRaffleTicketsForConversion');
+                 const response = await getAllOldRaffleTicketsForConversionCallable({});
+                 allOldTickets = response.data.entries;
+
+            } catch (error) {
+                console.error("Error fetching conversion list:", error);
+                // Note: The cloud function was updated to provide a more descriptive error if it's an index issue
+                showCustomPopup('Error', `Failed to load ticket list. Check console for details. (Error: ${error.message})`);
+                hideGlobalLoading();
+                return;
+            }
+
+            selectedOldTicketId = null;
+            document.getElementById('conversionForm').reset();
+            document.getElementById('conversion-details-container').classList.add('hidden');
+            document.getElementById('surplus-action-container').classList.add('hidden');
+            // NEW: Hide balance due section
+            document.getElementById('balance-due-action-container').classList.add('hidden');
+            document.getElementById('manual-payment-confirmed').checked = false;
+
+
+            document.getElementById('conversion-list-search').value = '';
+            document.getElementById('conversion-list-message').classList.remove('hidden');
+            
+            // Reset visual balances
+            document.getElementById('conversion-outstanding-balance').textContent = formatCurrency(0);
+            document.getElementById('conversion-outstanding-balance').classList.remove('text-red-500');
+            document.getElementById('conversion-outstanding-balance').classList.add('text-red-500');
+            document.getElementById('balance-label').textContent = 'Outstanding Balance Due:';
+            document.getElementById('convertTicketsButton').disabled = true;
+
+            // Initial render of the list
+            renderConversionTicketsList(allOldTickets);
+
+            document.getElementById('conversionToolModalOverlay').classList.remove('hidden');
+            hideGlobalLoading();
+        };
+
+        const closeConversionToolModal = () => {
+            document.getElementById('conversionToolModalOverlay').classList.add('hidden');
+        };
+
+        const updateConversionCalculation = () => {
+            if (!selectedOldTicketId) {
+                document.getElementById('convertTicketsButton').disabled = true;
+                return;
+            }
+
+            const oldAmount = parseFloat(document.getElementById('conversion-original-amount-value').value) || 0;
+            const newTickets = parseInt(document.getElementById('conversion-new-tickets').value, 10) || 0;
+            
+            const requiredAmount = newTickets * TICKET_PRICE_NEW;
+            const balance = requiredAmount - oldAmount; // Positive means balance DUE, Negative means surplus CREDIT
+            
+            document.getElementById('conversion-required-amount').textContent = formatCurrency(requiredAmount);
+            
+            const balanceElement = document.getElementById('conversion-outstanding-balance');
+            const balanceLabel = document.getElementById('balance-label');
+            const surplusContainer = document.getElementById('surplus-action-container');
+
+            // NEW elements for balance due action
+            const dueActionContainer = document.getElementById('balance-due-action-container');
+            const manualPaymentConfirmed = document.getElementById('manual-payment-confirmed');
+            
+            balanceElement.classList.remove('text-red-500', 'text-green-500');
+            surplusContainer.classList.add('hidden');
+            dueActionContainer.classList.add('hidden'); // Hide by default
+            
+            if (newTickets <= 0) {
+                 // Disable if no tickets requested
+                 balanceElement.textContent = formatCurrency(oldAmount);
+                 balanceElement.classList.add('text-green-500');
+                 balanceLabel.textContent = 'Full Credit Available:';
+                 document.getElementById('convertTicketsButton').disabled = true;
+                 return;
+            }
+            
+            if (balance > 0.01) {
+                // Balance DUE
+                balanceElement.textContent = formatCurrency(balance);
+                balanceElement.classList.add('text-red-500');
+                balanceLabel.textContent = 'Outstanding Balance Due:';
+                
+                // Show manual payment confirmation and update display
+                document.getElementById('due-amount-display').textContent = formatCurrency(balance);
+                dueActionContainer.classList.remove('hidden');
+
+                // Button is enabled only if manual payment is confirmed
+                document.getElementById('convertTicketsButton').disabled = !manualPaymentConfirmed.checked;
+                
+            } else if (balance <= 0.01) { // 0 or negative (surplus)
+                // Surplus CREDIT or exact break-even
+                balanceElement.textContent = formatCurrency(Math.abs(balance));
+                balanceElement.classList.add('text-green-500');
+                balanceLabel.textContent = 'Surplus Credit:';
+                document.getElementById('convertTicketsButton').disabled = false;
+                
+                // Hide due action container and show surplus action options if there is a meaningful surplus
+                dueActionContainer.classList.add('hidden');
+                if (Math.abs(balance) > 0.01) { 
+                    surplusContainer.classList.remove('hidden');
+                }
+            }
+        };
+
+        const handleConvertTicketsSubmit = async (e) => {
+            e.preventDefault();
+            
+            const entryId = document.getElementById('conversion-entry-id').value;
+            const newTickets = parseInt(document.getElementById('conversion-new-tickets').value, 10);
+            
+            if (!entryId) {
+                 showCustomPopup('Error', 'Please select a ticket first.');
+                 return;
+            }
+
+            // Recalculate balance for final check
+            const oldAmountRaw = parseFloat(document.getElementById('conversion-original-amount-value').value) || 0;
+            const requiredAmount = newTickets * TICKET_PRICE_NEW;
+            const balance = requiredAmount - oldAmountRaw; // Positive = DUE, Negative = SURPLUS
+            
+            const name = document.getElementById('conversion-name').textContent;
+            const email = document.getElementById('conversion-email').textContent;
+            const refId = document.getElementById('conversion-refId').textContent;
+            
+            let amountPaidToCF = oldAmountRaw; // Default amount
+            let surplusAction = 'none'; // Default if no surplus
+
+            if (newTickets <= 0) {
+                 showCustomPopup('Invalid Quantity', 'Please select at least 1 new ticket.');
+                 return;
+            }
+            
+            if (balance > 0.01) {
+                // Balance DUE: Check for manual confirmation (THE FIX)
+                const manualPaymentConfirmed = document.getElementById('manual-payment-confirmed');
+                if (!manualPaymentConfirmed.checked) {
+                    showCustomPopup('Outstanding Balance', `You must check the confirmation box to proceed, assuming the balance of ${formatCurrency(balance)} has been manually collected.`);
+                    return;
+                }
+                // If checked, we tell the CF that the full required amount has been paid (tricking the check)
+                amountPaidToCF = requiredAmount; 
+            }
+            
+            // If there is a surplus (balance is 0 or negative)
+            if (balance < -0.01) { // Check for a meaningful surplus
+                // Get selected surplus action
+                const selectedRadio = document.querySelector('input[name="surplus_action"]:checked');
+                surplusAction = selectedRadio ? selectedRadio.value : 'donate'; // Default to donate if selected
+            }
+
+            closeConversionToolModal();
+            showGlobalLoading(`Finalizing conversion for ${name} to ${newTickets} new entries...`);
+
+            try {
+                const convertOldTicketsToNewRaffleEntryCallable = httpsCallable(functions, 'convertOldTicketsToNewRaffleEntry');
+                const response = await convertOldTicketsToNewRaffleEntryCallable({
+                    oldEntryId: entryId,
+                    newTicketQuantity: newTickets,
+                    originalAmountPaid: amountPaidToCF, // Use the adjusted/confirmed amount to bypass CF balance check
+                    newRequiredAmount: requiredAmount,
+                    customerName: name,
+                    customerEmail: email,
+                    referrerRefId: refId === 'N/A' ? null : refId,
+                    surplusAction: surplusAction // Pass the chosen action
+                });
+
+                showCustomPopup('Conversion Complete', response.data.message);
+                
+                // IMPORTANT: The original ticket was deleted on the backend, so we need a full refresh
+                await fetchDashboardData(); 
+
+            } catch (error) {
+                console.error("Conversion Failed:", error);
+                showCustomPopup('Conversion Failed', `Error: ${error.message}`);
+            } finally {
+                hideGlobalLoading();
+            }
+        };
+
+
         // --- Split the Pot Assignment Logic ---
 
         const fetchAssignmentRaffleSales = async () => {
@@ -2417,7 +2685,7 @@
             
             // Recheck state to ensure correct select-all state
             const allDisplayedSelected = filteredRaffleSales.length > 0 && 
-                                                 filteredRaffleSales.every(s => selectedRaffleSaleIds.has(s.id));
+                                            filteredRaffleSales.every(s => selectedRaffleSaleIds.has(s.id));
             selectAllCheckbox.checked = allDisplayedSelected;
             
             if (filteredRaffleSales.length === 0) {
@@ -2487,8 +2755,8 @@
             
             const selectAllCheckbox = document.getElementById('selectAllUnassigned');
             const allDisplayedSelected = filteredRaffleSales.length > 0 && 
-                                                 filteredRaffleSales.every(s => selectedRaffleSaleIds.has(s.id));
-                                                 
+                                            filteredRaffleSales.every(s => selectedRaffleSaleIds.has(s.id));
+                                            
             if (allDisplayedSelected) {
                 selectAllCheckbox.checked = true;
             } else {
@@ -2594,7 +2862,7 @@
             
             // Recheck state to ensure correct select-all state
             const allDisplayedSelected = filteredRolexSales.length > 0 && 
-                                                 filteredRolexSales.every(s => selectedRolexSaleIds.has(s.id));
+                                            filteredRolexSales.every(s => selectedRolexSaleIds.has(s.id));
             selectAllCheckbox.checked = allDisplayedSelected;
 
             if (filteredRolexSales.length === 0) {
@@ -2640,7 +2908,7 @@
                 tbody.appendChild(tr);
             });
             
-            selectedCountDisplay.textContent = `${selectedRolexSaleIds.size} tickets selected`;
+            selectedRolexCountDisplay.textContent = `${selectedRolexSaleIds.size} tickets selected`;
             applyButton.disabled = selectedRolexSaleIds.size === 0;
 
         };
@@ -2674,8 +2942,8 @@
             
             const selectAllCheckbox = document.getElementById('selectAllRolex');
             const allDisplayedSelected = filteredRolexSales.length > 0 && 
-                                                 filteredRolexSales.every(s => selectedRolexSaleIds.has(s.id));
-                                                 
+                                            filteredRolexSales.every(s => selectedRolexSaleIds.has(s.id));
+                                            
             if (allDisplayedSelected) {
                 selectAllCheckbox.checked = true;
             } else {
@@ -2729,258 +2997,6 @@
                 hideGlobalLoading();
             }
         };
-
-        // --- NEW: Ticket Conversion Tool Logic ---
-        
-        const TICKET_PRICE_NEW = 150.00; // New Rolex Raffle ticket price
-
-        // Helper function to render the list of tickets in the conversion modal
-        const renderConversionTicketsList = (tickets, searchTerm = '') => {
-            const tbody = document.getElementById('conversionTicketsTableBody');
-            tbody.innerHTML = '';
-
-            const searchLower = searchTerm.toLowerCase().trim();
-            const filteredTickets = tickets.filter(t => {
-                const name = (t.name || '').toLowerCase();
-                const email = (t.email || '').toLowerCase();
-                const id = (t.id || '').toLowerCase();
-                return name.includes(searchLower) || email.includes(searchLower) || id.includes(searchLower);
-            });
-            
-            if (filteredTickets.length === 0) {
-                 tbody.innerHTML = '<tr><td colspan="2" class="py-3 px-3 text-center text-gray-400">No paid tickets found to convert.</td></tr>';
-                 return;
-            }
-
-            filteredTickets.forEach(t => {
-                const isSelected = selectedOldTicketId === t.id;
-                const tr = document.createElement('tr');
-                tr.classList.add('conversion-table-row', 'transition-all');
-                if (isSelected) {
-                     tr.classList.add('selected');
-                }
-                tr.dataset.ticketId = t.id;
-
-                tr.innerHTML = `
-                    <td class="py-2 px-3 text-sm font-medium text-white truncate max-w-[150px]">${t.name} <span class="font-mono text-xs text-gray-400 ml-1">(${t.id})</span></td>
-                    <td class="py-2 px-3 text-right font-semibold text-green-400">${formatCurrency(t.amountPaid)}</td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-
-        const selectConversionTicket = (ticketId) => {
-             const selectedTicket = allOldTickets.find(t => t.id === ticketId);
-             if (!selectedTicket) return;
-
-             selectedOldTicketId = ticketId;
-             
-             // Update UI fields
-             document.getElementById('conversion-entry-id').value = selectedTicket.id;
-             document.getElementById('conversion-original-amount-value').value = selectedTicket.amountPaid;
-             document.getElementById('conversion-name').textContent = selectedTicket.name;
-             document.getElementById('conversion-email').textContent = selectedTicket.email;
-             document.getElementById('conversion-refId').textContent = selectedTicket.referrerRefId || 'N/A';
-             document.getElementById('conversion-old-amount').textContent = formatCurrency(selectedTicket.amountPaid);
-             
-             // Suggest optimal tickets and run calculation
-             document.getElementById('conversion-new-tickets').value = Math.floor(selectedTicket.amountPaid / TICKET_PRICE_NEW) || 1; 
-             document.getElementById('conversion-details-container').classList.remove('hidden');
-             document.getElementById('conversion-list-message').classList.add('hidden');
-             updateConversionCalculation();
-             
-             // Re-render list to show selection highlight
-             renderConversionTicketsList(allOldTickets, document.getElementById('conversion-list-search').value);
-        }
-
-        const openConversionToolModal = async () => {
-            if (!isSuperAdmin) {
-                window.showCustomPopup('Permission Denied', 'Only Super Admins can access the Conversion Tool.');
-                return;
-            }
-            showGlobalLoading("Fetching old tickets...");
-
-            try {
-                 const getAllOldRaffleTicketsForConversionCallable = httpsCallable(functions, 'getAllOldRaffleTicketsForConversion');
-                 const response = await getAllOldRaffleTicketsForConversionCallable({});
-                 allOldTickets = response.data.entries;
-
-            } catch (error) {
-                console.error("Error fetching conversion list:", error);
-                // Note: The cloud function was updated to provide a more descriptive error if it's an index issue
-                showCustomPopup('Error', `Failed to load ticket list. Check console for details. (Error: ${error.message})`);
-                hideGlobalLoading();
-                return;
-            }
-
-            selectedOldTicketId = null;
-            document.getElementById('conversionForm').reset();
-            document.getElementById('conversion-details-container').classList.add('hidden');
-            document.getElementById('surplus-action-container').classList.add('hidden');
-            // NEW: Hide balance due section
-            document.getElementById('balance-due-action-container').classList.add('hidden');
-            document.getElementById('manual-payment-confirmed').checked = false;
-
-
-            document.getElementById('conversion-list-search').value = '';
-            document.getElementById('conversion-list-message').classList.remove('hidden');
-            
-            // Reset visual balances
-            document.getElementById('conversion-outstanding-balance').textContent = formatCurrency(0);
-            document.getElementById('conversion-outstanding-balance').classList.remove('text-green-500');
-            document.getElementById('conversion-outstanding-balance').classList.add('text-red-500');
-            document.getElementById('balance-label').textContent = 'Outstanding Balance Due:';
-            document.getElementById('convertTicketsButton').disabled = true;
-
-            // Initial render of the list
-            renderConversionTicketsList(allOldTickets);
-
-            document.getElementById('conversionToolModalOverlay').classList.remove('hidden');
-            hideGlobalLoading();
-        };
-
-        const closeConversionToolModal = () => {
-            document.getElementById('conversionToolModalOverlay').classList.add('hidden');
-        };
-
-        const updateConversionCalculation = () => {
-            if (!selectedOldTicketId) {
-                document.getElementById('convertTicketsButton').disabled = true;
-                return;
-            }
-
-            const oldAmount = parseFloat(document.getElementById('conversion-original-amount-value').value) || 0;
-            const newTickets = parseInt(document.getElementById('conversion-new-tickets').value, 10) || 0;
-            
-            const requiredAmount = newTickets * TICKET_PRICE_NEW;
-            const balance = requiredAmount - oldAmount; // Positive means balance DUE, Negative means surplus CREDIT
-            
-            document.getElementById('conversion-required-amount').textContent = formatCurrency(requiredAmount);
-            
-            const balanceElement = document.getElementById('conversion-outstanding-balance');
-            const balanceLabel = document.getElementById('balance-label');
-            const surplusContainer = document.getElementById('surplus-action-container');
-
-            // NEW elements for balance due action
-            const dueActionContainer = document.getElementById('balance-due-action-container');
-            const manualPaymentConfirmed = document.getElementById('manual-payment-confirmed');
-            
-            balanceElement.classList.remove('text-red-500', 'text-green-500');
-            surplusContainer.classList.add('hidden');
-            dueActionContainer.classList.add('hidden'); // Hide by default
-            
-            if (newTickets <= 0) {
-                 // Disable if no tickets requested
-                 balanceElement.textContent = formatCurrency(oldAmount);
-                 balanceElement.classList.add('text-green-500');
-                 balanceLabel.textContent = 'Full Credit Available:';
-                 document.getElementById('convertTicketsButton').disabled = true;
-                 return;
-            }
-            
-            if (balance > 0.01) {
-                // Balance DUE
-                balanceElement.textContent = formatCurrency(balance);
-                balanceElement.classList.add('text-red-500');
-                balanceLabel.textContent = 'Outstanding Balance Due:';
-                
-                // Show manual payment confirmation and update display
-                document.getElementById('due-amount-display').textContent = formatCurrency(balance);
-                dueActionContainer.classList.remove('hidden');
-
-                // Button is enabled only if manual payment is confirmed
-                document.getElementById('convertTicketsButton').disabled = !manualPaymentConfirmed.checked;
-                
-            } else if (balance <= 0.01) { // 0 or negative (surplus)
-                // Surplus CREDIT or exact break-even
-                balanceElement.textContent = formatCurrency(Math.abs(balance));
-                balanceElement.classList.add('text-green-500');
-                balanceLabel.textContent = 'Surplus Credit:';
-                document.getElementById('convertTicketsButton').disabled = false;
-                
-                // Show surplus action options only if there is a surplus (not exact break-even)
-                if (Math.abs(balance) > 0.01) {
-                    surplusContainer.classList.remove('hidden');
-                }
-            }
-        };
-
-        // Removed searchOldTicketEntry function
-
-        const handleConvertTicketsSubmit = async (e) => {
-            e.preventDefault();
-            
-            const entryId = document.getElementById('conversion-entry-id').value;
-            const newTickets = parseInt(document.getElementById('conversion-new-tickets').value, 10);
-            
-            if (!entryId) {
-                 showCustomPopup('Error', 'Please select a ticket first.');
-                 return;
-            }
-
-            // Recalculate balance for final check
-            const oldAmount = parseFloat(document.getElementById('conversion-original-amount-value').value) || 0;
-            const requiredAmount = newTickets * TICKET_PRICE_NEW;
-            const balance = requiredAmount - oldAmount; // Positive = DUE, Negative = SURPLUS
-            
-            const name = document.getElementById('conversion-name').textContent;
-            const email = document.getElementById('conversion-email').textContent;
-            const refId = document.getElementById('conversion-refId').textContent;
-            
-            let surplusAction = 'none'; // Default if no surplus
-            
-            if (newTickets <= 0) {
-                 showCustomPopup('Invalid Quantity', 'Please select at least 1 new ticket.');
-                 return;
-            }
-            
-            if (balance > 0.01) {
-                 const manualPaymentConfirmed = document.getElementById('manual-payment-confirmed');
-                 if (!manualPaymentConfirmed.checked) {
-                     // This should be caught by the disabled button, but as a final guardrail:
-                     showCustomPopup('Outstanding Balance', `You must check the confirmation box to proceed, assuming the balance of ${formatCurrency(balance)} has been manually collected.`);
-                     return;
-                 }
-                 // If the box is checked, we proceed, treating the "balance due" as collected.
-            }
-            
-            // If there is a surplus (balance is 0 or negative)
-            if (balance < -0.01) { // Check for a meaningful surplus
-                // Get selected surplus action
-                const selectedRadio = document.querySelector('input[name="surplus_action"]:checked');
-                surplusAction = selectedRadio ? selectedRadio.value : 'donate'; // Default to donate if selected
-            }
-
-            closeConversionToolModal();
-            showGlobalLoading(`Finalizing conversion for ${name} to ${newTickets} new entries...`);
-
-            try {
-                const convertOldTicketsToNewRaffleEntryCallable = httpsCallable(functions, 'convertOldTicketsToNewRaffleEntry');
-                const response = await convertOldTicketsToNewRaffleEntryCallable({
-                    oldEntryId: entryId,
-                    newTicketQuantity: newTickets,
-                    originalAmountPaid: oldAmount, // Use the correct variable name here
-                    newRequiredAmount: requiredAmount,
-                    customerName: name,
-                    customerEmail: email,
-                    referrerRefId: refId === 'N/A' ? null : refId,
-                    surplusAction: surplusAction // Pass the chosen action
-                });
-
-                showCustomPopup('Conversion Complete', response.data.message);
-                
-                // IMPORTANT: The original ticket was deleted on the backend, so we need a full refresh
-                await fetchDashboardData(); 
-
-            } catch (error) {
-                console.error("Conversion Failed:", error);
-                showCustomPopup('Conversion Failed', `Error: ${error.message}`);
-            } finally {
-                hideGlobalLoading();
-            }
-        };
-
 
         // --- Authentication and Initialization ---
 
@@ -3389,7 +3405,7 @@
                             showCustomPopup('Permission Denied', 'Only Super Admins can clear referrer filters.');
                         }
                     }
-                     // Also handle Edit button click here for the raffle table if it's on a row item
+                    // Also handle Edit button click here for the raffle table if it's on a row item
                     if (e.target.dataset.action === 'edit-sale' && isSuperAdmin) {
                         openEditSaleModal(e.target.dataset.entryId);
                     }

@@ -1,6 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-VY17C4ZK69"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-VY17C4ZK69');
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Support the YDE Senior Fund - Help us create unforgettable experiences for the Class of 2026 with your generous donations.">
@@ -49,12 +58,13 @@
         }
 
         /* --- Raffle Page Specific Styles --- */
-        /* Dark, opaque panel for content */
+        /*
+         * FIXED: The glass-panel is now a solid, dark, premium color (#212534) 
+         * matching the desired opaque box look.
+         */
         .glass-panel {
-            background: rgba(21, 26, 45, 0.8);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            background-color: #212534; 
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
         .relative-container {
             position: relative;
@@ -217,6 +227,7 @@
 
     <main class="flex-grow pt-28 sm:pt-32 px-4 md:px-8 lg:px-16">
         <section id="rolex-raffle-section">
+            <!-- Main Content Container (Uses updated glass-panel styling) -->
             <div class="container mx-auto text-center p-4 sm:p-6 md:p-12 glass-panel rounded-2xl shadow-2xl">
                 <h1 class="bebas-neue text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-4 drop-shadow-lg">
                     Win a Rolex Sky-Dweller or $26,000 Cash!
@@ -240,47 +251,47 @@
                     </div>
                 </div>
                 
-                <!-- Payment Form Section (UPDATED STYLING FROM SECOND FILE) -->
-                <div class="relative-container bg-[#2d3340] p-6 rounded-2xl shadow-2xl max-w-lg mx-auto mb-12 border border-slate-700">
+                <!-- Payment Form Section (NOW USES SOLID glass-panel CLASS) -->
+                <div class="relative-container glass-panel p-6 rounded-2xl shadow-2xl max-w-lg mx-auto mb-12">
                     <div id="initial-form" class="space-y-4" autocomplete="off" novalidate>
                         <!-- Title -->
                         <h2 id="raffle-form-title" class="bebas-neue text-4xl font-bold text-white mb-6 uppercase">BUY YOUR TICKETS!</h2>
 
-                        <!-- Full Name -->
+                        <!-- Full Name (Using solid dark input color: bg-[#3d4554]) -->
                         <div id="raffle-name-container">
                             <input type="text" id="raffle-name" name="name" placeholder="Full Name" 
-                                class="w-full py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 border-none focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300" required>
+                                class="w-full py-3 px-4 rounded-lg bg-[#3d4554] text-white placeholder-gray-400 border-none focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300" required>
                         </div>
                         
-                        <!-- Email Address -->
+                        <!-- Email Address (Using solid dark input color: bg-[#3d4554]) -->
                         <div id="raffle-email-container">
                             <input type="email" id="raffle-email" name="email" placeholder="Email Address" 
-                                class="w-full py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 border-none focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300" required>
+                                class="w-full py-3 px-4 rounded-lg bg-[#3d4554] text-white placeholder-gray-400 border-none focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300" required>
                         </div>
                         
-                        <!-- Phone Number -->
+                        <!-- Phone Number (Using solid dark input color: bg-[#3d4554]) -->
                         <div id="raffle-phone-container">
                             <input type="tel" id="raffle-phone" name="phone" placeholder="Phone Number" 
-                                class="w-full py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 border-none focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300" required>
+                                class="w-full py-3 px-4 rounded-lg bg-[#3d4554] text-white placeholder-gray-400 border-none focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300" required>
                         </div>
                         
-                        <!-- Ticket Quantity Input with +/- Buttons (FIXED SIZING) -->
-                        <div id="raffle-controls-container" class="flex items-center justify-between pt-4">
-                            <label class="text-gray-300 font-semibold text-lg flex-shrink-0 uppercase">Tickets:</label>
+                        <!-- Ticket Quantity Input (UPDATED FOR WIDE INPUT AND +/- BUTTONS) -->
+                        <div id="raffle-controls-container" class="flex items-center justify-between gap-4 pt-4">
+                            <label class="font-bold text-yellow-400 bebas-neue text-lg flex-shrink-0">TICKETS:</label>
                             
-                            <!-- Quantity Controls - FIXED to match desired style -->
-                            <div class="flex items-center justify-center gap-4"> 
-                                <!-- Minus Button - Now rounded-full and larger (w-12 h-12) -->
+                            <!-- Quantity Controls -->
+                            <div class="flex items-center justify-center gap-2 w-full"> 
+                                <!-- Minus Button -->
                                 <button id="decrement-ticket" type="button" 
                                     class="flex w-12 h-12 bg-yellow-400 text-black rounded-full items-center justify-center font-bold text-2xl hover:bg-yellow-500 transition-colors flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed">
                                     &minus;
                                 </button>
                                 
-                                <!-- Input Field - Now rounded-lg and narrower (w-20) -->
+                                <!-- Input Field (Now w-full inside this inner flex container) -->
                                 <input type="number" id="ticket-quantity" name="quantity" value="1" min="1" max="999999" 
-                                    class="w-20 h-12 text-center py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300 text-xl font-bold" required>
+                                    class="w-full h-12 text-center py-3 px-4 rounded-lg bg-[#3d4554] text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300 text-xl font-bold" required>
                                 
-                                <!-- Plus Button - Now rounded-full and larger (w-12 h-12) -->
+                                <!-- Plus Button -->
                                 <button id="increment-ticket" type="button" 
                                     class="flex w-12 h-12 bg-yellow-400 text-black rounded-full items-center justify-center font-bold text-2xl hover:bg-yellow-500 transition-colors flex-shrink-0">
                                     +
@@ -288,16 +299,16 @@
                             </div>
                         </div>
                         
-                        <!-- Processing Fee Checkbox -->
-                        <div id="raffle-fee-checkbox-container" class="flex items-center pt-2">
-                            <input type="checkbox" id="cover-fee-checkbox" class="h-4 w-4 focus:ring-yellow-500" checked>
+                        <!-- Processing Fee Checkbox (Removed 'checked' attribute and set alignment) -->
+                        <div id="raffle-fee-checkbox-container" class="flex items-center pt-2 justify-start">
+                            <input type="checkbox" id="cover-fee-checkbox" class="h-4 w-4 focus:ring-yellow-500">
                             <label for="cover-fee-checkbox" class="ml-3 text-sm text-gray-300">I would like to cover the processing fees</label>
                         </div>
 
                         <!-- Calculated Total -->
                         <div id="raffle-total-display-container">
                             <p class="text-3xl font-extrabold pt-4 text-center bebas-neue">
-                                TOTAL: <span id="total-amount-display" class="text-yellow-400 ml-2">$154.50</span>
+                                TOTAL: <span id="total-amount-display" class="text-yellow-400 ml-2">$150.00</span>
                             </p>
                         </div>
 
@@ -365,7 +376,8 @@
             </div>
             <p class="text-sm text-gray-500 mt-8">
                 &copy; 2026 YDE Senior Fund. All Rights Reserved.<br/>
-                Website created by Saul Setton
+                <!-- LINK FIXED HERE -->
+                Website created by <a href="https://setton-source-68177.web.app" target="_blank" class="text-yellow-400 hover:text-yellow-300 transition-colors">Saul Setton</a>
             </p>
         </div>
     </footer>
@@ -421,6 +433,27 @@
         }
         // --- End Referrer Helper Functions ---
 
+        // --- Modal Functions ---
+        function showPrizeModal() {
+            const modal = document.getElementById('prizeModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        window.showPrizeModal = showPrizeModal; // Make global
+
+        function hidePrizeModal(event) {
+            if (event && event.target.id !== 'prizeModal' && event.target.tagName !== 'BUTTON') {
+                return; // Do nothing if click is inside the modal content, unless it's the overlay
+            }
+            const modal = document.getElementById('prizeModal');
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
+        }
+        
+        window.hidePrizeModal = hidePrizeModal; // Make global
+        // --- End Modal Functions ---
+
         // --- Utility Functions ---
         function formatCurrency(amount) {
             return new Intl.NumberFormat('en-US', {
@@ -430,23 +463,6 @@
             }).format(amount);
         }
         // --- End Utility Functions ---
-
-        // --- Modal Functions ---
-        function showPrizeModal() {
-            const modal = document.getElementById('prizeModal');
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-        }
-
-        function hidePrizeModal(event) {
-            if (event && event.target.id !== 'prizeModal') {
-                return; // Do nothing if click is inside the modal content
-            }
-            const modal = document.getElementById('prizeModal');
-            modal.classList.remove('flex');
-            modal.classList.add('hidden');
-        }
-        // --- End Modal Functions ---
 
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -506,8 +522,8 @@
             let currentTotalAmount = TICKET_PRICE;
             let clientSecret;
 
-            // Set default checkbox state as checked
-            coverFeeCheckbox.checked = true;
+            // --- Initial State Fix: Ensure checkbox starts unchecked (removed 'checked' attribute from HTML)
+            coverFeeCheckbox.checked = false;
 
             // --- Referrer Logic Initialization ---
             const referrerRefId = getQueryParam('ref');

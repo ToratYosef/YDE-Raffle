@@ -58,6 +58,18 @@ function cleanTicketCount(value) {
     return Math.max(0, num);
 }
 
+/**
+ * Sanitizes strings by replacing non-breaking spaces and other invisible characters with regular spaces.
+ * This prevents unexpected errors when using regex or split operations on user input.
+ * @param {*} value The value to clean.
+ * @returns {string} The cleaned string.
+ */
+function sanitizeString(value) {
+    if (typeof value !== 'string') return value;
+    // Replace various non-breaking spaces (\u00A0, \uFEFF, etc.) and trim whitespace
+    return value.replace(/[\u00A0\uFEFF\u2000-\u200A\u202F\u205F\u3000]/g, ' ').trim();
+}
+
 // Helper function used to format currency in messages
 const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
@@ -260,18 +272,24 @@ exports.convertOldTicketsToNewRaffleEntry = functions.https.onCall(async (data, 
         newTicketQuantity,
         originalAmountPaid,
         newRequiredAmount,
-        customerName,
-        customerEmail,
-        referrerRefId,
+        customerName: rawCustomerName, // NEW: Sanitize incoming data
+        customerEmail: rawCustomerEmail, // NEW: Sanitize incoming data
+        referrerRefId: rawReferrerRefId, // NEW: Sanitize incoming data
         surplusAction // 'donate' or 'refund'
     } = data;
+    
+    // NEW: Apply sanitation to all critical string inputs
+    const customerName = sanitizeString(rawCustomerName);
+    const customerEmail = sanitizeString(rawCustomerEmail);
+    const referrerRefId = sanitizeString(rawReferrerRefId);
+
 
     // New ticket price is assumed to be $150 based on the prompt's context
     const TICKET_PRICE_NEW = 150.00;
 
     // Sanitize Inputs
     const newTickets = cleanTicketCount(newTicketQuantity);
-    const oldAmount = cleanAmount(originalAmountPaid); // Base amount from old record
+    const oldAmount = cleanAmount(originalAmountPaid); // Base amount from old record (or confirmed manual amount)
     const requiredAmount = cleanAmount(newRequiredAmount);
 
     // Positive balance means user owes, Negative balance means user has surplus credit
@@ -282,7 +300,7 @@ exports.convertOldTicketsToNewRaffleEntry = functions.https.onCall(async (data, 
         throw new functions.https.HttpsError('invalid-argument', 'Missing old ticket ID or invalid new ticket quantity.');
     }
 
-    // FIX: Precondition check is maintained, now expecting the client to confirm manual collection if balance > 0.
+    // FIX: Precondition check is maintained. The client side handles confirmation if balance > 0.
     if (balance > 0.01) {
         throw new functions.https.HttpsError('failed-precondition', `Outstanding balance detected (${formatCurrency(balance)}). Please collect payment manually before re-running conversion.`);
     }
@@ -301,10 +319,11 @@ exports.convertOldTicketsToNewRaffleEntry = functions.https.onCall(async (data, 
 
     const oldTicketData = oldTicketDoc.data();
     // Use data passed from the client as fallback for better consistency if the ticket data is sparse
-    const name = oldTicketData.name || oldTicketData.fullName || customerName;
-    const email = oldTicketData.email || customerEmail;
-    const phone = oldTicketData.phoneNumber || oldTicketData.phone || null;
-    const originalRefId = oldTicketData.referrerRefId || referrerRefId;
+    // NEW: Apply sanitation to old data retrieved from DB, just in case
+    const name = sanitizeString(oldTicketData.name || oldTicketData.fullName || customerName);
+    const email = sanitizeString(oldTicketData.email || customerEmail);
+    const phone = sanitizeString(oldTicketData.phoneNumber || oldTicketData.phone || null);
+    const originalRefId = sanitizeString(oldTicketData.referrerRefId || referrerRefId);
 
     // Determine the Referrer's UID
     let referrerUid = null;
@@ -531,7 +550,8 @@ exports.adminResetMultiPassword = functions.https.onCall(async (data, context) =
  * Callable function to track a click on a referral link.
  */
 exports.trackRefLinkClick = functions.https.onCall(async (data, context) => {
-    const { refId } = data;
+    const { refId: rawRefId } = data;
+    const refId = sanitizeString(rawRefId); // NEW: Sanitize Ref ID
 
     if (!refId) {
         return { success: true, message: "Click not tracked: Missing refId." };
@@ -815,7 +835,13 @@ exports.createRolexPaymentIntent = functions.https.onCall(async (data, context) 
     const SOURCE_APP_TAG = 'YDE Rolex Raffle';
 
     try {
-        const { name, email, phone, quantity, amount, referral } = data;
+        // NEW: Sanitize inputs before processing
+        const { name: rawName, email: rawEmail, phone: rawPhone, quantity, amount, referral: rawReferral } = data;
+        const name = sanitizeString(rawName);
+        const email = sanitizeString(rawEmail);
+        const phone = sanitizeString(rawPhone);
+        const referral = sanitizeString(rawReferral);
+
 
         // Ensure amount is cleaned before using it in calculations or Stripe API
         const chargedAmount = cleanAmount(amount); // Total amount user is charged (with fees)
@@ -887,7 +913,14 @@ exports.createStripePaymentIntent = functions.https.onCall(async (data, context)
     const SOURCE_APP_TAG = 'YDE Split The Pot';
 
     try {
-        const { chargedAmount, baseAmount, ticketsBought, name, email, phone, referral } = data;
+        // NEW: Sanitize inputs before processing
+        const { chargedAmount, baseAmount, ticketsBought, name: rawName, email: rawEmail, phone: rawPhone, referral: rawReferral } = data;
+        const name = sanitizeString(rawName);
+        const email = sanitizeString(rawEmail);
+        const phone = sanitizeString(rawPhone);
+        const referral = sanitizeString(rawReferral);
+
+
         const cleanedTicketsBought = cleanTicketCount(ticketsBought);
 
         const amountInCents = Math.round(parseFloat(chargedAmount) * 100);
@@ -944,8 +977,12 @@ exports.createDonationPaymentIntent = functions.https.onCall(async (data, contex
     const SOURCE_APP_TAG = 'YDE Donation';
 
     try {
-        // Updated to accept the referral/refId
-        const { amount, name, email, phone, referral } = data;
+        // NEW: Sanitize inputs before processing
+        const { amount, name: rawName, email: rawEmail, phone: rawPhone, referral: rawReferral } = data;
+        const name = sanitizeString(rawName);
+        const email = sanitizeString(rawEmail);
+        const phone = sanitizeString(rawPhone);
+        const referral = sanitizeString(rawReferral);
         const cleanedAmount = cleanAmount(amount);
 
         if (!cleanedAmount || !name || !email || !phone) {
@@ -1013,8 +1050,14 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
         const paymentIntent = event.data.object;
 
         // Metadata extraction
-        const { name, email, phone, ticketsBought, baseAmount, chargedAmount, referrerRefId, entryType, sourceApp } = paymentIntent.metadata;
+        // NOTE: Sanitize metadata as it came from the client via the PI creation function
+        const { name: rawName, email: rawEmail, phone: rawPhone, ticketsBought, baseAmount, chargedAmount, referrerRefId: rawReferrerRefId, entryType, sourceApp } = paymentIntent.metadata;
 
+        const name = sanitizeString(rawName);
+        const email = sanitizeString(rawEmail);
+        const phone = sanitizeString(rawPhone);
+        const referrerRefId = sanitizeString(rawReferrerRefId);
+        
         const firstName = name.split(' ')[0] || name;
 
         try {
@@ -1076,6 +1119,7 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
             // --- Rolex Raffle Processing ---
             if (entryType === 'rolex_raffle') {
                  // Create a new document in the 'rolex_entries' collection (as it's quantity-based)
+                 // NOTE: This uses 'rolex_entries' as requested by the user.
                  await db.collection('rolex_entries').add({
                      paymentIntentId: paymentIntent.id,
                      name,
@@ -1248,7 +1292,7 @@ exports.claimSpinTicket = functions.https.onCall(async (data, context) => {
 
     let ticketNumber;
     let foundUniqueTicket = false;
-    let userName = data.name || 'Anonymous Claim'; // Use provided name for the ticket if available
+    let userName = sanitizeString(data.name || 'Anonymous Claim'); // NEW: Sanitize name
 
     try {
         const userClaimRef = db.collection('user_claims').doc(uid);
@@ -1324,7 +1368,12 @@ exports.createReferrer = functions.https.onCall(async (data, context) => {
     if (!isSuperAdmin(context)) {
         throw new functions.https.HttpsError('permission-denied', 'Only Super Admins can create new referrers.');
     }
-    const { email, password, name, goal, intendedRefId } = data;
+    // NEW: Sanitize inputs before processing
+    const { email: rawEmail, password, name: rawName, goal, intendedRefId: rawIntendedRefId } = data;
+    const email = sanitizeString(rawEmail);
+    const name = sanitizeString(rawName);
+    const intendedRefId = sanitizeString(rawIntendedRefId);
+
 
     if (!email || !password || !name || !intendedRefId) {
         throw new functions.https.HttpsError('invalid-argument', 'Missing required fields (email, password, name, or intendedRefId).');
@@ -1630,8 +1679,14 @@ exports.addManualSale = functions.https.onCall(async (data, context) => {
     if (!isAdmin(context)) {
         throw new functions.https.HttpsError('permission-denied', 'You must be an admin to add a manual entry.');
     }
+    
+    // NEW: Sanitize inputs before processing
+    const { name: rawName, email: rawEmail, phone: rawPhone, ticketsBought, amount, refId: rawRefId, entryType } = data;
+    const name = sanitizeString(rawName);
+    const email = sanitizeString(rawEmail);
+    const phone = sanitizeString(rawPhone);
+    let actualRefId = sanitizeString(rawRefId); // Cleaned RefId
 
-    const { name, email, phone, ticketsBought, amount, refId, entryType } = data;
     if (!name || !ticketsBought || !amount || !entryType) {
         throw new functions.https.HttpsError('invalid-argument', 'Missing required fields.');
     }
@@ -1644,7 +1699,6 @@ exports.addManualSale = functions.https.onCall(async (data, context) => {
 
     let referrerUid = null;
     let referrerName = "N/A";
-    let actualRefId = refId;
 
     // Logic to determine who the sale is credited to
     if (actualRefId) {
@@ -1699,7 +1753,8 @@ exports.addManualSale = functions.https.onCall(async (data, context) => {
             referrerTicketField = 'totalTickets';
             counterTicketField = 'totalTickets';
         } else if (entryType === 'rolex_raffle') {
-            updateRef = db.collection('rolex_entries'); // Save to the new rolex entries collection
+            // FIX CONFIRMED: This correctly uses the rolex_entries collection.
+            updateRef = db.collection('rolex_entries'); 
             counterDocId = 'rolex_totals';
             referrerTicketField = 'rolexTicketsTotal';
             counterTicketField = 'totalTicketsSold'; // Rolex counter uses totalTicketsSold
@@ -1752,8 +1807,14 @@ exports.addManualDonation = functions.https.onCall(async (data, context) => {
     if (!isSuperAdmin(context)) {
         throw new functions.https.HttpsError('permission-denied', 'You must be a Super Admin to add a manual donation.');
     }
+    
+    // NEW: Sanitize inputs before processing
+    const { name: rawName, email: rawEmail, phone: rawPhone, amount, refId: rawRefId } = data;
+    const name = sanitizeString(rawName);
+    const email = sanitizeString(rawEmail);
+    const phone = sanitizeString(rawPhone);
+    let actualRefId = sanitizeString(rawRefId);
 
-    const { name, email, phone, amount, refId } = data;
     if (!name || !amount) {
         throw new functions.https.HttpsError('invalid-argument', 'Donor name and amount are required.');
     }
@@ -1762,7 +1823,6 @@ exports.addManualDonation = functions.https.onCall(async (data, context) => {
     let donationAmount = cleanAmount(amount);
 
     let referrerUid = null;
-    let actualRefId = refId;
     let referrerTotalAmountIncrement = donationAmount; // Donation amount is credited to the referrer
     const timestamp = admin.firestore.FieldValue.serverTimestamp();
 
@@ -1870,8 +1930,11 @@ exports.updateRaffleEntry = functions.https.onCall(async (data, context) => {
         const updatedTickets = cleanTicketCount(updatedData.ticketCount); // Note: client uses 'ticketCount' generically
         let updatedAmount = cleanAmount(updatedData.amountPaid); // New base amount and rounded
 
-        const updatedFullName = updatedData.fullName || originalData.fullName;
-        const updatedFirstName = updatedData.firstName || (updatedFullName ? updatedFullName.split(' ')[0] : originalData.firstName);
+        // NEW: Sanitize incoming names/contacts
+        const updatedFullName = sanitizeString(updatedData.fullName) || originalData.fullName;
+        const updatedFirstName = updatedFullName.split(' ')[0] || updatedFullName;
+        const updatedEmail = sanitizeString(updatedData.email);
+        const updatedPhone = sanitizeString(updatedData.phoneNumber);
 
         // Calculate differences using cleaned numbers
         const ticketDiff = updatedTickets - originalTickets;
@@ -1881,8 +1944,8 @@ exports.updateRaffleEntry = functions.https.onCall(async (data, context) => {
         await docRef.update({
             fullName: updatedFullName,
             firstName: updatedFirstName,
-            email: updatedData.email,
-            phoneNumber: updatedData.phoneNumber,
+            email: updatedEmail,
+            phoneNumber: updatedPhone,
             // Use correct field name based on collection
             [entryTicketField]: updatedTickets,
             amountPaid: updatedAmount, // Store clean amount
@@ -2077,8 +2140,8 @@ exports.getAdminDashboardData = functions.https.onCall(async (data, context) => 
             referrers = referrerSnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
 
             const donationSnapshot = await donationQuery
-                                           .where('status', 'in', ['succeeded', 'MANUAL_DONATED', 'MANUAL_DONATED_CONVERSION_SURPLUS'])
-                                           .orderBy('createdAt', 'desc').get();
+                                                 .where('status', 'in', ['succeeded', 'MANUAL_DONATED', 'MANUAL_DONATED_CONVERSION_SURPLUS'])
+                                                 .orderBy('createdAt', 'desc').get();
             donationEntries = donationSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         }
 
@@ -2110,7 +2173,9 @@ exports.assignReferrerToSales = functions.https.onCall(async (data, context) => 
         throw new functions.https.HttpsError('permission-denied', 'Access denied. Requires Super Admin role.');
     }
 
-    const { saleIds, refId } = data;
+    const { saleIds, refId: rawRefId } = data;
+    const refId = sanitizeString(rawRefId); // NEW: Sanitize Ref ID
+
     if (!saleIds || !Array.isArray(saleIds) || saleIds.length === 0 || !refId) {
         throw new functions.https.HttpsError('invalid-argument', 'Missing sales IDs or target referrer ID.');
     }
@@ -2250,7 +2315,9 @@ exports.assignReferrerToRolexTickets = functions.https.onCall(async (data, conte
         throw new functions.https.HttpsError('permission-denied', 'Access denied. Requires Super Admin role.');
     }
 
-    const { ticketIds, refId } = data;
+    const { ticketIds, refId: rawRefId } = data;
+    const refId = sanitizeString(rawRefId); // NEW: Sanitize Ref ID
+
     if (!ticketIds || !Array.isArray(ticketIds) || ticketIds.length === 0 || !refId) {
         throw new functions.https.HttpsError('invalid-argument', 'Missing ticket IDs or target referrer ID.');
     }

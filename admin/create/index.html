@@ -77,21 +77,26 @@
             <!-- Warning Alert for Backend Mismatch -->
             <div id="backendWarning" class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4" role="alert">
                 <p class="font-bold">Backend RefID Mismatch Warning</p>
-                <p class="text-sm">The Ref ID shown here (**SaulS**) is the one required for your links and import script. However, your **Firebase `createReferrer` function** is currently configured to store a random 6-character ID (e.g., `WMUZK3`). **To ensure your links and import script work, you must update your Firebase function to save the provided RefID instead of generating a random one.**</p>
+                <p class="text-sm">The Ref ID shown here (e.g., <span id="exampleRefId">SAULS</span>) is the one required for your links and import script. However, your **Firebase `createReferrer` function** is currently configured to store a random 6-character ID (e.g., `WMUZK3`). **To ensure your links and import script work, you must update your Firebase function to save the provided RefID instead of generating a random one.**</p>
             </div>
             <!-- End Warning -->
 
             <form id="bulkCreationForm" class="space-y-6">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label for="nameList" class="block text-sm font-medium text-gray-700 mb-2">Full Names (One Per Line):</label>
-                        <textarea id="nameList" rows="8" placeholder="e.g.&#10;Saul Setton&#10;Morris Eliyahou&#10;David Cohen" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500" required></textarea>
-                        <p class="text-xs text-gray-500 mt-1">Names must be in "First Last" format.</p>
+                        <label for="nameList" class="block text-sm font-medium text-gray-700 mb-2">Full Names & Optional Ref IDs (One Per Line):</label>
+                        <textarea id="nameList" rows="8" placeholder="e.g.&#10;Saul Setton (will use RefID: SAULS)&#10;Morris Eliyahou | MOE1 (will use RefID: MOE1)&#10;System Alerts | SyAlerts (will use RefID: SyAlerts)&#10;David Cohen" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500" required></textarea>
+                        <p class="text-xs text-gray-500 mt-1">Format: **Full Name** or **Full Name | CustomRefID**. Custom Ref IDs will keep their exact casing (e.g., SyAlerts).</p>
                         <div id="collisionWarning" class="mt-2 text-sm p-2 bg-red-100 border border-red-300 rounded-lg hidden">
                             <span class="font-bold text-red-600">Warning:</span> Potential RefID/Email collisions detected. The creation will likely fail for duplicates.
                         </div>
                     </div>
                     <div class="space-y-4">
+                        <div class="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Referral Link Base:</label>
+                            <p class="font-mono text-xs text-gray-600 break-all" id="referralBaseUrl"></p>
+                            <p class="text-xs text-gray-500 mt-1">The final link will be appended with **&lt;RefID&gt;**.</p>
+                        </div>
                         <div>
                             <label for="passwordNumber" class="block text-sm font-medium text-gray-700 mb-2">Password Number Suffix:</label>
                             <input type="number" id="passwordNumber" placeholder="e.g., 1234" min="1" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500" required>
@@ -118,6 +123,7 @@
                                 <th>Intended Ref ID</th>
                                 <th>Email</th>
                                 <th>Password</th>
+                                <th>Referral Link</th>
                                 <th>Status</th>
                             </tr>
                         </thead>
@@ -155,6 +161,8 @@
             appId: "1:967768309102:web:c89d61a747e8cb941f557f"
         };
         const EMAIL_DOMAIN = "@ydeseniors.com";
+        // UPDATED: Changed domain, removed /register, and used lowercase 'refid' parameter
+        const REFERRAL_BASE_URL = "https://ydeseniors.com/?ref=";
         
         // --- Globals ---
         let app, auth, functions;
@@ -179,14 +187,55 @@
             setTimeout(() => { document.getElementById('customPopupOverlay').classList.add('hidden'); }, 300);
         };
         
-        const generateRefId = (fullName) => {
-            if (!fullName) return null;
-            const parts = fullName.trim().split(/\s+/).filter(p => p.length > 0);
-            if (parts.length < 2) return null;
-            const firstName = parts[0];
-            const lastName = parts[parts.length - 1];
-            // Format: FirstName + LastName Initial (e.g., SaulS)
-            return `${firstName}${lastName.charAt(0).toUpperCase()}`;
+        /**
+         * Parses an input line ("Full Name | CustomRefID" or "Full Name")
+         * and determines the full name and the intended RefID.
+         * @param {string} line - The input line from the textarea.
+         * @returns {{fullName: string | null, refId: string | null, isCustom: boolean}}
+         */
+        const parseInputLine = (line) => {
+            const trimmedLine = line.trim();
+            if (!trimmedLine) return { fullName: null, refId: null, isCustom: false };
+
+            const parts = trimmedLine.split('|').map(p => p.trim()).filter(p => p.length > 0);
+            
+            let fullName = parts[0];
+            let customRefId = parts.length > 1 ? parts[1] : null;
+
+            let refId = null;
+            let isCustom = false;
+
+            if (customRefId) {
+                // Case 1: Custom RefID provided. Preserve original casing.
+                refId = customRefId;
+                isCustom = true;
+            } else {
+                // Case 2: Fallback to default generation (FirstName + LastName Initial)
+                if (fullName) {
+                    const nameParts = fullName.split(/\s+/).filter(p => p.length > 0);
+                    if (nameParts.length >= 2) {
+                        const firstName = nameParts[0];
+                        const lastName = nameParts[nameParts.length - 1];
+                        // Format: FirstName + LastName Initial (e.g., SaulS)
+                        refId = `${firstName}${lastName.charAt(0)}`;
+                    }
+                }
+            }
+            
+            // Casing Logic:
+            // If it's auto-generated (!isCustom), force UPPERCASE for consistency (e.g., SAULS).
+            // If it's custom (isCustom), use the provided casing (e.g., SyAlerts).
+            if (refId) {
+                if (!isCustom) {
+                    refId = refId.toUpperCase();
+                }
+            }
+
+            return { fullName, refId, isCustom };
+        };
+
+        const generateReferralLink = (refId) => {
+            return `${REFERRAL_BASE_URL}${refId}`;
         };
 
         // --- Core Logic ---
@@ -195,8 +244,8 @@
             const refIdCounts = new Map();
             let hasCollision = false;
 
-            names.forEach(fullName => {
-                const refId = generateRefId(fullName);
+            names.forEach(line => {
+                const { refId } = parseInputLine(line);
                 if (refId) {
                     refIdCounts.set(refId, (refIdCounts.get(refId) || 0) + 1);
                 }
@@ -242,39 +291,39 @@
             const createReferrerCallable = httpsCallable(functions, 'createReferrer');
             
             for (let i = 0; i < names.length; i++) {
-                const fullName = names[i];
-                const refId = generateRefId(fullName);
+                const line = names[i];
+                const { fullName, refId, isCustom } = parseInputLine(line);
                 
-                if (!refId) {
-                    addResultRow(fullName, 'N/A', 'N/A', 'N/A', 'Skipped: Invalid name format (Requires First Last).', 'text-red-500');
+                if (!refId || !fullName) {
+                    addResultRow(line, 'N/A', 'N/A', 'N/A', 'N/A', 'Skipped: Invalid name or format.', 'text-red-500', false);
                     continue;
                 }
 
                 const email = `${refId}${EMAIL_DOMAIN}`;
                 const password = `${refId}${passwordNumber}`;
+                const link = generateReferralLink(refId);
                 
                 showGlobalLoading(`Creating ${i + 1} of ${names.length} accounts... (${fullName})`);
                 
                 try {
-                    const response = await createReferrerCallable({
+                    await createReferrerCallable({
                         email: email,
                         password: password,
                         name: fullName,
                         goal: goalAmount,
-                        // NOTE: We pass the intended RefID here. The Firebase function MUST be updated
-                        // to use this value instead of generating a random one from the UID.
+                        // Pass the intended RefID for the function to use
                         intendedRefId: refId 
                     });
 
-                    // We now explicitly use the name-based RefID for the display, 
-                    // regardless of what the backend function returned in its message.
                     addResultRow(
                         fullName,
                         refId, 
                         email,
                         password,
+                        link,
                         'Success',
-                        'text-green-600'
+                        'text-green-600',
+                        isCustom
                     );
 
                 } catch (error) {
@@ -286,7 +335,7 @@
                         errorMessage = 'Permission denied (Not Super Admin).';
                     }
                     // Use the intended RefID for failed accounts too.
-                    addResultRow(fullName, refId, email, password, `Failed: ${errorMessage}`, 'text-red-500');
+                    addResultRow(fullName, refId, email, password, link, `Failed: ${errorMessage}`, 'text-red-500', isCustom);
                 }
             }
             
@@ -295,14 +344,19 @@
             createButton.disabled = false;
         };
         
-        const addResultRow = (name, refId, email, password, status, statusClass) => {
+        const addResultRow = (name, refId, email, password, link, status, statusClass, isCustom) => {
             const resultsBody = document.getElementById('resultsTableBody');
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${name}</td>
-                <td class="font-mono text-xs">${refId}</td>
+                <td class="font-mono text-xs">${refId} <span class="text-gray-400 text-[10px]">${isCustom ? '(CUSTOM)' : '(AUTO)'}</span></td>
                 <td class="font-mono text-xs">${email}</td>
                 <td class="font-mono text-xs">${password}</td>
+                <td>
+                    <a href="${link}" target="_blank" class="text-yellow-600 hover:text-yellow-700 hover:underline">
+                        ${link.replace(REFERRAL_BASE_URL, '')}
+                    </a>
+                </td>
                 <td class="${statusClass} font-semibold">${status}</td>
             `;
             resultsBody.appendChild(tr);
@@ -323,6 +377,11 @@
                         loginModal.classList.add('hidden');
                         creationPanel.classList.remove('hidden');
                         unauthorizedMessage.classList.add('hidden');
+                        
+                        // Set up initial UI elements once authorized
+                        document.getElementById('referralBaseUrl').textContent = REFERRAL_BASE_URL + "<RefID>";
+                        document.getElementById('exampleRefId').textContent = parseInputLine("Saul Setton").refId;
+
                     } else {
                         loginModal.classList.add('hidden');
                         creationPanel.classList.add('hidden');

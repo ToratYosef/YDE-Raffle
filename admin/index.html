@@ -1,11 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-VY17C4ZK69"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-VY17C4ZK69');
+</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta description="Admin dashboard for managing YDE Senior Fund raffle and donation entries.">
+    <meta name="author" content="Saul Setton">
+    <meta keywords="YDE, Senior Fund, Admin, Dashboard, Raffle, Donations, Management">
+    <link rel="icon" type="image/x-icon" href="/favicon/favicon.jpeg">
     <title>YDE Senior Fund Admin Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    
     <style>
         /* Define the core dark color scheme for consistency */
         .primary-dark { background-color: #0d1222; }
@@ -1392,7 +1406,7 @@
             
             // Check if all displayed users are selected to tick the selectAll box
             const allDisplayedSelected = filteredAuthUsers.length > 0 && 
-                                            filteredAuthUsers.every(u => selectedUserUids.has(u.uid));
+                                                 filteredAuthUsers.every(u => selectedUserUids.has(u.uid));
             if (allDisplayedSelected) {
                 selectAllCheckbox.checked = true;
             }
@@ -1448,8 +1462,8 @@
 
             const selectAllCheckbox = document.getElementById('selectAllUsers');
             const allDisplayedSelected = filteredAuthUsers.length > 0 && 
-                                            filteredAuthUsers.every(u => selectedUserUids.has(u.uid));
-                                            
+                                                 filteredAuthUsers.every(u => selectedUserUids.has(u.uid));
+                                                
             if (allDisplayedSelected) {
                 selectAllCheckbox.checked = true;
             } else {
@@ -1561,11 +1575,11 @@
                 if (isSuperAdmin) {
                     // Update: Clicking the name now applies the combined filter and shows sales.
                     nameCellContent = `<span 
-                                            class="text-white font-semibold cursor-pointer hover:underline" 
-                                            data-action="view-referrer-sales" 
-                                            data-refid="${r.refId}" 
-                                            data-refname="${r.name}"
-                                            >${r.name}</span>`;
+                                                 class="text-white font-semibold cursor-pointer hover:underline" 
+                                                 data-action="view-referrer-sales" 
+                                                 data-refid="${r.refId}" 
+                                                 data-refname="${r.name}"
+                                                 >${r.name}</span>`;
                     
                     // Check if a corresponding Firebase Auth User exists (optional, but good practice)
                     const authUser = allAuthUsers.find(u => u.uid === r.uid);
@@ -1573,23 +1587,23 @@
                     if (authUser && !authUser.isSuperAdmin && authUser.uid !== auth.currentUser?.uid) {
                         upgradeButton = `
                             <button class="px-2 py-1 text-xs bg-red-500 text-white font-semibold rounded-lg shadow-md hover:bg-red-600 transition-colors mb-1"
-                                            data-action="promote-sa"
-                                            data-uid="${authUser.uid}"
-                                            data-refid="${r.refId}"
-                                            data-refname="${r.name}">Promote to SA</button>
+                                                 data-action="promote-sa"
+                                                 data-uid="${authUser.uid}"
+                                                 data-refid="${r.refId}"
+                                                 data-refname="${r.name}">Promote to SA</button>
                         `;
                     }
                     
                     actionCellContent = `
                         ${upgradeButton}
                         <button class="px-2 py-1 text-xs bg-purple-500 text-white font-semibold rounded-lg shadow-md hover:bg-purple-600 transition-colors mb-1"
-                                            data-action="assign-rolex-tickets"
-                                            data-refid="${r.refId}"
-                                            data-refname="${r.name}">Assign Spin</button>
+                                                 data-action="assign-rolex-tickets"
+                                                 data-refid="${r.refId}"
+                                                 data-refname="${r.name}">Assign Spin</button>
                         <button class="px-2 py-1 text-xs bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 transition-colors"
-                                            data-action="assign-raffle-tickets"
-                                            data-refid="${r.refId}"
-                                            data-refname="${r.name}">Assign Raffle</button>
+                                                 data-action="assign-raffle-tickets"
+                                                 data-refid="${r.refId}"
+                                                 data-refname="${r.name}">Assign Raffle</button>
                     `;
                 }
 
@@ -2523,12 +2537,12 @@
             dueActionContainer.classList.add('hidden'); // Hide by default
             
             if (newTickets <= 0) {
-                 // Disable if no tickets requested
-                 balanceElement.textContent = formatCurrency(oldAmount);
-                 balanceElement.classList.add('text-green-500');
-                 balanceLabel.textContent = 'Full Credit Available:';
-                 document.getElementById('convertTicketsButton').disabled = true;
-                 return;
+                // Disable if no tickets requested
+                balanceElement.textContent = formatCurrency(oldAmount);
+                balanceElement.classList.add('text-green-500');
+                balanceLabel.textContent = 'Full Credit Available:';
+                document.getElementById('convertTicketsButton').disabled = true;
+                return;
             }
             
             if (balance > 0.01) {
@@ -2685,7 +2699,7 @@
             
             // Recheck state to ensure correct select-all state
             const allDisplayedSelected = filteredRaffleSales.length > 0 && 
-                                            filteredRaffleSales.every(s => selectedRaffleSaleIds.has(s.id));
+                                                 filteredRaffleSales.every(s => selectedRaffleSaleIds.has(s.id));
             selectAllCheckbox.checked = allDisplayedSelected;
             
             if (filteredRaffleSales.length === 0) {
@@ -2755,8 +2769,8 @@
             
             const selectAllCheckbox = document.getElementById('selectAllUnassigned');
             const allDisplayedSelected = filteredRaffleSales.length > 0 && 
-                                            filteredRaffleSales.every(s => selectedRaffleSaleIds.has(s.id));
-                                            
+                                                 filteredRaffleSales.every(s => selectedRaffleSaleIds.has(s.id));
+                                                
             if (allDisplayedSelected) {
                 selectAllCheckbox.checked = true;
             } else {
@@ -2862,7 +2876,7 @@
             
             // Recheck state to ensure correct select-all state
             const allDisplayedSelected = filteredRolexSales.length > 0 && 
-                                            filteredRolexSales.every(s => selectedRolexSaleIds.has(s.id));
+                                                 filteredRolexSales.every(s => selectedRolexSaleIds.has(s.id));
             selectAllCheckbox.checked = allDisplayedSelected;
 
             if (filteredRolexSales.length === 0) {
@@ -2942,8 +2956,8 @@
             
             const selectAllCheckbox = document.getElementById('selectAllRolex');
             const allDisplayedSelected = filteredRolexSales.length > 0 && 
-                                            filteredRolexSales.every(s => selectedRolexSaleIds.has(s.id));
-                                            
+                                                 filteredRolexSales.every(s => selectedRolexSaleIds.has(s.id));
+                                                
             if (allDisplayedSelected) {
                 selectAllCheckbox.checked = true;
             } else {

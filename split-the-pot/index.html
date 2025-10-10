@@ -92,6 +92,8 @@
             <button id="popupCloseButton" class="w-full py-3 rounded-full bg-yellow-400 text-black font-bold hover:bg-yellow-500 transition-colors">OK</button>
         </div>
     </div>
+    
+    <!-- Calculation Modal REMOVED as requested -->
 
     <!-- Updated Header for better mobile layout, now fixed -->
     <header class="bg-black/40 py-4 px-4 md:px-12 fixed w-full top-0 z-50 shadow-2xl backdrop-blur-sm">
@@ -124,7 +126,7 @@
             </p>
 
             <!-- Grid adjusted to be one column on mobile, two on desktop -->
-            <div id="counter-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8 mb-12">
+            <div id="counter-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8 mb-4">
                 <div class="bg-slate-700/60 p-4 sm:p-6 rounded-xl shadow-lg transform transition-transform duration-300 hover:scale-105 border border-yellow-400/20 animate-scroll-in" style="transition-delay: 100ms;">
                     <p class="text-sm uppercase tracking-wider text-yellow-400 font-semibold mb-2">Total Tickets Sold</p>
                     <div class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold bebas-neue text-white">
@@ -140,8 +142,20 @@
                 </div>
             </div>
 
+            <!-- Calculation Button REMOVED as requested -->
+            
+            <!-- Pricing Tiers Section (UPDATED) -->
+            <div class="max-w-xl mx-auto mb-12 animate-scroll-in" style="transition-delay: 400ms;">
+                <h3 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4">Ticket Prices</h3>
+                <div id="pricing-tiers-list" class="grid grid-cols-2 gap-4 text-left">
+                    <!-- Tiers will be rendered here by JS -->
+                </div>
+                <p class="text-sm text-gray-400 mt-4">Buying in bundles provides the best value!</p>
+            </div>
+
+
             <!-- Form container for better mobile spacing -->
-            <div id="main-container" class="glass-panel p-6 rounded-2xl shadow-2xl max-w-lg mx-auto mb-12 animate-scroll-in" style="transition-delay: 300ms;">
+            <div id="main-container" class="glass-panel p-6 rounded-2xl shadow-2xl max-w-lg mx-auto mb-12 animate-scroll-in" style="transition-delay: 500ms;">
                 <h2 class="bebas-neue text-3xl font-bold text-white mb-4">Buy Your Tickets!</h2>
                 
                 <div id="payment-form" class="space-y-4" autocomplete="off" novalidate>
@@ -162,12 +176,18 @@
                         <div class="flex items-center justify-center gap-4">
                             <!-- Show +/- buttons on all screens (removed hidden md:flex) -->
                             <button type="button" class="flex w-12 h-12 bg-yellow-400 text-black rounded-full items-center justify-center font-bold text-2xl hover:bg-yellow-500 transition-colors" id="decrease-quantity">-</button>
-                            <input type="number" id="quantity" class="w-full h-12 text-center py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300" value="1" min="1" max="9999999999999999999999" aria-label="Number of tickets">
+                            <!-- UPDATED: Removed value="1" and changed min to 0 for better typing experience -->
+                            <input type="number" id="quantity" placeholder="1" class="w-full h-12 text-center py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300" value="" min="0" max="999999" aria-label="Number of tickets">
                             <!-- Show +/- buttons on all screens (removed hidden md:flex) -->
                             <button type="button" class="flex w-12 h-12 bg-yellow-400 text-black rounded-full items-center justify-center font-bold text-2xl hover:bg-yellow-500 transition-colors" id="increase-quantity">+</button>
                         </div>
                     </div>
                     
+                    <!-- Calculation Breakdown Container (NEW) -->
+                    <div id="calculation-breakdown-container" class="mt-4 text-left p-3 bg-slate-700/50 rounded-lg shadow-inner hidden">
+                        <!-- Breakdown content will be injected here by JS -->
+                    </div>
+
                     <!-- Fee Coverage Checkbox -->
                     <div class="flex items-center justify-center gap-2 mt-4 text-gray-300">
                         <input type="checkbox" id="cover-fees-checkbox" class="h-4 w-4 rounded-full text-yellow-400 focus:ring-yellow-400 border-gray-600 bg-gray-700">
@@ -255,7 +275,7 @@
         // NEW: Global animation IDs and duration
         let animationTicketId = null;
         let animationPotId = null;
-        const DURATION_MS = 5000; // 10 seconds
+        const DURATION_MS = 10000; // 10 seconds
 
         // NEW: Helper to format currency
         function formatCurrency(amount) {
@@ -366,6 +386,8 @@
             const increaseQuantityButton = document.getElementById('increase-quantity');
             const totalAmountDisplay = document.getElementById('calculated-total-amount');
             const coverFeesCheckbox = document.getElementById('cover-fees-checkbox');
+            const pricingTiersList = document.getElementById('pricing-tiers-list');
+            const breakdownContainer = document.getElementById('calculation-breakdown-container');
 
             // --- Modal and Loading Overlays ---
             const formInputs = document.querySelectorAll('#payment-form input');
@@ -410,7 +432,7 @@
             const auth = firebase.auth();
             const functions = firebase.functions();
 
-            // --- Pricing Tiers ---
+            // --- Pricing Tiers (Sorted by highest count first) ---
             const PRICES = [
                 { count: 55, cost: 401 },
                 { count: 40, cost: 300 },
@@ -419,6 +441,86 @@
                 { count: 5,  cost: 50 },
                 { count: 1,  cost: 12 },
             ];
+            
+            // NEW: Function to return base cost AND breakdown details
+            function calculateBaseCostWithBreakdown(numTickets) {
+                let remaining = numTickets;
+                let totalCost = 0;
+                const breakdown = [];
+
+                PRICES.forEach(tier => {
+                    if (remaining > 0) {
+                        const numBundles = Math.floor(remaining / tier.count);
+                        if (numBundles > 0) {
+                            const tierCost = numBundles * tier.cost;
+                            totalCost += tierCost;
+                            remaining -= numBundles * tier.count;
+
+                            breakdown.push({
+                                tierCount: tier.count,
+                                tierCost: tier.cost,
+                                numBundles: numBundles,
+                                ticketsUsed: numBundles * tier.count,
+                                subtotal: tierCost
+                            });
+                        }
+                    }
+                });
+
+                return { totalCost, breakdown };
+            }
+
+            // NEW: Function to render the pricing tiers
+            function renderPricingTiers() {
+                if (!pricingTiersList) return;
+
+                pricingTiersList.innerHTML = PRICES.map(tier => {
+                    const costPerTicket = (tier.cost / tier.count).toFixed(2);
+                    
+                    return `
+                        <div class="bg-slate-700/40 p-3 rounded-lg border border-yellow-400/20 shadow-md">
+                            <p class="bebas-neue text-3xl text-white">${tier.count} Tickets</p>
+                            <p class="text-lg font-bold text-yellow-400">$${tier.cost}</p>
+                            <p class="text-xs text-gray-400">($${costPerTicket} / ticket)</p>
+                        </div>
+                    `;
+                }).join('');
+            }
+            
+            // NEW: Function to render the calculation breakdown
+            function renderCalculationBreakdown(quantity, breakdown, totalCost) {
+                if (quantity < 1 || breakdown.length === 0) {
+                    breakdownContainer.classList.add('hidden');
+                    return;
+                }
+                
+                breakdownContainer.classList.remove('hidden');
+                
+                let breakdownHTML = `
+                    <p class="text-sm font-semibold text-yellow-400 mb-2">Cost Breakdown for ${quantity} Tickets:</p>
+                    <ul class="space-y-1 text-sm text-gray-200">
+                `;
+                
+                breakdown.forEach(item => {
+                    breakdownHTML += `
+                        <li class="flex justify-between border-b border-slate-600/50 last:border-b-0 pb-1">
+                            <span>${item.numBundles} x ${item.tierCount} Tickets</span>
+                            <span class="font-mono text-white">$${item.subtotal.toFixed(2)}</span>
+                        </li>
+                    `;
+                });
+                
+                breakdownHTML += `
+                    </ul>
+                    <div class="flex justify-between font-bold text-lg mt-3 pt-2 border-t border-yellow-400/50">
+                        <span>Base Cost:</span>
+                        <span class="text-yellow-400">$${totalCost.toFixed(2)}</span>
+                    </div>
+                `;
+                
+                breakdownContainer.innerHTML = breakdownHTML;
+            }
+
 
             // --- Helper Functions ---
             function showCustomPopup(title, message) {
@@ -453,43 +555,42 @@
                 setFormInputsDisabled(false);
             }
             
-            function calculateBaseCost(numTickets) {
-                let remaining = numTickets;
-                let totalCost = 0;
-                PRICES.forEach(tier => {
-                    const numBundles = Math.floor(remaining / tier.count);
-                    if (numBundles > 0) {
-                        totalCost += numBundles * tier.cost;
-                        remaining %= tier.count;
-                    }
-                });
-                return totalCost;
-            }
-
             function updateCalculatedTotal() {
                 let quantity = parseInt(quantityInput.value, 10);
-                if (isNaN(quantity) || quantity < 1) {
-                    quantity = 1;
-                    quantityInput.value = 1;
+                
+                if (isNaN(quantity) || quantity < 0) {
+                    // Allow temporary empty/zero input for typing, but set minimum for calculation.
+                    quantity = 0; 
                 }
-                // Limiting quantity input to prevent massive numbers breaking the input field
+                
+                // Limiting quantity input
                 const MAX_QUANTITY = 999999;
                 if (quantity > MAX_QUANTITY) {
                     quantity = MAX_QUANTITY;
                     quantityInput.value = MAX_QUANTITY;
                 }
                 
-                baseAmount = calculateBaseCost(quantity);
+                // Calculate base cost and breakdown
+                const { totalCost, breakdown } = calculateBaseCostWithBreakdown(quantity);
+                baseAmount = totalCost; // Update global base amount
+                
                 let finalAmount = baseAmount;
                 
                 if (coverFeesCheckbox.checked) {
                     // Calculate the final amount including fees: (Base Amount + Fixed Fee) / (1 - Percentage Fee)
                     finalAmount = (baseAmount + 0.30) / (1 - 0.029);
                 }
+                
+                finalAmount = isNaN(finalAmount) ? 0.00 : finalAmount;
 
                 totalAmountDisplay.textContent = finalAmount.toFixed(2);
+                
+                // Render breakdown if quantity > 0
+                renderCalculationBreakdown(quantity, breakdown, baseAmount);
 
-                decreaseQuantityButton.disabled = quantity <= parseInt(quantityInput.min, 10);
+                // Disable button if quantity is zero or less
+                decreaseQuantityButton.disabled = quantity <= 1;
+                proceedToPaymentButton.disabled = quantity < 1;
                 increaseQuantityButton.disabled = quantity >= MAX_QUANTITY;
             }
 
@@ -516,15 +617,18 @@
             });
             
             decreaseQuantityButton.addEventListener('click', () => {
-                let currentQuantity = parseInt(quantityInput.value, 10);
-                if (currentQuantity > parseInt(quantityInput.min, 10)) {
+                let currentQuantity = parseInt(quantityInput.value, 10) || 0;
+                if (currentQuantity > 1) { // Set minimum decrement to 1
                     quantityInput.value = currentQuantity - 1;
+                    updateCalculatedTotal();
+                } else {
+                    quantityInput.value = ''; // Allow clearing field
                     updateCalculatedTotal();
                 }
             });
 
             increaseQuantityButton.addEventListener('click', () => {
-                let currentQuantity = parseInt(quantityInput.value, 10);
+                let currentQuantity = parseInt(quantityInput.value, 10) || 0;
                 // Use the same MAX_QUANTITY check here
                 const MAX_QUANTITY = 999999;
                 if (currentQuantity < MAX_QUANTITY) {
@@ -533,8 +637,9 @@
                 }
             });
 
-            quantityInput.addEventListener('change', updateCalculatedTotal);
+            // Trigger calculation on input/change
             quantityInput.addEventListener('input', updateCalculatedTotal);
+            quantityInput.addEventListener('change', updateCalculatedTotal);
             coverFeesCheckbox.addEventListener('change', updateCalculatedTotal);
             
             // "Proceed to Payment" button click event for Stripe
@@ -582,6 +687,7 @@
                     phoneInput.classList.add('hidden');
                     document.getElementById('quantity').parentElement.parentElement.classList.add('hidden');
                     coverFeesCheckbox.parentElement.classList.add('hidden');
+                    breakdownContainer.classList.add('hidden'); // Hide breakdown in payment view
 
                     document.querySelector('#main-container h2').textContent = "Confirm Payment";
 
@@ -647,26 +753,22 @@
                             const newPotAmount = newTotalRevenue / 2;
                             
                             // --- 1. Tickets Counter Animation ---
-                            // Extract current numeric value from the displayed text
                             const currentTicketCountString = ticketCounter.textContent.replace(/,/g, '') || '0';
                             const currentTicketCount = parseInt(currentTicketCountString, 10);
                             
                             if (newTotalTickets > currentTicketCount) {
                                 animateCount(ticketCounter, currentTicketCount, newTotalTickets, DURATION_MS, false);
                             } else {
-                                // Update instantly if the count is lower or the same
                                 ticketCounter.textContent = newTotalTickets.toLocaleString();
                             }
 
                             // --- 2. Pot Counter Animation ---
-                            // Extract current numeric value from the formatted string
                             const currentPotValueString = potCounter.textContent.replace('$', '').replace(/,/g, '') || '0.00';
                             const currentPotValue = parseFloat(currentPotValueString);
                             
                             if (newPotAmount > currentPotValue) {
                                 animateCount(potCounter, currentPotValue, newPotAmount, DURATION_MS, true);
                             } else {
-                                // Update instantly if the amount is lower or the same
                                 potCounter.textContent = formatCurrency(newPotAmount);
                             }
                             
@@ -691,7 +793,12 @@
             });
 
             // Initial calculation on page load
+            // Set initial value to '1' for usability, then trigger calculation
+            quantityInput.value = '1';
             updateCalculatedTotal();
+            
+            // Render pricing tiers
+            renderPricingTiers();
             
             // Set up scroll animations after all elements are structured
             setupScrollAnimations();

@@ -79,32 +79,21 @@
         .rank-glow-2 { text-shadow: 0 0 8px #9ca3af; }
         .rank-glow-3 { text-shadow: 0 0 8px #b45309; }
 
-        /* Modal specific styles */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.75);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
+        /* --- ANIMATION STYLES --- */
+        /* Base state for scroll-in animation (starts invisible and slightly below) */
+        .leaderboard-item {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+            /* Added transition for smoother hover effects */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
         }
-        .modal-content {
-            background-color: #1f2937;
-            padding: 24px;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-            max-width: 90%;
-            width: 400px;
-            transform: scale(0.95);
-            transition: transform 0.2s ease-out;
+        /* Active state for when the element is observed */
+        .leaderboard-item.animate-in {
+            opacity: 1;
+            transform: translateY(0);
         }
-        .modal-content.open {
-            transform: scale(1);
-        }
+        /* --- END ANIMATION STYLES --- */
 
         /* Mobile-first adjustment for fixed header navigation */
         @media (max-width: 767px) {
@@ -131,22 +120,6 @@
     </style>
 </head>
 <body class="text-white min-h-screen flex flex-col">
-
-    <!-- Message Box Modal (for breakdown) -->
-    <div id="message-modal" class="modal-overlay">
-        <div id="modal-content" class="modal-content">
-            <h3 id="modal-title" class="text-xl font-bold mb-4 text-white"></h3>
-            <div id="modal-body" class="text-gray-300 mb-6"></div>
-            <div class="flex justify-end">
-                <button 
-                    onclick="document.getElementById('message-modal').style.display = 'none';"
-                    class="px-4 py-2 bg-accent-yellow text-primary-dark font-semibold rounded-lg hover:bg-yellow-500 transition duration-150 shadow-md"
-                >
-                    Close
-                </button>
-            </div>
-        </div>
-    </div>
 
     <!-- Header (Fixed Position) -->
     <header class="bg-black/40 py-4 px-4 md:px-12 fixed w-full top-0 z-50 shadow-2xl backdrop-blur-sm">
@@ -182,22 +155,9 @@
                     See who's leading the charge for the Senior Fund! Data updates in real-time.
                 </p>
 
-                <!-- Global Metrics Card Container -->
-                <div id="global-metrics-container" class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto mb-8">
+                <!-- Global Metrics Card Container (Now only showing Total Referrers) -->
+                <div id="global-metrics-container" class="max-w-xs mx-auto mb-8">
                     
-                    <!-- Total Senior Fund Contribution Card -->
-                    <div 
-                        id="total-fund-card"
-                        onclick="showRevenueBreakdown();"
-                        class="bg-card-dark p-6 rounded-xl shadow-2xl border-t-4 border-accent-yellow/50 text-center cursor-pointer hover:bg-gray-700 transition duration-150"
-                        title="Click to see the detailed calculation"
-                    >
-                        <i data-lucide="piggy-bank" class="w-8 h-8 text-accent-yellow mx-auto mb-2"></i>
-                        <p class="text-sm text-gray-400 uppercase font-medium">Total Senior Fund Contribution</p>
-                        <p id="total-senior-fund" class="bebas-neue text-4xl text-secondary-green font-bold">---</p>
-                        <p class="text-xs text-gray-500 mt-1">(Click for Breakdown)</p>
-                    </div>
-
                     <!-- Total Referrers Card -->
                     <div class="bg-card-dark p-6 rounded-xl shadow-2xl border-t-4 border-secondary-green/50 text-center">
                         <i data-lucide="users" class="w-8 h-8 text-secondary-green mx-auto mb-2"></i>
@@ -215,6 +175,62 @@
                         placeholder="Search by User Name..."
                         class="w-full pl-10 pr-4 py-3 border border-gray-700 bg-gray-800 text-white rounded-full focus:ring-2 focus:ring-accent-yellow focus:border-accent-yellow transition duration-150"
                     >
+                </div>
+            </div>
+
+            <!-- Leaderboard List Header for Sorting -->
+            <div class="hidden md:flex bg-card-dark/70 rounded-t-xl p-4 font-semibold text-gray-300 shadow-lg border-b border-gray-700 mb-2">
+                <!-- Rank/Change (Static width) -->
+                <div class="w-16 flex justify-center items-center">#</div> 
+                
+                <!-- User Info (Flexible width) -->
+                <div 
+                    class="flex-grow min-w-0 cursor-pointer hover:text-white transition sortable-header flex items-center" 
+                    data-sort-key="name" 
+                    onclick="handleSort('name')"
+                >
+                    Name
+                    <span class="sort-icon"></span>
+                </div>
+
+                <!-- Stats (Grid of 4 columns matching list items) -->
+                <div class="grid grid-cols-4 gap-x-4 text-right text-sm md:min-w-[400px]">
+                    <!-- Raised (Default Sort) -->
+                    <div 
+                        class="flex items-center justify-end cursor-pointer hover:text-white transition sortable-header" 
+                        data-sort-key="totalAmount" 
+                        onclick="handleSort('totalAmount')"
+                    >
+                        Raised
+                        <span class="sort-icon"></span>
+                    </div>
+                    <!-- Split Tickets -->
+                    <div 
+                        class="flex items-center justify-end cursor-pointer hover:text-white transition sortable-header" 
+                        data-sort-key="splitTickets" 
+                        onclick="handleSort('splitTickets')"
+                    >
+                        Split Tickets
+                        <span class="sort-icon"></span>
+                    </div>
+                    <!-- Rolex Tickets -->
+                    <div 
+                        class="flex items-center justify-end cursor-pointer hover:text-white transition sortable-header" 
+                        data-sort-key="spinTickets" 
+                        onclick="handleSort('spinTickets')"
+                    >
+                        Rolex Tickets
+                        <span class="sort-icon"></span>
+                    </div>
+                    <!-- Link Clicks -->
+                    <div 
+                        class="flex items-center justify-end cursor-pointer hover:text-white transition sortable-header" 
+                        data-sort-key="clickCount" 
+                        onclick="handleSort('clickCount')"
+                    >
+                        Link Clicks
+                        <span class="sort-icon"></span>
+                    </div>
                 </div>
             </div>
             
@@ -282,6 +298,9 @@
         // --- Core Application State & Logic ---
         let leaderboardData = []; // Holds all ranked data
         let searchFilter = '';
+        let currentSortKey = 'totalAmount'; // Default sort key
+        let sortDirection = 'desc'; // Default sort direction
+
 
         // Global variables for total fund calculation (Updated by dedicated listeners)
         let totalSeniorFund = 0;
@@ -308,7 +327,7 @@
         // Set log level to Debug
         setLogLevel('Debug');
 
-        // --- REFERRER LINK HANDLERS (New) ---
+        // --- REFERRER LINK HANDLERS ---
         function getQueryParam(param) {
             const urlParams = new URLSearchParams(window.location.search);
             return urlParams.get(param);
@@ -389,25 +408,23 @@
         }
 
         /**
-         * Calculates the total senior fund contribution and updates the global metrics UI.
+         * Calculates the total revenue and updates the global metrics UI.
          */
         function calculateAndRenderRevenue() {
-            const totalSeniorFundEl = document.getElementById('total-senior-fund');
             const totalReferrersEl = document.getElementById('total-referrers');
-            
-            if (!totalSeniorFundEl || !totalReferrersEl) return;
 
-            // 1. Calculate Total Revenue (Used for context in the modal)
+            if (!totalReferrersEl) return;
+
+            // 1. Calculate Total Revenue (Kept for internal use if needed)
             totalRevenue = totalSplitRevenue + totalSpinRevenue + totalDonationRevenue;
 
-            // 2. Calculate Senior Fund Contribution based on requested rules:
-            const splitFund = totalSplitRevenue * 0.5;   // 50% of Split Pot Revenue
-            const spinFund = totalSpinRevenue * 1.0;     // 100% of Spin Wheel Revenue
-            const donationFund = totalDonationRevenue * 1.0; // 100% of Direct Donations
+            // 2. Calculate Senior Fund Contribution (Kept for internal use if needed)
+            const splitFund = totalSplitRevenue * 0.5;
+            const spinFund = totalSpinRevenue * 1.0;
+            const donationFund = totalDonationRevenue * 1.0;
             totalSeniorFund = splitFund + spinFund + donationFund;
 
-            // Update DOM
-            totalSeniorFundEl.textContent = formatCurrency(totalSeniorFund);
+            // Update DOM (Only totalReferrers remains)
             totalReferrersEl.textContent = totalReferrers;
 
             // Re-render Lucide icons, which may have been added/updated
@@ -439,7 +456,7 @@
             // 2. Spin Wheel Tickets: /rolex_entries/ (Filtering by status == 'paid')
             const qSpin = query(
                 collection(dbInstance, 'rolex_entries'),
-                where('status', 'in', ['paid', 'converted']) // Filtered by 'status' field as per doc format
+                where('status', 'in', ['paid', 'converted', 'succeeded']) // Filtered by 'status' field as per doc format
             );
             onSnapshot(qSpin, (snapshot) => {
                 let sum = 0;
@@ -516,11 +533,12 @@
                         splitTickets: parseInt(data.totalTickets) || 0,
                         // rolexTicketsTotal is Rolex Raffle tickets
                         spinTickets: parseInt(data.rolexTicketsTotal) || 0, 
-                        clickCount: parseInt(data.clickCount) || 0,
+                        // RE-INTRODUCING clickCount
+                        clickCount: parseInt(data.clickCount) || 0, 
+                        lastSaleTimestamp: data.lastSaleTimestamp instanceof Timestamp ? data.lastSaleTimestamp.toDate() : (data.lastSaleTimestamp || null), 
                         // Read the ranks stored from the previous cycle
                         rank: parseInt(data.rank) || null,
                         previousRank: parseInt(data.previousRank) || null,
-                        lastSaleTimestamp: data.lastSaleTimestamp instanceof Timestamp ? data.lastSaleTimestamp.toDate() : (data.lastSaleTimestamp || null), 
                     });
                 });
                 
@@ -545,63 +563,91 @@
                 `;
             });
         }
+        
+        /**
+         * Handles sorting logic for the entire dataset.
+         * @param {Array<Object>} data 
+         * @returns {Array<Object>} Sorted data.
+         */
+        function sortData(data) {
+            return data.sort((a, b) => {
+                let valA = a[currentSortKey];
+                let valB = b[currentSortKey];
+
+                // Special handling for string sort (Name)
+                if (currentSortKey === 'name') {
+                    valA = (valA || '').toLowerCase();
+                    valB = (valB || '').toLowerCase();
+                    if (sortDirection === 'asc') {
+                        return valA > valB ? 1 : valA < valB ? -1 : 0;
+                    } else {
+                        return valA < valB ? 1 : valA > valB ? -1 : 0;
+                    }
+                }
+                
+                // Default numerical sort
+                valA = parseFloat(valA) || 0;
+                valB = parseFloat(valB) || 0;
+
+                if (sortDirection === 'desc') {
+                    return valB - valA;
+                } else {
+                    return valA - valB;
+                }
+            });
+        }
+
 
         /**
-         * Displays the detailed revenue breakdown in a modal.
+         * Global function to handle column header click for sorting.
+         * @param {string} key The data key to sort by (e.g., 'totalAmount', 'name').
          */
-        window.showRevenueBreakdown = function() {
-            // Calculate fund components for display
-            const splitFund = totalSplitRevenue * 0.5;
-            const spinFund = totalSpinRevenue * 1.0;
-            const donationFund = totalDonationRevenue * 1.0;
-
-            // Format components for display
-            const formattedTotalFund = formatCurrency(totalSeniorFund);
-            const formattedSplitRevenue = formatCurrency(totalSplitRevenue);
-            const formattedSpinRevenue = formatCurrency(totalSpinRevenue);
-            const formattedDonationRevenue = formatCurrency(totalDonationRevenue);
-            const formattedTotalRevenue = formatCurrency(totalRevenue);
+        window.handleSort = function(key) {
+            if (currentSortKey === key) {
+                // Toggle direction if the same key is clicked
+                sortDirection = (sortDirection === 'asc' ? 'desc' : 'asc');
+            } else {
+                // New key selected, default to descending for numbers, ascending for name
+                currentSortKey = key;
+                if (key === 'name') {
+                     sortDirection = 'asc';
+                } else {
+                     sortDirection = 'desc';
+                }
+            }
             
-            const modalTitle = `Senior Fund Calculation: ${formattedTotalFund}`;
-            
-            const modalBody = `
-                <p class="text-xs text-gray-500 mb-3">
-                    Total Revenue Collected: <span class="text-white font-mono">${formattedTotalRevenue}</span>
-                </p>
-                <div class="space-y-3">
-                    <p class="font-bold text-lg text-white">Calculation Breakdown:</p>
-                    <div class="p-3 rounded-lg bg-gray-800 border border-gray-700">
-                        <p class="font-semibold text-gray-300">Split The Pot Revenue: ${formattedSplitRevenue}</p>
-                        <p>
-                            <span class="text-secondary-green font-mono font-bold">${formatCurrency(splitFund)}</span>
-                            &nbsp;($50\%$ contribution)
-                        </p>
-                    </div>
-                    <div class="p-3 rounded-lg bg-gray-800 border border-gray-700">
-                        <p class="font-semibold text-gray-300">Rolex Raffle Revenue: ${formattedSpinRevenue}</p>
-                        <p>
-                            <span class="text-secondary-green font-mono font-bold">${formatCurrency(spinFund)}</span>
-                            &nbsp;($100\%$ contribution)
-                        </p>
-                    </div>
-                    <div class="p-3 rounded-lg bg-gray-800 border border-gray-700">
-                        <p class="font-semibold text-gray-300">Direct Donation Revenue: ${formattedDonationRevenue}</p>
-                        <p>
-                            <span class="text-secondary-green font-mono font-bold">${formatCurrency(donationFund)}</span>
-                            &nbsp;($100\%$ contribution)
-                        </p>
-                    </div>
-                    
-                    <div class="pt-4 border-t border-accent-yellow font-bold text-xl flex justify-between">
-                        <span>TOTAL SENIOR FUND:</span>
-                        <span class="text-accent-yellow">${formattedTotalFund}</span>
-                    </div>
-                </div>
-            `;
+            // 1. Apply the new sort to the current data
+            const tempSortedData = sortData(leaderboardData);
 
-            document.getElementById('modal-title').textContent = modalTitle;
-            document.getElementById('modal-body').innerHTML = modalBody;
-            document.getElementById('message-modal').style.display = 'flex';
+            // 2. Recalculate ranks based on the new sort order (temporarily)
+            leaderboardData = tempSortedData.map((item, index) => ({
+                ...item,
+                rank: index + 1 // New temporary rank based on current sort
+            }));
+            
+            // 3. Re-render the filtered view
+            applySearchFilter();
+        }
+
+        /**
+         * Updates the visual sort indicators (icons) in the header.
+         */
+        function updateSortIcons() {
+            document.querySelectorAll('.sortable-header').forEach(header => {
+                const key = header.getAttribute('data-sort-key');
+                const iconContainer = header.querySelector('.sort-icon');
+                
+                if (iconContainer) {
+                    iconContainer.innerHTML = ''; // Clear existing icon
+
+                    if (key === currentSortKey) {
+                        // Add up or down arrow based on direction
+                        const iconName = sortDirection === 'asc' ? 'arrow-up' : 'arrow-down';
+                        iconContainer.innerHTML = `<i data-lucide="${iconName}" class="w-4 h-4 ml-1 text-accent-yellow"></i>`;
+                        lucide.createIcons(); // Redraw lucide icons
+                    }
+                }
+            });
         }
 
 
@@ -612,8 +658,8 @@
          */
         function processAndRender(newRawData, queueSave = true) {
             
-            // 1. Sort by totalAmount (descending)
-            const sortedData = newRawData.sort((a, b) => b.totalAmount - a.totalAmount);
+            // 1. Sort by the user-selected key (or default 'totalAmount')
+            const sortedData = sortData(newRawData);
             
             // 2. Calculate Rank and Placement Change
             const ranksToWrite = [];
@@ -639,7 +685,6 @@
                 }
 
                 // Collect data for the eventual database write if the rank changed since last update
-                // or if it's a first run and rank is null
                 if (queueSave && (newRank !== oldRankInDB || item.rank === null)) {
                     ranksToWrite.push({
                         uid: item.uid,
@@ -689,7 +734,42 @@
             
             // Render all filtered data directly to the list
             renderLeaderboard(filteredAllData);
+            
+            // Set up scroll animations after rendering
+            setupScrollAnimations();
         }
+
+        /**
+         * Initializes the Intersection Observer for scroll-in animations.
+         */
+        function setupScrollAnimations() {
+            const items = document.querySelectorAll('.leaderboard-item');
+
+            if (items.length === 0) return;
+            
+            const observer = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        // Add the animation class when the item enters the viewport
+                        entry.target.classList.add('animate-in');
+                        // Stop observing the element once it's animated
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, {
+                root: null, // relative to the viewport
+                rootMargin: '0px',
+                threshold: 0.1 // trigger when 10% of the item is visible
+            });
+
+            // Only observe elements that haven't been animated yet
+            items.forEach(item => {
+                if (!item.classList.contains('animate-in')) {
+                    observer.observe(item)
+                }
+            });
+        }
+
 
         /**
          * Renders the filtered data list to the DOM (All Ranks).
@@ -705,6 +785,8 @@
                         <p>${searchFilter ? `No results found for "${searchFilter}".` : 'No users found yet.'}</p>
                     </div>
                 `;
+                // Ensure icons are updated even if the list is empty
+                updateSortIcons();
                 return;
             }
 
@@ -742,7 +824,7 @@
                 
                 // Leaderboard item HTML
                 return `
-                    <div class="bg-card-dark p-4 rounded-2xl shadow-xl flex items-center space-x-4 transition-all hover:bg-gray-700 border-l-4 ${borderStyle}">
+                    <div class="leaderboard-item bg-card-dark p-4 rounded-2xl shadow-xl flex items-center space-x-4 transition-all hover:bg-gray-700 border-l-4 ${borderStyle}">
                         <!-- Rank & Change Indicator -->
                         <div class="flex flex-col items-center w-12 sm:w-16">
                             <span class="text-3xl ${rankStyle} bebas-neue leading-none">${item.rank}</span>
@@ -757,8 +839,8 @@
                             <p class="text-sm text-gray-400 hidden sm:block">Ref ID: ${item.refId}</p>
                         </div>
 
-                        <!-- Stats (Responsive Grid) -->
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2 text-right text-sm md:min-w-[420px]">
+                        <!-- Stats (Responsive Grid - 4 columns) -->
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2 text-right text-sm md:min-w-[400px]">
                             
                             <!-- Money Raised -->
                             <div class="flex flex-col items-end">
@@ -791,6 +873,7 @@
             
             // Re-render Lucide icons after DOM update
             lucide.createIcons();
+            updateSortIcons();
         }
 
         // --- Event Listeners and Initializers ---
@@ -838,12 +921,13 @@
             console.log("Using mock data as Firebase environment is not ready or failed.");
             // Set mock revenue totals for the global metric card based on mock referrer data
             const mockReferrers = [
-                { uid: 'userE345', name: 'Ethan Miller', refId: 'ethanm', totalAmount: 15000, splitTickets: 300, spinTickets: 50, clickCount: 450, rank: 0, previousRank: 0, lastSaleTimestamp: new Date(Date.now() - 1800000) },
-                { uid: 'userB456', name: 'Brenda Smith', refId: 'brendas', totalAmount: 12000, splitTickets: 240, spinTickets: 40, clickCount: 300, rank: 1, previousRank: 1, lastSaleTimestamp: new Date(Date.now()) },
-                { uid: 'userC789', name: 'Chris Lee', refId: 'chrisl', totalAmount: 9000, splitTickets: 180, spinTickets: 30, clickCount: 220, rank: 3, previousRank: 2, lastSaleTimestamp: new Date(Date.now() - 7200000) },
-                { uid: 'userA123', name: 'Alex Johnson', refId: 'alexj', totalAmount: 7500, splitTickets: 150, spinTickets: 25, clickCount: 155, rank: 2, previousRank: 3, lastSaleTimestamp: new Date(Date.now() - 3600000) },
-                { uid: 'userD012', name: 'Diana Clark', refId: 'dianac', totalAmount: 5000, splitTickets: 100, spinTickets: 15, clickCount: 80, rank: 4, previousRank: 4, lastSaleTimestamp: new Date(Date.now() - 10800000) },
-                { uid: 'userF678', name: 'Fiona White', refId: 'fionaw', totalAmount: 3500, splitTickets: 70, spinTickets: 10, clickCount: 50, rank: 6, previousRank: 5, lastSaleTimestamp: new Date(Date.now() - 2400000) },
+                // RE-INTRODUCED clickCount
+                { uid: 'userE345', name: 'Ethan Miller', refId: 'ethanm', totalAmount: 15000, splitTickets: 300, spinTickets: 50, clickCount: 450, rank: 0, previousRank: 0, lastSaleTimestamp: new Date(Date.now() - 180000) }, 
+                { uid: 'userB456', name: 'Brenda Smith', refId: 'brendas', totalAmount: 12000, splitTickets: 240, spinTickets: 40, clickCount: 300, rank: 1, previousRank: 1, lastSaleTimestamp: new Date(Date.now() - 3600000) }, 
+                { uid: 'userC789', name: 'Chris Lee', refId: 'chrisl', totalAmount: 9000, splitTickets: 180, spinTickets: 30, clickCount: 220, rank: 3, previousRank: 2, lastSaleTimestamp: new Date(Date.now() - 7200000) }, 
+                { uid: 'userA123', name: 'Alex Johnson', refId: 'alexj', totalAmount: 7500, splitTickets: 150, spinTickets: 25, clickCount: 155, rank: 2, previousRank: 3, lastSaleTimestamp: new Date(Date.now() - 3600000) }, 
+                { uid: 'userD012', name: 'Diana Clark', refId: 'dianac', totalAmount: 5000, splitTickets: 100, spinTickets: 15, clickCount: 80, rank: 4, previousRank: 4, lastSaleTimestamp: new Date(Date.now() - 10800000) }, 
+                { uid: 'userF678', name: 'Fiona White', refId: 'fionaw', totalAmount: 3500, splitTickets: 70, spinTickets: 10, clickCount: 50, rank: 6, previousRank: 5, lastSaleTimestamp: null }, 
             ];
             
             // Set mock global revenue stats (for metric card display)

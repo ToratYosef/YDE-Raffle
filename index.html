@@ -119,6 +119,39 @@
         .glow-card:hover {
             box-shadow: 0 0 25px rgba(251, 191, 36, 0.5); /* Stronger yellow glow */
         }
+        
+        /* --- SCROLL ANIMATION STYLES --- */
+        .animate-scroll-in {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+        }
+        .animate-scroll-in.animate-in {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        /* --- END SCROLL ANIMATION STYLES --- */
+
+        /* --- FIZZLE ANIMATION STYLES (NEW) --- */
+        @keyframes fizzleOut {
+            0% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        /* Create a fine grid/dots pattern using repeating gradients */
+        .fizzle-overlay {
+            background-color: #0d1222; /* Start with the body background color */
+            background-image: 
+                /* Subtle white grid pattern */
+                repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.05) 1px, transparent 1px, transparent 4px),
+                repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.05) 1px, transparent 1px, transparent 4px);
+            opacity: 1;
+            /* Animation runs for 3 seconds, eases in/out, stays at the end state (forwards) */
+            animation: fizzleOut 3s ease-in-out forwards; 
+            animation-delay: 0.5s; /* Delay start by half a second */
+            pointer-events: none; /* Allows clicks to pass through once dissolved */
+        }
+        /* --- END FIZZLE ANIMATION STYLES --- */
     </style>
 </head>
 <body class="text-white min-h-screen flex flex-col">
@@ -156,9 +189,14 @@
         <section id="home" class="page-content active">
             <!-- Hero Section -->
             <div class="relative bg-cover bg-center h-screen min-h-[600px]" style="background-image: url('https://raw.githubusercontent.com/ToratYosef/ToratYosef..github.io/refs/heads/main/assets/kotel.jpg');">
+                
                 <!-- Overlay re-added to darken image for text visibility -->
                 <div class="absolute inset-0 bg-slate-950 opacity-60"></div>
                 
+                <!-- FIZZLE EFFECT OVERLAY (NEW) -->
+                <!-- This element covers the image and fades away using CSS animation -->
+                <div class="fizzle-overlay absolute inset-0 z-[5]"></div>
+
                 <div class="relative z-10 flex flex-col items-center justify-center h-full text-center p-4">
                     <h1 class="bebas-neue text-4xl sm:text-5xl md:text-6xl lg:text-8xl font-bold text-white mb-4 drop-shadow-lg">
                         Support the YDE Senior Fund
@@ -183,7 +221,7 @@
                                    flex items-center justify-center">
                             Rolex Raffle
                         </a>
-                        <!-- Buy Split The Pot Tickets Button - Updated with flexbox for perfect centering -->
+                        <!-- Donate Now Button - Updated with flexbox for perfect centering -->
                         <a id="split-action-button" href="/donate/" 
                             class="w-full sm:w-60 py-4 px-8 md:text-lg lg:text-xl rounded-full 
                                    bg-transparent border-2 border-yellow-400 text-white font-bold 
@@ -199,13 +237,13 @@
             <!-- Reasons to Support section with FONT AWESOME ICONS and GLOW EFFECT -->
             <div class="bg-transparent py-16 px-4">
                 <div class="container mx-auto text-center">
-                    <h2 class="bebas-neue text-4xl md:text-5xl font-bold text-white mb-12">
+                    <h2 class="bebas-neue text-4xl md:text-5xl font-bold text-white mb-12 animate-scroll-in">
                         Why Your Support Matters
                     </h2>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
                         
-                        <!-- Reason 1: Israel Trip (Airplane Icon) -->
-                        <div class="bg-slate-800 p-8 rounded-xl shadow-lg transform transition-transform duration-300 hover:scale-105 border-b-4 border-yellow-400 glow-card">
+                        <!-- Reason 1: Israel Trip (Animated) -->
+                        <div class="bg-slate-800 p-8 rounded-xl shadow-lg transform transition-transform duration-300 hover:scale-105 border-b-4 border-yellow-400 glow-card animate-scroll-in" style="transition-delay: 100ms;">
                             <div class="flex justify-center mb-4">
                                 <!-- Font Awesome Airplane Icon for Travel -->
                                 <i class="fa-solid fa-plane-departure text-yellow-400 w-12 h-12 text-5xl"></i>
@@ -214,8 +252,8 @@
                             <p class="text-gray-200">Your contribution will directly fund the senior trip to Israel, making this once-in-a-lifetime journey possible for every student.</p>
                         </div>
                         
-                        <!-- Reason 2: Ma'aser Money (Piggy Bank Icon - Unchanged) -->
-                        <div class="bg-slate-800 p-8 rounded-xl shadow-lg transform transition-transform duration-300 hover:scale-105 border-b-4 border-yellow-400 glow-card">
+                        <!-- Reason 2: Ma'aser Money (Animated) -->
+                        <div class="bg-slate-800 p-8 rounded-xl shadow-lg transform transition-transform duration-300 hover:scale-105 border-b-4 border-yellow-400 glow-card animate-scroll-in" style="transition-delay: 200ms;">
                             <div class="flex justify-center mb-4">
                                 <!-- Font Awesome Piggy Bank Icon for Fund/Ma'aser -->
                                 <i class="fa-solid fa-piggy-bank text-yellow-400 w-12 h-12 text-5xl"></i>
@@ -224,8 +262,8 @@
                             <p class="text-gray-200">Your donation can be made using Ma'aser funds. This is a great way to fulfill the mitzvah of charity while supporting a meaningful cause.</p>
                         </div>
                         
-                        <!-- Reason 3: Unforgettable Moments (Star of David Icon) -->
-                        <div class="bg-slate-800 p-8 rounded-xl shadow-lg transform transition-transform duration-300 hover:scale-105 border-b-4 border-yellow-400 glow-card">
+                        <!-- Reason 3: Unforgettable Moments (Animated) -->
+                        <div class="bg-slate-800 p-8 rounded-xl shadow-lg transform transition-transform duration-300 hover:scale-105 border-b-4 border-yellow-400 glow-card animate-scroll-in" style="transition-delay: 300ms;">
                             <div class="flex justify-center mb-4">
                                 <!-- Font Awesome Star of David Icon for Israel connection/Moments -->
                                 <i class="fa-solid fa-star-of-david text-yellow-400 w-12 h-12 text-5xl"></i>
@@ -235,8 +273,8 @@
                         </div>
                     </div>
 
-                    <!-- New Donation Affordability Text -->
-                    <div class="mt-16 max-w-3xl mx-auto p-6 bg-slate-900/60 rounded-xl border border-yellow-400/50 shadow-inner">
+                    <!-- New Donation Affordability Text (Animated) -->
+                    <div class="mt-16 max-w-3xl mx-auto p-6 bg-slate-900/60 rounded-xl border border-yellow-400/50 shadow-inner animate-scroll-in" style="transition-delay: 400ms;">
                         <p class="text-lg text-yellow-200 font-semibold mb-2">Ensuring Every Student Can Attend</p>
                         <p class="text-gray-300">
                             A primary reason we need your generous donations is to cover the full costs of the trip and events, ensuring that financial constraints do not prevent any student from participating. Your support directly funds scholarships and subsidies for students who cannot afford the full cost, making this milestone year inclusive for the entire graduating class.
@@ -265,7 +303,7 @@
             <div class="container mx-auto text-center p-4 bg-slate-800/80 rounded-2xl shadow-xl max-w-4xl">
                 <h2 class="bebas-neue text-4xl md:text-5xl lg:text-6xl font-bold text-yellow-400 mb-6">Split the Pot</h2>
                 <p class="text-lg md:text-xl text-gray-300 mb-8">
-                    Get ready for our exciting raffle! More details coming soon on how to win big while supporting a great cause.
+                    Get ready for our exciting raffle! More details coming soon on how to win half the pot while supporting a great cause.
                 </p>
                 <img src="https://placehold.co/600x400/1f2937/d1d5db?text=Split+the+Pot+Details" alt="Split the Pot graphic" class="mx-auto rounded-lg shadow-xl">
             </div>
@@ -407,6 +445,38 @@
                 activePage.classList.add('active');
             }
         }
+        
+        // --- ANIMATION LOGIC (NEW) ---
+        function setupScrollAnimations() {
+            // Target elements with the .animate-scroll-in class
+            const itemsToAnimate = document.querySelectorAll('.animate-scroll-in');
+
+            if (itemsToAnimate.length === 0) return;
+            
+            const observer = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        // Add the animation class when the item enters the viewport
+                        entry.target.classList.add('animate-in');
+                        // Stop observing the element once it's animated
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, {
+                root: null, // relative to the viewport
+                rootMargin: '0px',
+                threshold: 0.1 // trigger when 10% of the item is visible
+            });
+
+            // Only observe elements that haven't been animated yet
+            itemsToAnimate.forEach(item => {
+                if (!item.classList.contains('animate-in')) {
+                    observer.observe(item)
+                }
+            });
+        }
+        // --- END ANIMATION LOGIC ---
+
 
         document.addEventListener('DOMContentLoaded', () => {
             
@@ -443,6 +513,9 @@
 
             // Only show the home page. All other navigation will be a full browser redirect.
             showPage('home');
+            
+            // Initialize scroll animations
+            setupScrollAnimations();
         });
     </script>
 </body>

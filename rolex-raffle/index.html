@@ -42,6 +42,18 @@
           animation: spin 0.8s linear infinite;
         }
 
+        /* --- SCROLL ANIMATION STYLES (NEW) --- */
+        .animate-scroll-in {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+        }
+        .animate-scroll-in.animate-in {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        /* --- END SCROLL ANIMATION STYLES --- */
+
         /* --- Header Specific Mobile Styles --- */
         @media (max-width: 767px) {
             #main-menu li {
@@ -58,10 +70,6 @@
         }
 
         /* --- Raffle Page Specific Styles --- */
-        /*
-         * FIXED: The glass-panel is now a solid, dark, premium color (#212534) 
-         * matching the desired opaque box look.
-         */
         .glass-panel {
             background-color: #212534; 
             border: 1px solid rgba(255, 255, 255, 0.1);
@@ -227,8 +235,8 @@
 
     <main class="flex-grow pt-28 sm:pt-32 px-4 md:px-8 lg:px-16">
         <section id="rolex-raffle-section">
-            <!-- Main Content Container (Uses updated glass-panel styling) -->
-            <div class="container mx-auto text-center p-4 sm:p-6 md:p-12 glass-panel rounded-2xl shadow-2xl">
+            <!-- Main Content Container (Added animate-scroll-in class) -->
+            <div id="main-content-panel" class="container mx-auto text-center p-4 sm:p-6 md:p-12 glass-panel rounded-2xl shadow-2xl animate-scroll-in">
                 <h1 class="bebas-neue text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-4 drop-shadow-lg">
                     Win a Rolex Sky-Dweller or $26,000 Cash!
                 </h1>
@@ -236,8 +244,8 @@
                     Win a prestigious Rolex Sky-Dweller or $26,000 in Cash!
                 </p>
 
-                <!-- Prize Display Section (Smaller, clickable) -->
-                <div class="mb-12 max-w-sm mx-auto">
+                <!-- Prize Display Section (Added animate-scroll-in class) -->
+                <div class="mb-12 max-w-sm mx-auto animate-scroll-in" style="transition-delay: 100ms;">
                     <h2 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4">GRAND PRIZE: ROLEX OR $26,000</h2>
                     <div class="bg-slate-700/60 p-4 rounded-xl shadow-lg cursor-pointer transform transition duration-300 hover:scale-[1.02]" onclick="showPrizeModal()">
                         <!-- New Prize Image -->
@@ -251,8 +259,8 @@
                     </div>
                 </div>
                 
-                <!-- Payment Form Section (NOW USES SOLID glass-panel CLASS) -->
-                <div class="relative-container glass-panel p-6 rounded-2xl shadow-2xl max-w-lg mx-auto mb-12">
+                <!-- Payment Form Section (Added animate-scroll-in class) -->
+                <div class="relative-container glass-panel p-6 rounded-2xl shadow-2xl max-w-lg mx-auto mb-12 animate-scroll-in" style="transition-delay: 200ms;">
                     <div id="initial-form" class="space-y-4" autocomplete="off" novalidate>
                         <!-- Title -->
                         <h2 id="raffle-form-title" class="bebas-neue text-4xl font-bold text-white mb-6 uppercase">BUY YOUR TICKETS!</h2>
@@ -332,8 +340,8 @@
                 </div>
                 <!-- End Payment Form Section -->
 
-                <!-- Live Counter (NEW LOCATION: bottom of the glass panel) -->
-                <div class="pt-12">
+                <!-- Live Counter (NEW LOCATION: bottom of the glass panel) (Added animate-scroll-in class) -->
+                <div class="pt-12 animate-scroll-in" style="transition-delay: 300ms;">
                     <h2 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4" id="ticketsSoldTitle">TICKETS SOLD: 0</h2>
                     <!-- Scoreboard Container (4 Digits) -->
                     <div id="ticketsSoldDisplay" class="flex justify-center space-x-2 md:space-x-3 lg:space-x-4">
@@ -463,6 +471,38 @@
             }).format(amount);
         }
         // --- End Utility Functions ---
+
+
+        // --- ANIMATION LOGIC (NEW) ---
+        function setupScrollAnimations() {
+            // Target the main form panel, the prize box, and the counter
+            const itemsToAnimate = document.querySelectorAll('.animate-scroll-in');
+
+            if (itemsToAnimate.length === 0) return;
+            
+            const observer = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        // Add the animation class when the item enters the viewport
+                        entry.target.classList.add('animate-in');
+                        // Stop observing the element once it's animated
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, {
+                root: null, // relative to the viewport
+                rootMargin: '0px',
+                threshold: 0.1 // trigger when 10% of the item is visible
+            });
+
+            // Only observe elements that haven't been animated yet
+            itemsToAnimate.forEach(item => {
+                if (!item.classList.contains('animate-in')) {
+                    observer.observe(item)
+                }
+            });
+        }
+        // --- END ANIMATION LOGIC ---
 
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -803,6 +843,9 @@
             // Initialize the scoreboard and calculation on load
             initializeScoreboard();
             calculateTotal();
+
+            // Set up animations after all elements are structured
+            setupScrollAnimations();
         });
     </script>
 </body>

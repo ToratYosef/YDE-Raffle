@@ -46,6 +46,19 @@
             -webkit-backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
+
+        /* --- SCROLL ANIMATION STYLES (NEW) --- */
+        .animate-scroll-in {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+        }
+        .animate-scroll-in.animate-in {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        /* --- END SCROLL ANIMATION STYLES --- */
+
         /* Mobile-first adjustment for header navigation */
         @media (max-width: 767px) {
             #main-menu li {
@@ -102,7 +115,7 @@
     </header>
 
     <main class="flex-grow pt-24 sm:pt-28 px-4 md:px-8 lg:px-16"> <!-- Updated padding top for fixed header -->
-        <div class="container mx-auto text-center p-4 sm:p-6 md:p-12 glass-panel rounded-2xl shadow-2xl max-w-7xl">
+        <div id="main-content" class="container mx-auto text-center p-4 sm:p-6 md:p-12 glass-panel rounded-2xl shadow-2xl max-w-7xl animate-scroll-in">
             <h1 class="bebas-neue text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-4 drop-shadow-lg">
                 Split the Pot Raffle
             </h1>
@@ -111,15 +124,15 @@
             </p>
 
             <!-- Grid adjusted to be one column on mobile, two on desktop -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8 mb-12">
-                <div class="bg-slate-700/60 p-4 sm:p-6 rounded-xl shadow-lg transform transition-transform duration-300 hover:scale-105 border border-yellow-400/20">
+            <div id="counter-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8 mb-12">
+                <div class="bg-slate-700/60 p-4 sm:p-6 rounded-xl shadow-lg transform transition-transform duration-300 hover:scale-105 border border-yellow-400/20 animate-scroll-in" style="transition-delay: 100ms;">
                     <p class="text-sm uppercase tracking-wider text-yellow-400 font-semibold mb-2">Total Tickets Sold</p>
                     <div class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold bebas-neue text-white">
                         <span id="ticketCounter">0</span>
                     </div>
                 </div>
 
-                <div class="bg-slate-700/60 p-4 sm:p-6 rounded-xl shadow-lg transform transition-transform duration-300 hover:scale-105 border border-yellow-400/20">
+                <div class="bg-slate-700/60 p-4 sm:p-6 rounded-xl shadow-lg transform transition-transform duration-300 hover:scale-105 border border-yellow-400/20 animate-scroll-in" style="transition-delay: 200ms;">
                     <p class="text-sm uppercase tracking-wider text-yellow-400 font-semibold mb-2">Winner Takes Home</p>
                     <div class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold bebas-neue text-white">
                         <span id="potCounter">$0.00</span>
@@ -128,7 +141,7 @@
             </div>
 
             <!-- Form container for better mobile spacing -->
-            <div id="main-container" class="glass-panel p-6 rounded-2xl shadow-2xl max-w-lg mx-auto mb-12">
+            <div id="main-container" class="glass-panel p-6 rounded-2xl shadow-2xl max-w-lg mx-auto mb-12 animate-scroll-in" style="transition-delay: 300ms;">
                 <h2 class="bebas-neue text-3xl font-bold text-white mb-4">Buy Your Tickets!</h2>
                 
                 <div id="payment-form" class="space-y-4" autocomplete="off" novalidate>
@@ -238,6 +251,37 @@
             });
         }
         // --- END Referrer Helper Functions ---
+
+        // --- ANIMATION LOGIC (NEW) ---
+        function setupScrollAnimations() {
+            // Target the main wrapper, counter boxes, and the form container
+            const itemsToAnimate = document.querySelectorAll('.animate-scroll-in');
+
+            if (itemsToAnimate.length === 0) return;
+            
+            const observer = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        // Add the animation class when the item enters the viewport
+                        entry.target.classList.add('animate-in');
+                        // Stop observing the element once it's animated
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, {
+                root: null, // relative to the viewport
+                rootMargin: '0px',
+                threshold: 0.1 // trigger when 10% of the item is visible
+            });
+
+            // Only observe elements that haven't been animated yet
+            itemsToAnimate.forEach(item => {
+                if (!item.classList.contains('animate-in')) {
+                    observer.observe(item)
+                }
+            });
+        }
+        // --- END ANIMATION LOGIC ---
 
         document.addEventListener('DOMContentLoaded', () => {
             // --- UI Elements ---
@@ -357,9 +401,11 @@
                     quantity = 1;
                     quantityInput.value = 1;
                 }
-                if (quantity > 999999999999999999) {
-                    quantity = 999999999999999999;
-                    quantityInput.value = 999999999999999999;
+                // Limiting quantity input to prevent massive numbers breaking the input field
+                const MAX_QUANTITY = 999999;
+                if (quantity > MAX_QUANTITY) {
+                    quantity = MAX_QUANTITY;
+                    quantityInput.value = MAX_QUANTITY;
                 }
                 
                 baseAmount = calculateBaseCost(quantity);
@@ -373,7 +419,7 @@
                 totalAmountDisplay.textContent = finalAmount.toFixed(2);
 
                 decreaseQuantityButton.disabled = quantity <= parseInt(quantityInput.min, 10);
-                increaseQuantityButton.disabled = quantity >= parseInt(quantityInput.max, 10);
+                increaseQuantityButton.disabled = quantity >= MAX_QUANTITY;
             }
 
             function resetPaymentUI() {
@@ -408,7 +454,9 @@
 
             increaseQuantityButton.addEventListener('click', () => {
                 let currentQuantity = parseInt(quantityInput.value, 10);
-                if (currentQuantity < parseInt(quantityInput.max, 10)) {
+                // Use the same MAX_QUANTITY check here
+                const MAX_QUANTITY = 999999;
+                if (currentQuantity < MAX_QUANTITY) {
                     quantityInput.value = currentQuantity + 1;
                     updateCalculatedTotal();
                 }
@@ -550,6 +598,9 @@
 
             // Initial calculation on page load
             updateCalculatedTotal();
+            
+            // Set up scroll animations after all elements are structured
+            setupScrollAnimations();
         });
     </script>
 </body>

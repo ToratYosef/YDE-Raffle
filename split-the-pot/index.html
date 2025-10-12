@@ -147,7 +147,7 @@
             <!-- Pricing Tiers Section (UPDATED) -->
             <div class="max-w-xl mx-auto mb-12 animate-scroll-in" style="transition-delay: 400ms;">
                 <h3 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4">Ticket Prices</h3>
-                <div id="pricing-tiers-list" class="grid grid-cols-2 gap-4 text-left">
+                <div id="pricing-tiers-list" class="grid grid-cols-2 gap-4">
                     <!-- Tiers will be rendered here by JS -->
                 </div>
                 <p class="text-sm text-gray-400 mt-4">Buying in bundles provides the best value!</p>
@@ -478,7 +478,7 @@
                     const costPerTicket = (tier.cost / tier.count).toFixed(2);
                     
                     return `
-                        <div class="bg-slate-700/40 p-3 rounded-lg border border-yellow-400/20 shadow-md">
+                        <div class="bg-slate-700/40 p-3 rounded-lg border border-yellow-400/20 shadow-md text-center">
                             <p class="bebas-neue text-3xl text-white">${tier.count} Tickets</p>
                             <p class="text-lg font-bold text-yellow-400">$${tier.cost}</p>
                             <p class="text-xs text-gray-400">($${costPerTicket} / ticket)</p>

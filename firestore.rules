@@ -1,18 +1,15 @@
-rules_version='2'
-
+rules_version = '2';
 service cloud.firestore {
+  // This rule applies to all documents in your database.
   match /databases/{database}/documents {
     match /{document=**} {
-      // This rule allows anyone with your database reference to view, edit,
-      // and delete all data in your database. It is useful for getting
-      // started, but it is configured to expire after 30 days because it
-      // leaves your app open to attackers. At that time, all client
-      // requests to your database will be denied.
+      // 1. **request.auth != null**: This is the core condition.
+      //    It checks if *any* user is signed in, regardless of whether they
+      //    used an email/password, Google, or anonymous authentication.
       //
-      // Make sure to write security rules for your app before that time, or
-      // else all client requests to your database will be denied until you
-      // update your rules.
-      allow read, write: if request.time < timestamp.date(2025, 10, 12);
+      // 2. **allow read, write**: Grants permission for all operations:
+      //    read (get, list) and write (create, update, delete).
+      allow read, write: if request.auth != null;
     }
   }
 }

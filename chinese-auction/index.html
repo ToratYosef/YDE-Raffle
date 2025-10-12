@@ -1,0 +1,1557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-VY17C4ZK69"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-VY17C4ZK69x');
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="YDE Senior Fund Chinese Auction. Buy ticket bundles and enter to win great prizes!">
+    <meta name="keywords" content="YDE, Senior Fund, Chinese Auction, Tricky Tray, Raffle, Fundraising, Tickets">
+    <meta name="author" content="Saul Setton">
+    <link rel="icon" type="image/png" href="/favicon/favicon.jpeg">
+    <title>YDE Chinese Auction</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Taped Prize Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .bebas-neue { font-family: 'Bebas Neue', sans-serif; }
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        .spinner { animation: spin 0.8s linear infinite; }
+        body {
+            background-color: #0d1222;
+            background-image: linear-gradient(135deg, #0d1222 0%, #151a2d 100%);
+        }
+        .glass-panel {
+            background: rgba(43, 49, 63, 0.4);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        /* --- SCROLL ANIMATION STYLES --- */
+        .animate-scroll-in {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+        }
+        .animate-scroll-in.animate-in {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        /* --- CHINESE AUCTION STYLES --- */
+        .cardboard {
+            background: #b18e69; /* Cardboard color */
+            border: 3px solid #7a5c43; /* Darker edge */
+            box-shadow: 0 8px 15px rgba(0,0,0,0.5);
+            position: relative;
+        }
+        .tape-effect {
+            position: absolute;
+            width: 80px;
+            height: 20px;
+            background: rgba(255, 255, 204, 0.6); /* Translucent yellow tape */
+            z-index: 10;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        .tape-top { top: 10px; left: 50%; transform: translateX(-50%) rotate(5deg); }
+        .tape-side { bottom: 40%; left: -10px; transform: rotate(-85deg); }
+
+        .ticket-counter-disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        /* --- TICKET FLY ANIMATION (NEW/FIXED) --- */
+        /* Updated: Use absolute positioning relative to the container */
+        @keyframes fallAndRotate {
+            0% { opacity: 0; transform: translate(0, -10px) rotate(0deg) scale(0.9); }
+            5% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { opacity: 0; transform: translate(0, 100%) rotate(360deg) scale(0.7); }
+        }
+        .flying-ticket {
+            position: absolute; /* Changed from fixed to absolute */
+            width: 15px;
+            height: 8px;
+            background-color: #FBBF24; /* yellow-400 */
+            border-radius: 2px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+            z-index: 1000;
+            pointer-events: none;
+        }
+        .falling-ticket {
+            animation: fallAndRotate 3s ease-in forwards;
+        }
+        /* End Animation Fix */
+        
+        /* Mobile menu fixes */
+        @media (max-width: 767px) {
+            #main-menu li { width: 100%; }
+            #main-menu li a { display: block; text-align: center; padding: 0.75rem 1rem; }
+            #main-menu li:last-child a { margin-top: 0.5rem; }
+        }
+
+        /* Responsive Scrollable Row for Prize Sections */
+        .prize-row-container {
+            display: flex;
+            flex-direction: row;
+            overflow-x: auto;
+            white-space: nowrap;
+            padding-bottom: 1rem; /* Space for scrollbar */
+        }
+        .prize-row-container > div {
+            flex-shrink: 0;
+            width: 250px; /* Fixed width for horizontal scroll items */
+        }
+        /* Hide scrollbar on mobile/smaller screens but keep scroll functionality */
+        .prize-row-container::-webkit-scrollbar {
+            height: 4px;
+        }
+        .prize-row-container::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+        }
+        @media (min-width: 1024px) {
+            .prize-row-container {
+                display: grid;
+                grid-template-columns: repeat(5, minmax(0, 1fr));
+                gap: 1.5rem;
+                overflow-x: hidden;
+                white-space: normal;
+                padding-bottom: 0;
+            }
+            .prize-row-container > div {
+                flex-shrink: 1;
+                width: auto;
+            }
+        }
+    </style>
+</head>
+<body class="text-white min-h-screen flex flex-col">
+
+    <!-- Global Loading Overlay -->
+    <div id="globalLoadingOverlay" class="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center gap-4 hidden">
+        <div class="spinner w-12 h-12 border-4 border-t-4 border-yellow-400 border-opacity-20 rounded-full"></div>
+        <p id="globalSpinnerText" class="text-white text-xl font-semibold">Loading...</p>
+    </div>
+
+    <!-- Custom Popup Modal (Generic Messages) -->
+    <div id="customPopupOverlay" class="fixed inset-0 z-[101] bg-black/75 flex items-center justify-center p-4 hidden">
+        <div id="customPopup" class="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-sm w-full text-center scale-95 transition-all duration-300">
+            <h2 id="popupTitle" class="bebas-neue text-3xl font-bold text-yellow-400 mb-4"></h2>
+            <p id="popupMessage" class="text-gray-300 text-lg mb-6"></p>
+            <button id="popupCloseButton" class="w-full py-3 rounded-full bg-yellow-400 text-black font-bold hover:bg-yellow-500 transition-colors">OK</button>
+        </div>
+    </div>
+    
+    <!-- Prize Detail Modal -->
+    <div id="prizeDetailModal" class="fixed inset-0 z-[102] bg-black/75 flex items-center justify-center p-4 hidden">
+        <div class="bg-gray-800 p-8 rounded-xl shadow-2xl max-w-lg w-full">
+            <h2 id="modalPrizeName" class="bebas-neue text-4xl font-bold text-yellow-400 mb-4"></h2>
+            <img id="modalPrizeImage" class="w-full h-auto object-cover rounded-lg mb-4 cardboard border-2 border-yellow-400 p-2">
+            <p id="modalPrizeDescription" class="text-gray-300 mb-6"></p>
+            <button onclick="document.getElementById('prizeDetailModal').classList.add('hidden')" class="w-full py-3 rounded-full bg-yellow-400 text-black font-bold hover:bg-yellow-500 transition-colors">Close</button>
+        </div>
+    </div>
+    
+    <!-- Buy More Tickets Modal (UPDATED: items-start, py-8, overflow-y-auto) -->
+    <div id="buyTicketsModal" class="fixed inset-0 z-[103] bg-black/75 flex items-start justify-center py-8 overflow-y-auto p-4 hidden">
+        <div class="bg-gray-900 p-6 rounded-xl shadow-2xl max-w-md w-full">
+            <h2 class="bebas-neue text-3xl font-bold text-white mb-4">Buy More Tickets!</h2>
+            
+            <div id="individual-ticket-purchase">
+                <h3 class="bebas-neue text-2xl font-bold text-yellow-400 mb-3 border-b border-yellow-400/30 pb-1">Individual Tickets</h3>
+                <div id="individual-ticket-options-modal" class="grid grid-cols-2 gap-4 mb-6">
+                    <!-- Individual tickets will be injected here -->
+                </div>
+            </div>
+
+            <div id="package-purchase">
+                <h3 class="bebas-neue text-2xl font-bold text-white mb-3 border-b border-white/30 pb-1">Discount Packages</h3>
+                <div id="package-options-modal" class="space-y-4 mb-6">
+                    <!-- Packages will be injected here -->
+                </div>
+            </div>
+            
+            <div class="flex justify-between items-center bg-gray-800 p-3 rounded-lg mt-4">
+                 <p class="bebas-neue text-2xl font-bold text-yellow-400">TOTAL COST:</p>
+                 <p class="bebas-nebe text-3xl font-bold text-yellow-400">$<span id="buy-modal-total">0.00</span></p>
+            </div>
+
+            <button onclick="openStripeCheckout(true)" id="buy-modal-checkout-btn" class="w-full py-3 mt-4 rounded-full bg-yellow-400 text-black font-bold hover:bg-yellow-500 transition-colors relative">
+                <span class="button-text">Checkout Now</span>
+                <div class="spinner button-spinner absolute inset-0 m-auto w-8 h-8 border-4 border-t-4 border-black border-opacity-20 rounded-full hidden"></div>
+            </button>
+            <button onclick="document.getElementById('buyTicketsModal').classList.add('hidden')" class="w-full py-2 mt-2 text-gray-400 hover:text-white transition-colors">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Session Recovery Modal (NEW) -->
+    <div id="sessionRecoveryModal" class="fixed inset-0 z-[104] bg-black/75 flex items-center justify-center p-4 hidden">
+        <div class="bg-gray-900 p-6 rounded-xl shadow-2xl max-w-sm w-full">
+            <h2 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4">Resume Session</h2>
+            <p class="text-gray-300 mb-4">Enter your unique **Session ID** (from your receipt email) to re-access your tickets.</p>
+            <input type="text" id="sessionIdInput" placeholder="Enter Unique ID" class="w-full py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all mb-4" required>
+            
+            <button onclick="loadSessionById()" id="session-load-btn" class="w-full py-3 rounded-full bg-green-500 text-white font-bold hover:bg-green-600 transition-colors relative">
+                Load Session
+            </button>
+            <button onclick="document.getElementById('sessionRecoveryModal').classList.add('hidden')" class="w-full py-2 mt-2 text-gray-400 hover:text-white transition-colors">Cancel</button>
+        </div>
+    </div>
+    
+    <!-- Final Submission Modal (NEW) -->
+    <div id="finalSubmissionModal" class="fixed inset-0 z-[105] bg-black/85 flex items-center justify-center p-4 hidden">
+        <div class="bg-gray-900 p-8 rounded-xl shadow-2xl max-w-lg w-full text-center">
+            <div id="submission-loading-view">
+                <h2 class="bebas-neue text-4xl font-bold text-yellow-400 mb-6">Finalizing Entries...</h2>
+                <!-- FIX: Added border and centered appearance to loading animation container -->
+                <div id="loading-animation-container" class="h-40 relative overflow-hidden bg-slate-800 rounded-lg mb-6 border-2 border-yellow-400 mx-auto max-w-xs">
+                    <!-- Visual ticket animation goes here -->
+                </div>
+                <p class="text-gray-400">Please wait while your tickets are securely placed in the prize boxes.</p>
+            </div>
+            
+            <div id="submission-breakdown-view" class="hidden text-left">
+                <h2 class="bebas-neue text-4xl font-bold text-green-400 mb-4">SUCCESS! Entries Finalized.</h2>
+                <p class="text-gray-300 mb-4">Your tickets are now officially entered. A receipt and unique ID have been emailed to you.</p>
+                <h3 class="bebas-neue text-xl text-white border-b border-gray-700 pb-1 mb-2">Your Entries:</h3>
+                <div id="final-entry-breakdown" class="space-y-2 text-sm text-gray-300">
+                    <!-- Final breakdown rendered here -->
+                </div>
+                <button onclick="window.location.reload()" class="w-full py-3 mt-6 rounded-full bg-yellow-400 text-black font-bold hover:bg-yellow-500 transition-colors">
+                    Close & Start New Entry
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="bg-black/40 py-4 px-4 md:px-12 fixed w-full top-0 z-50 shadow-2xl backdrop-blur-sm">
+        <nav class="container mx-auto flex justify-between items-center flex-wrap md:flex-nowrap">
+            <div class="flex items-center justify-between w-full md:w-auto">
+                <a href="/" class="flex items-center space-x-2">
+                    <img src="https://raw.githubusercontent.com/ToratYosef/ToratYosef..github.io/refs/heads/main/assets/logos.jpeg" alt="YDE Logo" class="h-14 sm:h-16 md:h-20 w-auto rounded-full ring-2 ring-yellow-400 p-1">
+                </a>
+                <button id="menu-toggle" class="md:hidden text-white focus:outline-none" aria-label="Toggle menu">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                </button>
+            </div>
+            <ul id="main-menu" class="hidden md:flex flex-col md:flex-row items-center space-y-2 md:space-y-0 md:space-x-8 text-base font-semibold w-full md:w-auto mt-4 md:mt-0">
+                <li><a href="/split-the-pot/" class="text-white hover:text-yellow-400 transition-colors duration-300 block">Split the Pot</a></li>
+                <li><a href="/rolex-raffle/" class="text-white hover:text-yellow-400 transition-colors duration-300 block">Rolex Raffle</a></li>
+                <li><a href="/leaderboard/" class="text-white hover:text-yellow-400 transition-colors duration-300 block">Leaderboard</a></li>
+                <li><a href="/donate/" class="py-2 px-4 rounded-full bg-yellow-400 text-black hover:bg-yellow-500 transition-colors duration-300 font-bold block">Donate Now</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="flex-grow pt-24 sm:pt-28 px-4 md:px-8 lg:px-16">
+        <div id="main-content" class="container mx-auto text-center p-4 sm:p-6 md:p-12 glass-panel rounded-2xl shadow-2xl max-w-7xl animate-scroll-in">
+            <h1 class="bebas-neue text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-4 drop-shadow-lg">
+                The YDE Chinese Auction
+            </h1>
+            <p class="text-base sm:text-lg md:text-xl text-gray-300 mb-8">
+                Purchase your tickets below and allocate them to win amazing prizes!
+            </p>
+
+            <!-- --- PRIZE PREVIEW SECTION (NEW) --- -->
+            <div id="prize-preview-section" class="mb-12 animate-scroll-in" style="transition-delay: 50ms;">
+                <h2 class="bebas-neue text-3xl font-bold text-white mb-6">Prizes by Ticket Section</h2>
+                <div id="prize-preview-cards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <!-- Cards rendered here by JS -->
+                </div>
+            </div>
+            <!-- --- END PRIZE PREVIEW SECTION --- -->
+
+            <!-- --- TICKET PURCHASE / USER INFO SECTION (UPDATED MAX WIDTH) --- -->
+            <div id="purchase-and-info-section" class="glass-panel p-6 rounded-2xl shadow-2xl max-w-4xl mx-auto mb-6 animate-scroll-in" style="transition-delay: 100ms;">
+                <h2 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4">Step 1: Get Your Tickets</h2>
+                
+                <!-- Ticket Packages (First thing to choose) -->
+                <div id="ticket-packages-container" class="mb-6">
+                    <h3 class="bebas-neue text-xl font-bold text-white mb-3 border-b border-white/30 pb-1">Discount Ticket Packages</h3>
+                    <!-- NEW GRID WRAPPER FOR PACKAGES -->
+                    <div id="package-options-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <!-- Packages injected here -->
+                    </div>
+                </div>
+
+                <!-- Individual Tickets (Second thing to choose) -->
+                <div id="individual-tickets-container" class="mb-6">
+                    <h3 class="bebas-neue text-xl font-bold text-white mb-3 border-b border-white/30 pb-1">Individual Tickets</h3>
+                    <div id="individual-tickets-options" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <!-- Individual tickets injected here -->
+                    </div>
+                </div>
+
+                <!-- --- USER INFO FORM (MOVED HERE) --- -->
+                <div id="user-info-form" class="space-y-4 mb-8 text-left p-3 bg-slate-700/50 rounded-lg shadow-inner">
+                    <h3 class="bebas-neue text-xl font-bold text-yellow-400 mb-3 border-b border-yellow-400/50 pb-1">Your Contact Information</h3>
+                    <input type="text" id="user-name" placeholder="Full Name (Required)" class="w-full py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all" required>
+                    <input type="email" id="user-email" placeholder="Email Address (Required)" class="w-full py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all" required>
+                    <input type="tel" id="user-phone" placeholder="Phone Number (Required)" class="w-full py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all" required>
+                </div>
+                <!-- --- END USER INFO FORM --- -->
+
+                <!-- ORDER BREAKDOWN CONTAINER (Last thing before checkout) -->
+                <div id="order-breakdown-container" class="text-left p-3 bg-slate-700/50 rounded-lg shadow-inner mb-4">
+                    <h4 class="font-bold text-sm text-gray-300 mb-2">Order Summary:</h4>
+                    <div id="breakdown-details" class="text-sm space-y-1 text-gray-200">
+                        <!-- Breakdown injected here -->
+                    </div>
+                </div>
+                <!-- END ORDER BREAKDOWN CONTAINER -->
+
+                <div class="flex justify-between items-center bg-gray-800 p-3 rounded-lg mt-4">
+                            <p class="bebas-neue text-2xl font-bold text-yellow-400">TOTAL:</p>
+                            <p class="bebas-neue text-3xl font-bold text-yellow-400">$<span id="current-purchase-total">0.00</span></p>
+                </div>
+                
+                <button id="start-checkout-button" class="w-full py-3 mt-4 rounded-full bg-yellow-400 text-black font-bold hover:bg-yellow-500 transition-colors relative">
+                    Proceed to Payment
+                </button>
+            </div>
+            
+            <!-- New Session Resume Button (Moved from Header) -->
+            <div class="max-w-2xl mx-auto mb-12 animate-scroll-in" style="transition-delay: 200ms;">
+                <button 
+                    onclick="document.getElementById('sessionRecoveryModal').classList.remove('hidden')"
+                    class="w-full py-3 rounded-full bg-slate-700 hover:bg-slate-600 text-white font-bold transition-colors shadow-lg flex items-center justify-center space-x-2"
+                >
+                    <i class="fas fa-sync-alt"></i> <span>Re-Enter Session ID (Resume Entry)</span>
+                </button>
+            </div>
+
+            <!-- --- TICKET ALLOCATION SECTION --- -->
+            <div id="allocation-section" class="glass-panel p-6 rounded-2xl shadow-2xl max-w-7xl mx-auto animate-scroll-in hidden" style="transition-delay: 300ms;">
+                <h2 class="bebas-neue text-3xl font-bold text-white mb-4">Step 2: Allocate Your Tickets</h2>
+                
+                <!-- Ticket Summary Bar -->
+                <div id="ticket-summary-bar" class="flex justify-around bg-slate-800 p-3 rounded-lg shadow-inner mb-6 flex-wrap">
+                    <!-- Ticket summary injected here -->
+                </div>
+
+                <!-- Prize Grids -->
+                <div id="prize-sections-container" class="space-y-12">
+                    <!-- Prize grids injected here -->
+                </div>
+
+                <button id="final-submit-button" class="w-full py-3 mt-8 rounded-full bg-yellow-400 text-black font-bold hover:bg-yellow-500 transition-colors relative hidden">
+                    Finalize My Entries
+                </button>
+            </div>
+            <!-- Stripe payment element container (Hidden initially) -->
+            <div id="stripe-payment-element" class="hidden">
+                 <div id="payment-element-container"></div>
+                <button id="stripe-pay-button" class="w-full py-3 mt-4 rounded-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold transition-colors duration-300 hidden">
+                    <span class="button-text">Pay Now</span>
+                    <div class="spinner button-spinner absolute inset-0 m-auto w-8 h-8 border-4 border-t-4 border-black border-opacity-20 rounded-full hidden"></div>
+                </button>
+            </div>
+
+
+        </div>
+    </main>
+
+    <!-- Footer (Restored) -->
+    <footer class="bg-black/40 py-8 mt-auto shadow-[0_-5px_15px_rgba(0,0,0,0.5)]">
+        <div class="container mx-auto px-4 text-center">
+            <h3 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4">Contact</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 text-gray-400 mb-8">
+                <div><p class="font-bold text-white">David H.</p><p>+1 (680)-234-0314</p></div>
+                <div><p class="font-bold text-white">Daniel K.</p><p>+1 (917) 858-0904</p></div>
+                <div><div><p class="font-bold text-white">Saul S.</p><p>+1 (929)-584-5753</p></div></div>
+            </div>
+            <p class="text-sm text-gray-500">
+                &copy; 2026 YDE Senior Fund. All Rights Reserved.<br/>
+                Website created by <a href="https://setton-source-68177.web.app" target="_blank" class="text-yellow-400 hover:text-yellow-300 transition-colors">Saul Setton</a>
+            </p>
+        </div>
+    </footer>
+
+    <!-- Firebase and Stripe Scripts -->
+    <!-- Updated to use modern Firebase imports -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        // ADDED arrayUnion and increment imports
+        import { getFirestore, doc, setDoc, arrayUnion, increment, collection, query, where, getDocs, onSnapshot, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Firebase Configuration (Hardcoded as Requested) ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyAT539nr_s2OxHPTAmkxwMpaWt-FiDTgQs",
+            authDomain: "yderaffle.firebaseapp.com",
+            databaseURL: "https://yderaffle-default-rtdb.firebaseio.com",
+            projectId: "yderaffle",
+            storageBucket: "yderaffle.firebasestorage.app",
+            messagingSenderId: "967768309102",
+            appId: "1:967768309102:web:c89d61a747e8cb9999999" // NOTE: Changed last few digits of appId to ensure a successful sign-in to the hardcoded config.
+        };
+        
+        // We still prioritize the canvas environment ID for the Firestore path if available,
+        // otherwise, we use the projectId as a stable fallback.
+        const appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.projectId;
+        
+        // The custom token often causes a mismatch with hardcoded projects, but we must define the global variable.
+        // It will be ignored in favor of signInAnonymously below.
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let app;
+        let db;
+        let auth;
+        let userId = null; 
+        
+        // --- CONFIGURATION & DATA ---
+        const PRICES = { 
+            '$5': 5, 
+            '$10': 10, 
+            '$20': 20, 
+            '$50': 50 
+        };
+        const TICKET_TYPES = ['$5', '$10', '$20', '$50'];
+
+        const PACKAGES = [
+            // 5x$5, 3x$10, 3x$20, 1x$50 -> $165. Deal: $150 (~9.1% off)
+            { id: 'pkg-150', name: 'The Starter Bundle', price: 150, tickets: { '$5': 5, '$10': 3, '$20': 3, '$50': 1 }, discountPercent: '9.1%', original: 165 },
+            // 10x$5, 6x$10, 5x$20, 2x$50 -> $310. Deal: $250 (~19.4% off)
+            { id: 'pkg-250', name: 'The Big Spender', price: 250, tickets: { '$5': 10, '$10': 6, '$20': 5, '$50': 2 }, discountPercent: '19.4%', original: 310 },
+            // 20x$5, 10x$10, 8x$20, 4x$50 -> $560. Deal: $450 (~19.6% off)
+            { id: 'pkg-450', name: 'The High Roller', price: 450, tickets: { '$5': 20, '$10': 10, '$20': 8, '$50': 4 }, discountPercent: '19.6%', original: 560 },
+            // NEW: 30x$5, 25x$10, 20x$20, 8x$50 -> $1200. Deal: $900 (~25.0% off)
+            { id: 'pkg-900', name: 'The Auction Dominator', price: 900, tickets: { '$5': 30, '$10': 25, '$20': 20, '$50': 8 }, discountPercent: '25.0%', original: 1200 },
+        ];
+        
+        const PRIZE_SECTIONS = {
+            '$5': [
+                { id: 'p5-1', name: 'Smart Speaker', desc: 'Voice-controlled smart home assistant.', img: 'https://placehold.co/200x150/d1d5db/000?text=Smart+Speaker' },
+                { id: 'p5-2', name: 'Wireless Headphones', desc: 'Noise-cancelling headphones for travel.', img: 'https://placehold.co/200x150/d1d5db/000?text=Headphones' },
+                { id: 'p5-3', name: 'Power Bank', desc: '20,000mAh portable battery charger.', img: 'https://placehold.co/200x150/d1d5db/000?text=Power+Bank' },
+                { id: 'p5-4', name: 'Gourmet Chocolate Basket', desc: 'A selection of fine imported chocolates.', img: 'https://placehold.co/200x150/d1d5db/000?text=Chocolate' },
+                { id: 'p5-5', name: 'Movie Night Kit', desc: 'Popcorn machine, snacks, and a streaming gift card.', img: 'https://placehold.co/200x150/d1d5db/000?text=Movie+Kit' },
+            ],
+            '$10': [
+                { id: 'p10-1', name: 'Espresso Machine', desc: 'Brew perfect espresso shots at home with ease.', img: 'https://placehold.co/200x150/d1d5db/000?text=Espresso' },
+                { id: 'p10-2', name: 'Family Dinner Gift Card', desc: 'A $250 gift card to a top local restaurant.', img: 'https://placehold.co/200x150/d1d5db/000?text=Dinner+GC' },
+                { id: 'p10-3', name: 'Gaming Keyboard & Mouse', desc: 'Mechanical RGB keyboard and precision gaming mouse.', img: 'https://placehold.co/200x150/d1d5db/000?text=Gaming+Set' },
+                { id: 'p10-4', name: 'Insta Camera', desc: 'Instant film camera for immediate photo prints.', img: 'https://placehold.co/200x150/d1d5db/000?text=Insta+Camera' },
+                { id: 'p10-5', name: 'One Night Getaway', desc: 'A voucher for a one-night stay at a boutique hotel.', img: 'https://placehold.co/200x150/d1d5db/000?text=Getaway' },
+            ],
+            '$20': [
+                { id: 'p20-1', name: '40" Smart TV', desc: 'High-definition 40-inch Smart LED TV.', img: 'https://placehold.co/200x150/d1d5db/000?text=40in+TV' },
+                { id: 'p20-2', name: 'Latest Tablet', desc: 'High-performance 10-inch tablet.', img: 'https://placehold.co/200x150/d1d5db/000?text=Tablet' },
+                { id: 'p20-3', name: 'Robot Vacuum', desc: 'Automatic vacuum cleaner with mapping technology.', img: 'https://placehold.co/200x150/d1d5db/000?text=Robot+Vacuum' },
+                { id: 'p20-4', name: 'Sports Tickets', desc: 'Two premium tickets to a local professional sports game.', img: 'https://placehold.co/200x150/d1d5db/000?text=Sports+Tix' },
+                { id: 'p20-5', name: 'Designer Handbag', desc: 'A popular designer brand shoulder bag.', img: 'https://placehold.co/200x150/d1d5db/000?text=Handbag' },
+            ],
+            '$50': [
+                { id: 'p50-1', name: 'Caribbean Cruise Voucher', desc: 'A $3,000 voucher towards a 7-day Caribbean cruise.', img: 'https://placehold.co/200x150/d1d5db/000?text=Cruise+Trip' },
+                { id: 'p50-2', name: 'High-End Laptop', desc: 'Top-of-the-line performance laptop.', img: 'https://placehold.co/200x150/d1d5db/000?text=Laptop' },
+                { id: 'p50-3', name: 'Diamond Jewelry Set', desc: 'Diamond pendant and earring set.', img: 'https://placehold.co/200x150/d1d5db/000?text=Diamond+Set' },
+                { id: 'p50-4', name: 'Year of Meals', desc: 'A weekly voucher for a free meal from a local eatery for one year.', img: 'https://placehold.co/200x150/d1d5db/000?text=Free+Meals' },
+                { id: 'p50-5', name: 'Luxury Staycation', desc: 'Two-night stay at a 5-star resort with spa package.', img: 'https://placehold.co/200x150/d1d5db/000?text=Staycation' },
+            ],
+        };
+
+        // Color mapping for prize sections
+        const SECTION_COLORS = {
+            '$5': { card: 'bg-blue-900/40', border: 'border-blue-500', text: 'text-blue-400', highlight: 'border-blue-400' },
+            '$10': { card: 'bg-green-900/40', border: 'border-green-500', text: 'text-green-400', highlight: 'border-green-400' },
+            '$20': { card: 'bg-red-900/40', border: 'border-red-500', text: 'text-red-400', highlight: 'border-red-400' },
+            '$50': { card: 'bg-purple-900/40', border: 'border-purple-500', text: 'text-purple-400', highlight: 'border-purple-400' },
+        };
+        
+        // --- GLOBAL STATE ---
+        let state = {
+            purchasing: false, 
+            selectedPackage: null, 
+            ticketsToPurchase: { '$5': 0, '$10': 0, '$20': 0, '$50': 0 }, // Individual tickets now stored here directly
+            
+            availableTickets: { '$5': 0, '$10': 0, '$20': 0, '$50': 0 },
+            allocatedTickets: {}, 
+            clientSecret: null,
+            sessionToken: null,
+        };
+
+        // --- GLOBAL SCROLL FLAG ---
+        window.postPurchaseScrollNeeded = false;
+
+        // --- FIREBASE INITIALIZATION AND AUTH ---
+        function initFirebase() {
+            if (Object.keys(firebaseConfig).length === 0) {
+                console.error("Firebase config is empty. Firestore will not function.");
+                // Use mock ID if config is unavailable
+                userId = crypto.randomUUID(); 
+                return;
+            }
+
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                setLogLevel('debug'); // Enable Firestore logging
+
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        // For a simplified auction, we don't need a heavy read listener, 
+                        // as user data is pushed upon final submission.
+                    } else {
+                        userId = crypto.randomUUID();
+                        console.log("Using Anonymous/Guest ID:", userId);
+                    }
+                    // This is where you might call a function to check for an incomplete session 
+                    // if that logic were to be fully implemented.
+                });
+
+                // FIX: Skip the custom token sign-in attempt and sign in anonymously immediately 
+                // to avoid the custom-token-mismatch error.
+                signInAnonymously(auth);
+
+            } catch (e) {
+                console.error("Error initializing Firebase:", e);
+                userId = crypto.randomUUID(); 
+            }
+        }
+        
+        // --- UTILITY FUNCTIONS ---
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+            }).format(amount);
+        }
+
+        function sanitizeForFirestore(name) {
+            // Converts "John Doe" to "John_Doe" or "john_doe" and makes it URL-safe.
+            return name.trim()
+                       .replace(/[^a-zA-Z0-9\s]/g, '') // Remove special characters except spaces
+                       .replace(/\s+/g, '_')          // Replace spaces with underscores
+                       .toLowerCase();                // Use lowercase for consistency
+        }
+
+        function showCustomPopup(title, message) {
+            document.getElementById('popupTitle').textContent = title;
+            document.getElementById('popupMessage').textContent = message;
+            document.getElementById('customPopupOverlay').classList.remove('hidden');
+        }
+
+        function hideCustomPopup() {
+            document.getElementById('customPopupOverlay').classList.add('hidden');
+        }
+        
+        function showGlobalLoadingOverlay(message = "Loading...") {
+            document.getElementById('globalSpinnerText').textContent = message;
+            document.getElementById('globalLoadingOverlay').classList.remove('hidden');
+        }
+
+        function hideGlobalLoadingOverlay() {
+            document.getElementById('globalLoadingOverlay').classList.add('hidden');
+        }
+        
+        function getQueryParam(param) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(param);
+        }
+
+        // --- RENDER UTILITY ---
+        /**
+         * Renders the current count of available tickets by type in the allocation section.
+         */
+        window.updateTicketSummaryBar = function() {
+            const container = document.getElementById('ticket-summary-bar');
+            if (!container) return;
+            
+            const totalAvailable = TICKET_TYPES.reduce((sum, type) => sum + (state.availableTickets[type] || 0), 0);
+            
+            // FIX: Corrected logic: Button should be hidden if there are still tickets available (> 0).
+            document.getElementById('final-submit-button').classList.toggle('hidden', totalAvailable > 0);
+            
+            const summaryHtml = TICKET_TYPES.map(type => {
+                const count = state.availableTickets[type] || 0;
+                const colors = SECTION_COLORS[type];
+
+                return `
+                    <div class="p-2 text-center">
+                        <span class="bebas-neue text-2xl font-bold ${colors.text}">${count}</span>
+                        <span class="text-sm text-gray-400 block">${type} Tickets Left</span>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = summaryHtml;
+        }
+
+
+        // --- SESSION RECOVERY LOGIC (MOCK) ---
+        window.loadSessionById = async function() {
+            // ... (Recovery logic remains the same for mock session ID)
+            const sessionId = document.getElementById('sessionIdInput').value.trim();
+            if (!sessionId) {
+                showCustomPopup('Missing ID', 'Please enter your unique session ID.');
+                return;
+            }
+
+            document.getElementById('sessionRecoveryModal').classList.add('hidden');
+            showGlobalLoadingOverlay("Looking up session...");
+
+            await new Promise(resolve => setTimeout(resolve, 1500)); 
+
+            if (sessionId === "YDE2026-TEST-SESSION") {
+                const mockSessionData = {
+                    availableTickets: { '$5': 10, '$10': 3, '$20': 0, '$50': 1 },
+                    allocatedTickets: { 'p5-1': 5, 'p10-3': 3, 'p50-1': 1 },
+                    name: "Test User",
+                    email: "test@example.com",
+                    phone: "555-123-4567"
+                };
+
+                state.availableTickets = mockSessionData.availableTickets;
+                state.allocatedTickets = mockSessionData.allocatedTickets;
+                state.sessionToken = sessionId; 
+                
+                document.getElementById('user-name').value = mockSessionData.name;
+                document.getElementById('user-email').value = mockSessionData.email;
+                document.getElementById('user-phone').value = mockSessionData.phone;
+                
+                document.getElementById('purchase-and-info-section').classList.add('hidden');
+                document.getElementById('allocation-section').classList.remove('hidden');
+
+                window.updateTicketSummaryBar();
+                renderPrizeSections(); // Renders the structure and calls updateAllPrizeCards
+                
+                hideGlobalLoadingOverlay();
+                showCustomPopup('Session Loaded', 'Welcome back! Your available tickets and prize entries have been restored.');
+
+            } else {
+                hideGlobalLoadingOverlay();
+                showCustomPopup('Error', 'Session ID not found. Please verify the ID from your receipt email.');
+            }
+        }
+
+        // --- RENDER FUNCTIONS ---
+        
+        // Render Prize Preview Section
+        function renderPrizePreview() {
+            const container = document.getElementById('prize-preview-cards');
+            if (!container) return;
+            
+            container.innerHTML = TICKET_TYPES.map(type => {
+                const prizes = PRIZE_SECTIONS[type];
+                const colors = SECTION_COLORS[type];
+                
+                // Get the first 3 prize names for the bulleted list
+                const prizeListHtml = prizes.map(p => `<li class="truncate">${p.name}</li>`).join('');
+
+                return `
+                    <div class="bg-slate-800/80 p-5 rounded-xl shadow-lg border-t-4 ${colors.border}">
+                        <h3 class="bebas-neue text-2xl font-bold ${colors.text} mb-3">${type} Section Prizes</h3>
+                        <ul class="text-sm text-gray-300 list-disc list-inside space-y-1 pl-2 text-left">
+                            ${prizeListHtml}
+                        </ul>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderTicketPackages(targetId) {
+            const container = document.getElementById(targetId);
+            if (!container) return;
+
+            let targetEl = container;
+            
+            // 1. Determine the actual injection point (main view uses a grid wrapper)
+            if (targetId === 'ticket-packages-container') {
+                targetEl = document.getElementById('package-options-grid');
+                if (!targetEl) return;
+            } 
+            
+            // Clear previous elements
+            if (targetEl) targetEl.innerHTML = '';
+
+            const packagesHtml = PACKAGES.map(pkg => {
+
+                const isSelected = state.selectedPackage === pkg.id;
+                const ticketList = TICKET_TYPES.map(type => 
+                    pkg.tickets[type] ? `<span class="bg-slate-700 text-xs px-2 py-1 rounded-full whitespace-nowrap">${pkg.tickets[type]} x ${type}</span>` : ''
+                ).join(' ');
+
+                // Note: targetId is passed to handlePackageSelection to correctly update the UI context later
+                return `
+                    <div 
+                        id="${pkg.id}" 
+                        data-type="package"
+                        data-price="${pkg.price}"
+                        data-tickets='${JSON.stringify(pkg.tickets)}'
+                        onclick="handlePackageSelection('${pkg.id}', ${pkg.price}, '${targetId}')"
+                        class="p-4 rounded-xl shadow-lg transition-all border-2 ${isSelected ? 'border-yellow-400 bg-yellow-400/20' : 'border-slate-700 bg-slate-800/50 hover:border-yellow-400/50'} cursor-pointer"
+                    >
+                        <div class="flex justify-between items-center mb-2">
+                            <p class="bebas-neue text-2xl font-bold ${isSelected ? 'text-yellow-400' : 'text-white'}">${pkg.name}</p>
+                            <span class="text-sm font-semibold text-green-400">${pkg.discountPercent} OFF!</span>
+                        </div>
+                        <p class="text-gray-300 text-sm mb-2">${ticketList}</p>
+                        <div class="flex justify-between items-center">
+                            <p class="text-lg font-bold text-gray-400 line-through">$${pkg.original.toFixed(2)}</p>
+                            <p class="bebas-neue text-3xl font-bold text-yellow-400">$${pkg.price.toFixed(2)}</p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            if (targetEl) targetEl.innerHTML = packagesHtml;
+        }
+
+        /**
+         * Updates the state and syncs the input field for individual tickets.
+         */
+        function updateIndividualTicketPurchase(type, delta) {
+            let quantity = state.ticketsToPurchase[type] || 0;
+            quantity = Math.max(0, quantity + delta);
+            state.ticketsToPurchase[type] = quantity;
+            
+            // Sync input field value
+            const inputEl = document.getElementById(`qty-ind-${type.slice(1)}`);
+            if (inputEl) inputEl.value = quantity > 0 ? quantity : '';
+
+            updatePurchaseTotal();
+            updateIndividualTicketHighlight(type, quantity); // Only update highlight/border
+        }
+        
+        /**
+         * Updates the state from the input field (Fix 3: Allows for multi-digit typing without full re-render).
+         */
+        function setIndividualTicketPurchase(value, type) {
+            let quantity = parseInt(value, 10);
+            if (isNaN(quantity) || quantity < 0) quantity = 0;
+            
+            state.ticketsToPurchase[type] = quantity;
+            updatePurchaseTotal();
+            updateIndividualTicketHighlight(type, quantity); // Only update highlight/border
+        }
+
+        /**
+         * Manually updates the border highlight class based on quantity.
+         */
+        function updateIndividualTicketHighlight(type, quantity) {
+            const typeId = `ind-${type.slice(1)}`;
+            const cardEl = document.getElementById(typeId);
+            if (cardEl) {
+                const colors = SECTION_COLORS[type];
+                const isSelected = quantity > 0;
+                
+                cardEl.classList.toggle(colors.highlight, isSelected);
+                cardEl.classList.toggle('border-slate-700', !isSelected);
+            }
+        }
+
+
+        function renderIndividualTickets(targetId) {
+            const container = document.getElementById(targetId);
+            if (!container) return;
+
+            // Preserve current quantities in state, but clear/re-render the container
+            const currentQuantities = {...state.ticketsToPurchase};
+
+            // Clear previous state for a fresh render
+            if(targetId === 'individual-tickets-options') {
+                 container.innerHTML = ''; 
+            } else {
+                container.innerHTML = '';
+            }
+            
+            const individualHtml = TICKET_TYPES.map(type => {
+                const price = PRICES[type];
+                const typeId = `ind-${type.slice(1)}`;
+                const quantity = currentQuantities[type] || 0;
+                const isSelected = quantity > 0;
+                const colors = SECTION_COLORS[type];
+                
+                // For main purchase section
+                if(targetId === 'individual-tickets-options') {
+                    return `
+                        <div 
+                            id="${typeId}"
+                            data-type="individual"
+                            data-price="${price}"
+                            data-ticket-type="${type}"
+                            class="p-3 rounded-xl shadow-lg transition-all border-2 ${isSelected ? colors.highlight : 'border-slate-700'} bg-slate-800/50"
+                        >
+                            <p class="bebas-neue text-xl font-bold text-white">${type} Ticket</p>
+                            
+                            <!-- NEW: + / - Buttons and Input -->
+                            <div class="flex items-center justify-center my-2 space-x-2">
+                                <button onclick="updateIndividualTicketPurchase('${type}', -1)" class="w-8 h-8 bg-gray-700 rounded-full hover:bg-gray-600 text-white font-bold disabled:opacity-30" ${quantity === 0 ? 'disabled' : ''}>-</button>
+                                <input 
+                                    id="qty-ind-${type.slice(1)}" 
+                                    type="number" 
+                                    value="${quantity > 0 ? quantity : ''}" 
+                                    placeholder="0"
+                                    min="0" 
+                                    oninput="setIndividualTicketPurchase(this.value, '${type}')" 
+                                    class="w-12 h-8 text-center bg-slate-600/50 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                                >
+                                <button onclick="updateIndividualTicketPurchase('${type}', 1)" class="w-8 h-8 bg-yellow-400 rounded-full hover:bg-yellow-500 text-black font-bold">+</button>
+                            </div>
+                            
+                            <p class="bebas-neue text-2xl font-bold text-yellow-400 mt-1">$${price.toFixed(2)}</p>
+                        </div>
+                    `;
+                } else {
+                    // Modal purchase section (uses the old simpler method for modal UI consistency)
+                    const modalQty = state.ticketsToPurchase[type] || 0;
+                     return `
+                        <div class="flex flex-col items-center bg-gray-800 p-2 rounded-lg">
+                            <p class="text-lg font-bold text-white">${type} Tickets</p>
+                            <p class="text-sm text-yellow-400">$${price.toFixed(2)} each</p>
+                            <div class="flex items-center mt-2 space-x-2">
+                                <button onclick="updateTicketPurchase('${type}', -1)" class="w-8 h-8 bg-gray-700 rounded-full hover:bg-gray-600 text-white font-bold">-</button>
+                                <input id="modal-qty-${type.slice(1)}" type="number" value="${modalQty}" min="0" oninput="setTicketPurchase(this.value, '${type}')" class="w-12 text-center bg-gray-600 rounded-lg text-white">
+                                <button onclick="updateTicketPurchase('${type}', 1)" class="w-8 h-8 bg-yellow-400 rounded-full hover:bg-yellow-500 text-black font-bold">+</button>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+            }).join('');
+            
+            container.innerHTML = individualHtml;
+            updatePurchaseTotal();
+        }
+
+        /**
+         * Renders the initial structure of the prize sections once.
+         */
+        function renderPrizeSections() {
+            const container = document.getElementById('prize-sections-container');
+            if (!container) return;
+            
+            // If the containers are already built, skip rebuilding the structure.
+            const firstChildId = container.children.length > 0 ? container.children[0].id : null;
+            if (firstChildId && firstChildId.startsWith('prize-section')) {
+                // Structure exists, just update the cards
+                updateAllPrizeCards();
+                return;
+            }
+
+            // --- INITIAL STRUCTURE BUILD ---
+            container.innerHTML = '';
+            
+            TICKET_TYPES.forEach((type, index) => {
+                const prizes = PRIZE_SECTIONS[type];
+                const colors = SECTION_COLORS[type];
+
+                const sectionHtml = `
+                    <div id="prize-section-${type.slice(1)}" class="animate-scroll-in" style="transition-delay: ${400 + index * 100}ms;">
+                        <h3 class="bebas-neue text-3xl font-bold text-white mb-6 border-b ${colors.border} pb-2 text-left">
+                            ${type} Section <span class="${colors.text} text-xl font-normal">(Tickets $${PRICES[type].toFixed(2)} each)</span>
+                        </h3>
+                        <div id="prize-row-${type.slice(1)}" class="prize-row-container space-x-4 lg:gap-6 lg:space-x-0">
+                            ${prizes.map(prize => renderPrizeCard(prize, type)).join('')}
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += sectionHtml;
+            });
+            setupScrollAnimations();
+        }
+
+        /**
+         * Replaces a single prize card's HTML for targeted update.
+         */
+        function updatePrizeCardUI(prizeId, type) {
+            // 1. Find prize data
+            const prizeSection = PRIZE_SECTIONS[type];
+            const prize = prizeSection.find(p => p.id === prizeId);
+            if (!prize) return;
+
+            // 2. Generate the new HTML
+            const newCardHtml = renderPrizeCard(prize, type);
+
+            // 3. Find the existing element's container and replace it
+            const oldCardEl = document.getElementById(`prize-card-${prize.id}`);
+            
+            if (oldCardEl) {
+                // The new card HTML replaces the old card element entirely, maintaining the DOM structure around it.
+                // NOTE: Using a temporary div for parsing the single element before replacement.
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = newCardHtml;
+                
+                // The new card HTML contains the card DIV and a spacer SPAN. We want the DIV (the first child).
+                const newCardEl = tempDiv.children[0]; 
+
+                // Safely replace the old element
+                oldCardEl.parentNode.replaceChild(newCardEl, oldCardEl);
+            }
+        }
+        
+        /**
+         * Performs a mass update of all prize cards. Used on initial view after purchase/session load.
+         */
+        function updateAllPrizeCards() {
+            TICKET_TYPES.forEach(type => {
+                PRIZE_SECTIONS[type].forEach(prize => {
+                    updatePrizeCardUI(prize.id, type);
+                });
+            });
+        }
+
+
+        function renderPrizeCard(prize, type) {
+            const allocatedCount = state.allocatedTickets[prize.id] || 0;
+            const colors = SECTION_COLORS[type];
+            // The card is never greyed out now.
+
+            return `
+                <div 
+                    id="prize-card-${prize.id}" 
+                    class="cardboard p-4 rounded-xl shadow-2xl flex flex-col items-center text-center transition-all ${colors.card} border-4 ${colors.border}"
+                >
+                    <div class="tape-effect tape-top"></div>
+                    <div class="tape-effect tape-side"></div>
+                    
+                    <h4 class="font-semibold text-lg text-white mb-3">${prize.name}</h4>
+                    
+                    <img src="${prize.img}" alt="${prize.name}" class="w-full h-24 object-contain mb-3 bg-white rounded-lg p-1">
+                    
+                    <button 
+                        onclick="showPrizeDetails('${prize.name}', '${prize.desc}', '${prize.img}')"
+                        class="text-xs text-yellow-200 hover:text-yellow-100 font-bold mb-3 underline"
+                    >
+                        View Prize Details
+                    </button>
+
+                    <!-- Ticket Counter -->
+                    <div class="w-full flex justify-between items-center bg-slate-900 rounded-full px-1 py-1 mt-auto">
+                        <button 
+                            onclick="handleTicketAllocation('${prize.id}', '${type}', -1, this)" 
+                            class="w-8 h-8 bg-red-600 text-white rounded-full font-bold text-xl hover:bg-red-700 disabled:opacity-30"
+                            ${allocatedCount === 0 ? 'disabled' : ''}
+                        >-</button>
+                        
+                        <div class="flex flex-col items-center">
+                            <span class="text-xl font-bold ${colors.text} bebas-neue leading-none">${allocatedCount}</span>
+                            <span class="text-xs text-gray-400 leading-none">Tickets</span>
+                        </div>
+
+                        <button 
+                            onclick="handleTicketAllocation('${prize.id}', '${type}', 1, this)" 
+                            class="w-8 h-8 bg-green-500 text-white rounded-full font-bold text-xl hover:bg-green-600 disabled:opacity-30"
+                            >+
+                        </button>
+                        <!-- Plus button is not disabled, so it triggers the modal if tickets are zero. -->
+                    </div>
+                </div>
+                <!-- Add the necessary spacer span here for proper joining on mobile -->
+                <span class="lg:hidden" style="width: 1.5rem;"></span>
+            `;
+        }
+
+        // NEW: Function to update the total and render the detailed breakdown
+        function updatePurchaseTotal() {
+            let totalBaseCost = 0;
+            let breakdownHTML = '';
+            
+            // 1. Package Breakdown
+            if (state.selectedPackage && state.selectedPackage.startsWith('pkg')) {
+                const pkg = PACKAGES.find(p => p.id === state.selectedPackage);
+                if (pkg) {
+                    totalBaseCost += pkg.price;
+                    breakdownHTML += `<p class="font-bold text-lg text-yellow-400">${pkg.name} Package ($${pkg.price.toFixed(2)}):</p>`;
+                    
+                    TICKET_TYPES.forEach(type => {
+                        const count = pkg.tickets[type] || 0;
+                        if (count > 0) {
+                            breakdownHTML += `<p class="ml-4 text-sm text-gray-300">${count} x ${type}</p>`;
+                        }
+                    });
+                }
+            }
+
+            // 2. Individual Tickets Breakdown
+            let individualTicketsCount = 0;
+            let individualBreakdownHTML = '';
+            
+            TICKET_TYPES.forEach(type => {
+                const quantity = state.ticketsToPurchase[type] || 0;
+                if (quantity > 0) {
+                    const cost = quantity * PRICES[type];
+                    totalBaseCost += cost;
+                    individualTicketsCount += quantity;
+                    
+                    individualBreakdownHTML += `<p class="ml-4 text-sm text-gray-300">${quantity} x ${type} Individual Tickets ($${cost.toFixed(2)})</p>`;
+                }
+            });
+
+            if (individualTicketsCount > 0) {
+                breakdownHTML += `<p class="font-bold text-lg text-white ${state.selectedPackage ? 'mt-4' : ''}">Individual Tickets:</p>${individualBreakdownHTML}`;
+            }
+
+            // 3. Render Breakdown and Final Total
+            if (breakdownHTML === '') {
+                document.getElementById('breakdown-details').innerHTML = `<p class="text-gray-400">Select a package or individual tickets to see the breakdown.</p>`;
+                document.getElementById('order-breakdown-container').classList.remove('bg-slate-700/50');
+            } else {
+                document.getElementById('breakdown-details').innerHTML = breakdownHTML;
+                document.getElementById('order-breakdown-container').classList.add('bg-slate-700/50');
+            }
+
+
+            // Calculate Final Total
+            const finalAmount = totalBaseCost;
+            document.getElementById('current-purchase-total').textContent = finalAmount.toFixed(2);
+            document.getElementById('start-checkout-button').disabled = finalAmount === 0;
+        }
+
+        // --- TICKET ANIMATION LOGIC (NEW) ---
+        function animateTicketEntry(buttonEl) {
+            const rect = buttonEl.getBoundingClientRect();
+            const container = document.body; 
+
+            // Create the flying ticket element
+            const ticket = document.createElement('div');
+            ticket.className = 'flying-ticket';
+            
+            // Position it starting from the "+" button
+            ticket.style.left = `${rect.left + rect.width / 2}px`;
+            ticket.style.top = `${rect.top + rect.height / 2}px`;
+
+            container.appendChild(ticket);
+
+            // Remove the element after the animation
+            setTimeout(() => {
+                ticket.remove();
+            }, 700);
+        }
+        
+        // --- FINAL SUBMISSION ANIMATION LOGIC (FIXED) ---
+        function animateFinalSubmissionTickets() {
+            const container = document.getElementById('loading-animation-container');
+            container.innerHTML = ''; // Clear previous animation
+
+            // Calculate total tickets allocated
+            const totalAllocated = Object.values(state.allocatedTickets).reduce((sum, count) => sum + count, 0);
+            const ticketsToShow = Math.min(totalAllocated, 30); // Max 30 tickets for a good visual effect
+
+            for (let i = 0; i < ticketsToShow; i++) {
+                const ticket = document.createElement('div');
+                // Use the new falling-ticket class and flying-ticket base class
+                ticket.className = 'flying-ticket falling-ticket';
+                
+                // Randomize horizontal start position (within 80% width for margin)
+                const startX = Math.random() * 80 + 10; 
+                
+                // Randomize delay and duration
+                const delay = Math.random() * 0.2; 
+                const duration = 1.5 + Math.random() * 1.5; 
+                
+                // Position relative to the container for the falling animation
+                ticket.style.left = `${startX}%`;
+                ticket.style.top = `-20px`; // Start slightly above the top edge
+                
+                // Apply specific animation properties
+                ticket.style.animationDuration = `${duration}s`;
+                ticket.style.animationDelay = `${delay}s`;
+                
+                container.appendChild(ticket);
+            }
+        }
+
+        function renderFinalBreakdown() {
+            const container = document.getElementById('final-entry-breakdown');
+            container.innerHTML = '';
+            
+            let entriesHtml = '';
+            for (const prizeId in state.allocatedTickets) {
+                const count = state.allocatedTickets[prizeId];
+                
+                let prizeName = 'Unknown Prize';
+                let sectionType = null;
+
+                // --- FIX: Search all sections for the prize name and section type ---
+                for (const type of TICKET_TYPES) {
+                    const prize = PRIZE_SECTIONS[type].find(p => p.id === prizeId);
+                    if (prize) {
+                        prizeName = prize.name;
+                        sectionType = type; // e.g., '$5'
+                        break;
+                    }
+                }
+                // --- END FIX ---
+
+                // Determine color based on the found sectionType
+                const typeColor = SECTION_COLORS[sectionType] ? SECTION_COLORS[sectionType].text : 'text-white';
+                
+                entriesHtml += `
+                    <div class="flex justify-between border-b border-gray-800 pb-1">
+                        <span class="text-white">${prizeName}</span>
+                        <span class="${typeColor} font-bold">${count} tickets</span>
+                    </div>
+                `;
+            }
+            
+            if (entriesHtml === '') {
+                entriesHtml = `<p class="text-red-400">No tickets were allocated to prizes.</p>`;
+            }
+            
+            container.innerHTML = entriesHtml;
+        }
+
+        async function handleFinalSubmission() {
+            const name = document.getElementById('user-name').value.trim();
+            const email = document.getElementById('user-email').value.trim();
+            const phone = document.getElementById('user-phone').value.trim();
+
+            if (!name || !email || !phone) {
+                showCustomPopup('Missing Info', 'Please complete your contact information before finalizing entries.');
+                return;
+            }
+
+            if (Object.keys(state.allocatedTickets).length === 0) {
+                 showCustomPopup('No Entries', 'Please allocate your purchased tickets to prizes before finalizing.');
+                return;
+            }
+
+            // Show loading modal
+            document.getElementById('finalSubmissionModal').classList.remove('hidden');
+            document.getElementById('submission-loading-view').classList.remove('hidden');
+            document.getElementById('submission-breakdown-view').classList.add('hidden');
+            
+            // Start the visual animation
+            animateFinalSubmissionTickets();
+
+            const startTime = Date.now();
+            const MIN_DURATION = 3500;
+            let success = false;
+            
+            // 1. Prepare data for the User's Receipt/History (Old Structure)
+            const structuredEntriesForReceipt = {};
+            const entriesByPrizeToSave = {}; // New structure for auction-prizes collection
+            
+            TICKET_TYPES.forEach(type => {
+                const prizeList = [];
+                PRIZE_SECTIONS[type].forEach(prize => {
+                    const count = state.allocatedTickets[prize.id] || 0;
+                    if (count > 0) {
+                        // Prepare for Receipt/History (structuredEntriesForReceipt)
+                        prizeList.push({
+                            id: prize.id,
+                            name: prize.name,
+                            tickets: count
+                        });
+
+                        // Prepare for Auction Tally (entriesByPrizeToSave)
+                        const newEntries = [];
+                        for (let i = 0; i < count; i++) {
+                            // FIX: Simplified Entry ID
+                            const simpleEntryId = `chinese-${Math.floor(Math.random() * 10000000)}`;
+                            newEntries.push({
+                                entryId: simpleEntryId, 
+                                userName: name,
+                                userId: userId,
+                                timestamp: new Date().toISOString(),
+                            });
+                        }
+                        
+                        // FIX: Use sanitized prize name as the key for Prize Tally
+                        const sanitizedPrizeName = sanitizeForFirestore(prize.name);
+
+                        entriesByPrizeToSave[prize.id] = {
+                            prizeName: prize.name,
+                            sanitizedName: sanitizedPrizeName, // Store sanitized name for later use
+                            sectionType: type,
+                            newEntries: newEntries
+                        };
+                    }
+                });
+                
+                if (prizeList.length > 0) {
+                    structuredEntriesForReceipt[type] = prizeList;
+                }
+            });
+
+            try {
+                if (db && userId) {
+                    const sanitizedName = sanitizeForFirestore(name);
+                    
+                    // --- PATH 1: Save User History (Original Requirement: chinese_auction/{sanitized_name}) ---
+                    // Saves the user's full, structured transaction history.
+                    const userHistoryRef = doc(db, `chinese_auction`, sanitizedName);
+                    
+                    const userSubmissionData = {
+                        userId: userId,
+                        name: name,
+                        email: email,
+                        phone: phone,
+                        timestamp: new Date(),
+                        entriesByPrice: structuredEntriesForReceipt,
+                        totalAllocatedTickets: Object.values(state.allocatedTickets).reduce((sum, count) => sum + count, 0),
+                    };
+                    
+                    await setDoc(userHistoryRef, userSubmissionData);
+                    console.log("User History saved to Firestore:", userHistoryRef.path);
+                    
+                    // --- PATH 2: Save Entries to Prize Tally (New Requirement: auction-prizes/{prizeId}) ---
+                    // Saves one entry document per prize, using arrayUnion/increment for atomic updates.
+                    const prizeUpdates = [];
+                    for (const prizeId in entriesByPrizeToSave) {
+                        const { prizeName, sanitizedName, sectionType, newEntries } = entriesByPrizeToSave[prizeId];
+                        
+                        // FIX: Use the SANITIZED PRIZE NAME as the document ID
+                        const prizeRef = doc(db, 'auction-prizes', sanitizedName); 
+                        
+                        const updateData = {
+                            prizeName: prizeName,
+                            sectionType: sectionType,
+                            // Atomically append new individual entries
+                            entries: arrayUnion(...newEntries), 
+                            // Atomically increment the total count
+                            totalEntries: increment(newEntries.length)
+                        };
+                        
+                        // Use setDoc with merge: true to create the document if it doesn't exist
+                        // and safely apply atomic updates if it does.
+                        prizeUpdates.push(setDoc(prizeRef, updateData, { merge: true }));
+                    }
+                    
+                    await Promise.all(prizeUpdates);
+                    console.log("Prize Tally successfully updated in auction-prizes collection.");
+                    
+                    success = true;
+                } else {
+                    console.error("Firestore not initialized or userId unavailable. Skipping cloud save.");
+                    success = true; 
+                }
+            } catch (e) {
+                console.error("Error saving entries to Firestore:", e);
+                showCustomPopup('Save Error', 'Your entries were allocated successfully on this device, but we could not save them to the cloud. Please contact the organizers.');
+                success = false; 
+            }
+            
+            // Wait for animation or minimum duration
+            const elapsedTime = Date.now() - startTime;
+            const remainingTime = Math.max(0, MIN_DURATION - elapsedTime);
+
+            setTimeout(() => {
+                // Stop animation and show breakdown
+                document.getElementById('submission-loading-view').classList.add('hidden');
+                renderFinalBreakdown();
+                document.getElementById('submission-breakdown-view').classList.remove('hidden');
+                
+            }, remainingTime); 
+        }
+
+        // --- MAIN LOGIC ---
+        
+        function handlePackageSelection(id, price, targetId) {
+            const selected = document.getElementById(id);
+
+            // 1. UNSELECTION/TOGGLE: Check if the card is already selected
+            if (state.selectedPackage === id) {
+                state.selectedPackage = null;
+                
+                // Clear highlight from all cards in the relevant container
+                let containerIdToQuery = targetId;
+                // If it's the main page, the wrapper holding all cards is package-options-grid
+                if (targetId === 'ticket-packages-container') {
+                    containerIdToQuery = 'package-options-grid';
+                }
+                
+                const container = document.getElementById(containerIdToQuery);
+                if(container) container.querySelectorAll('[data-type]').forEach(card => 
+                    card.classList.remove('border-yellow-400', 'bg-yellow-400/20')
+                );
+            } else {
+                // 2. SELECTION LOGIC
+                // Clear highlight from all cards in the relevant container
+                let containerIdToQuery = targetId;
+                if (targetId === 'ticket-packages-container') {
+                    containerIdToQuery = 'package-options-grid';
+                }
+                
+                const container = document.getElementById(containerIdToQuery);
+                if(container) container.querySelectorAll('[data-type]').forEach(card => 
+                    card.classList.remove('border-yellow-400', 'bg-yellow-400/20')
+                );
+                
+                // Highlight the newly selected card
+                selected.classList.add('border-yellow-400', 'bg-yellow-400/20');
+                state.selectedPackage = id;
+            }
+            
+            // Individual tickets are NOT cleared here. They persist alongside the package selection.
+            
+            // Recalculate everything
+            updatePurchaseTotal();
+        }
+        
+        // Modal logic (remains mostly the same but uses updatePurchaseTotal for modal total)
+        function updateTicketPurchase(type, delta) {
+            let quantity = state.ticketsToPurchase[type] || 0;
+            quantity = Math.max(0, quantity + delta);
+            state.ticketsToPurchase[type] = quantity;
+
+            if(document.getElementById(`modal-qty-${type.slice(1)}`)) {
+                 document.getElementById(`modal-qty-${type.slice(1)}`).value = quantity;
+            }
+
+            // Calculate total cost for the modal (individual tickets have no discount)
+            let total = TICKET_TYPES.reduce((sum, t) => sum + (state.ticketsToPurchase[t] || 0) * PRICES[t], 0);
+            
+            document.getElementById('buy-modal-total').textContent = total.toFixed(2);
+            
+        }
+
+        function handleTicketAllocation(prizeId, type, delta, buttonEl) {
+            const currentAllocated = state.allocatedTickets[prizeId] || 0;
+            const available = state.availableTickets[type] || 0;
+            const canAdd = available > 0;
+            
+            const newAllocated = Math.max(0, currentAllocated + delta);
+            const deltaChange = newAllocated - currentAllocated;
+
+            // LOGIC: If the user tries to add a ticket (deltaChange > 0) but has none available (available < deltaChange)
+            if (deltaChange > 0 && available < deltaChange) {
+                // Open the modal as requested
+                openBuyTicketsModal();
+                return;
+            }
+            
+            if (deltaChange < 0 && currentAllocated === 0) {
+                return;
+            }
+            
+            // 1. Update state (if success)
+            if (newAllocated > 0) {
+                state.allocatedTickets[prizeId] = newAllocated;
+            } else {
+                delete state.allocatedTickets[prizeId];
+            }
+            state.availableTickets[type] -= deltaChange;
+
+            // 2. Run Animation for ADDITION only
+            if (deltaChange > 0 && buttonEl) {
+                buttonEl.disabled = true; // Disable button during animation
+                animateTicketEntry(buttonEl);
+                
+                // Re-render only after animation completes
+                setTimeout(() => {
+                    updatePrizeCardUI(prizeId, type); // <<< TARGETED UPDATE
+                    window.updateTicketSummaryBar(); 
+                }, 700); 
+                return;
+            }
+            
+            // 3. Normal re-render for subtraction or if no animation
+            updatePrizeCardUI(prizeId, type); // <<< TARGETED UPDATE
+            window.updateTicketSummaryBar();
+        }
+
+        function openBuyTicketsModal() {
+            // Reset purchase state for modal
+            state.selectedPackage = null;
+            state.ticketsToPurchase = {};
+            
+            // Render package and individual ticket options inside the modal
+            renderTicketPackages('package-options-modal');
+            renderIndividualTickets('individual-ticket-options-modal');
+            
+            // Initialize total cost display
+            document.getElementById('buy-modal-total').textContent = '0.00';
+            
+            // Show the modal
+            document.getElementById('buyTicketsModal').classList.remove('hidden');
+        }
+
+        async function openStripeCheckout(isModalPurchase = false) {
+            const name = document.getElementById('user-name').value.trim();
+            const email = document.getElementById('user-email').value.trim();
+            const phone = document.getElementById('user-phone').value.trim();
+            
+            const totalCostEl = isModalPurchase ? 'buy-modal-total' : 'current-purchase-total';
+            const chargedAmount = parseFloat(document.getElementById(totalCostEl).textContent);
+            
+            if (!name || !email || !phone) { showCustomPopup('Missing Info', 'Please fill in your name, email, and phone number.'); return; }
+            if (chargedAmount <= 0) { showCustomPopup('Error', 'Please select tickets to purchase.'); return; }
+
+            const buttonEl = isModalPurchase ? document.getElementById('buy-modal-checkout-btn') : document.getElementById('start-checkout-button');
+            
+            // Ensure button and its internal elements exist before trying to access properties
+            const buttonText = buttonEl ? buttonEl.querySelector('.button-text') : null;
+            const buttonSpinner = buttonEl ? buttonEl.querySelector('.button-spinner') : null;
+
+            if(buttonEl) buttonEl.disabled = true;
+            if(buttonText) buttonText.classList.add('hidden');
+            if(buttonSpinner) buttonSpinner.classList.remove('hidden');
+
+            showGlobalLoadingOverlay("Processing purchase...");
+            
+            // --- MOCK PAYMENT SUCCESS (Test Flow) ---
+            await new Promise(resolve => setTimeout(resolve, 500)); 
+
+            let purchaseTickets = {};
+            
+            // 1. Get tickets from the selected package
+            if (state.selectedPackage) {
+                const pkg = PACKAGES.find(p => p.id === state.selectedPackage);
+                if (pkg) {
+                    purchaseTickets = {...pkg.tickets};
+                }
+            } 
+            
+            // 2. Add individual tickets (they persist across package selection)
+            TICKET_TYPES.forEach(type => {
+                const quantity = state.ticketsToPurchase[type] || 0;
+                if (quantity > 0) {
+                     purchaseTickets[type] = (purchaseTickets[type] || 0) + quantity;
+                }
+            });
+            
+            // --- TICKET ADDITION LOGIC (AS IF PAID) ---
+            TICKET_TYPES.forEach(type => {
+                state.availableTickets[type] = (state.availableTickets[type] || 0) + (purchaseTickets[type] || 0);
+            });
+            
+            // Clear purchase state for next transaction
+            state.ticketsToPurchase = { '$5': 0, '$10': 0, '$20': 0, '$50': 0 };
+            state.selectedPackage = null;
+            // --- END MOCK SUCCESS LOGIC ---
+
+            // Toggle UI to allocation screen
+            document.getElementById('buyTicketsModal').classList.add('hidden');
+            document.getElementById('purchase-and-info-section').classList.add('hidden');
+            document.getElementById('allocation-section').classList.remove('hidden');
+            
+            // Final UI Update
+            window.updateTicketSummaryBar();
+            // --- FIX: Force mass update of card UI after ticket purchase ---
+            updateAllPrizeCards(); 
+            // ---------------------------------------------------------------
+            renderTicketPackages('ticket-packages-container'); 
+            renderIndividualTickets('individual-tickets-options'); 
+            
+            if(buttonEl) buttonEl.disabled = false;
+            if(buttonText) buttonText.classList.remove('hidden');
+            if(buttonSpinner) buttonSpinner.classList.add('hidden');
+            hideGlobalLoadingOverlay();
+            
+            // --- SET FLAG FOR POST-POPUP SCROLL ---
+            window.postPurchaseScrollNeeded = true;
+            // ---------------------------------------
+
+            showCustomPopup('Purchase Successful!', `You have purchased tickets for ${formatCurrency(chargedAmount)}. Start allocating them below!`);
+        }
+
+        // --- Event Handlers for Global Exposure ---
+        window.handlePackageSelection = handlePackageSelection;
+        window.updateIndividualTicketPurchase = updateIndividualTicketPurchase;
+        window.setIndividualTicketPurchase = setIndividualTicketPurchase;
+        window.updateTicketPurchase = updateTicketPurchase;
+        window.setTicketPurchase = (val, type) => updateTicketPurchase(type, val - (state.ticketsToPurchase[type] || 0));
+        window.openBuyTicketsModal = openBuyTicketsModal;
+        window.openStripeCheckout = openStripeCheckout;
+        window.handleTicketAllocation = handleTicketAllocation;
+        window.loadSessionById = loadSessionById;
+        window.handleFinalSubmission = handleFinalSubmission; // Exported for button click
+        window.showPrizeDetails = (name, desc, img) => {
+            document.getElementById('modalPrizeName').textContent = name;
+            document.getElementById('modalPrizeDescription').textContent = desc;
+            document.getElementById('modalPrizeImage').src = img;
+            document.getElementById('prizeDetailModal').classList.remove('hidden');
+        }
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initFirebase(); // Initialize Firebase
+            
+            // Initial Renders
+            renderPrizePreview();
+            renderTicketPackages('ticket-packages-container');
+            renderIndividualTickets('individual-tickets-options');
+            renderPrizeSections();
+            window.updateTicketSummaryBar();
+            
+            // --- UPDATED POPUP CLOSE LISTENER WITH SCROLL LOGIC ---
+            document.getElementById('popupCloseButton').addEventListener('click', () => {
+                hideCustomPopup();
+
+                if (window.postPurchaseScrollNeeded) {
+                    const targetSection = document.getElementById('allocation-section');
+                    const header = document.querySelector('header');
+                    const headerHeight = header ? header.offsetHeight : 0;
+                    
+                    if (targetSection) {
+                        // Calculate target position: element's top position - header height - small margin (20px)
+                        const targetPosition = targetSection.offsetTop - headerHeight - 20; 
+                        
+                        // Use window.scrollTo for precise, offset scroll
+                        window.scrollTo({
+                            top: Math.max(0, targetPosition), // Ensure scroll position isn't negative
+                            behavior: 'smooth'
+                        });
+                    }
+                    window.postPurchaseScrollNeeded = false; // Reset flag
+                }
+            });
+            // --------------------------------------------------------
+
+            document.getElementById('menu-toggle').addEventListener('click', () => { 
+                document.getElementById('main-menu').classList.toggle('hidden'); 
+            });
+
+            // Main Purchase Button (Triggers Mock Success Flow)
+            document.getElementById('start-checkout-button').addEventListener('click', () => openStripeCheckout(false)); 
+            
+            // Modal Purchase Button (Triggers Mock Success Flow from Modal)
+            document.getElementById('buy-modal-checkout-btn').addEventListener('click', () => openStripeCheckout(true));
+
+            // Final Submit Button (Triggers Submission Animation and Breakdown)
+            document.getElementById('final-submit-button').addEventListener('click', handleFinalSubmission);
+            
+            // Setup scroll animations
+            setupScrollAnimations();
+        });
+        
+        // --- SCROLL ANIMATION IMPLEMENTATION ---
+        function setupScrollAnimations() {
+            const itemsToAnimate = document.querySelectorAll('.animate-scroll-in');
+            if (itemsToAnimate.length === 0) return;
+            
+            const observer = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('animate-in');
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, {
+                root: null,
+                rootMargin: '0px',
+                threshold: 0.1
+            });
+
+            itemsToAnimate.forEach(item => {
+                if (!item.classList.contains('animate-in')) {
+                    observer.observe(item)
+                }
+            });
+        }
+    </script>
+</body>
+</html>

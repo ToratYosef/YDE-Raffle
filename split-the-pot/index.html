@@ -47,6 +47,19 @@
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
+        /* --- TICKET TIER SELECTION STYLES (NEW) --- */
+        .ticket-tier-option {
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            border: 2px solid transparent; /* Ensure border is present even when unselected */
+        }
+        .ticket-tier-option.selected {
+            background-color: rgba(251, 191, 36, 0.2); /* yellow-400 with opacity */
+            border-color: #FBBF24; /* yellow-400 */
+            box-shadow: 0 0 15px rgba(251, 191, 36, 0.5);
+        }
+        /* --- END TICKET TIER SELECTION STYLES --- */
+
         /* --- SCROLL ANIMATION STYLES (NEW) --- */
         .animate-scroll-in {
             opacity: 0;
@@ -470,7 +483,29 @@
                 return { totalCost, breakdown };
             }
 
-            // NEW: Function to render the pricing tiers
+            // NEW: Function to attach click handlers to the pricing tiers
+            function attachTierClickHandlers() {
+                document.querySelectorAll('.ticket-tier-option').forEach(tierElement => {
+                    tierElement.addEventListener('click', () => {
+                        const tickets = tierElement.getAttribute('data-tickets');
+                        if (tickets) {
+                            // 1. Manage selection state: Deselect all, select clicked one
+                            document.querySelectorAll('.ticket-tier-option').forEach(c => c.classList.remove('selected'));
+                            tierElement.classList.add('selected');
+
+                            // 2. Set the quantity input value
+                            quantityInput.value = tickets;
+                            // 3. Trigger cost update
+                            updateCalculatedTotal();
+                            
+                            // 4. Scroll to the main form container for better UX
+                            document.getElementById('main-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                    });
+                });
+            }
+
+            // UPDATED: Function to render the pricing tiers
             function renderPricingTiers() {
                 if (!pricingTiersList) return;
 
@@ -478,13 +513,19 @@
                     const costPerTicket = (tier.cost / tier.count).toFixed(2);
                     
                     return `
-                        <div class="bg-slate-700/40 p-3 rounded-lg border border-yellow-400/20 shadow-md text-center">
+                        <div 
+                            class="ticket-tier-option bg-slate-700/40 p-3 rounded-lg border border-yellow-400/20 shadow-md text-center cursor-pointer transform hover:scale-[1.02] transition-transform duration-200"
+                            data-tickets="${tier.count}"
+                        >
                             <p class="bebas-neue text-3xl text-white">${tier.count} Tickets</p>
                             <p class="text-lg font-bold text-yellow-400">$${tier.cost}</p>
                             <p class="text-xs text-gray-400">($${costPerTicket} / ticket)</p>
                         </div>
                     `;
                 }).join('');
+                
+                // Attach click handlers immediately after rendering
+                attachTierClickHandlers();
             }
             
             // NEW: Function to render the calculation breakdown
@@ -587,6 +628,17 @@
                 
                 // Render breakdown if quantity > 0
                 renderCalculationBreakdown(quantity, breakdown, baseAmount);
+
+                // --- NEW: Handle Tier Selection Visuals ---
+                const tierOptions = document.querySelectorAll('.ticket-tier-option');
+                tierOptions.forEach(tier => {
+                    if (parseInt(tier.getAttribute('data-tickets'), 10) === quantity) {
+                        tier.classList.add('selected');
+                    } else {
+                        tier.classList.remove('selected');
+                    }
+                });
+                // --- END NEW Logic ---
 
                 // Disable button if quantity is zero or less
                 decreaseQuantityButton.disabled = quantity <= 1;

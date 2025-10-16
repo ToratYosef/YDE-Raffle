@@ -698,12 +698,12 @@
             </div>
 
             <!-- Rolex Raffle Sales Tab Content (Super Admin Only) -->
-            <!-- (Rolex Raffle Sales content omitted for brevity, unchanged) -->
+            <!-- Updated header text and tab visibility logic below for Referrers -->
             <div id="tab-rolex" class="tab-pane hidden">
                 <div class="dashboard-card p-4 overflow-x-auto">
                     <!-- Filter and Header Controls -->
                     <div class="flex flex-wrap justify-between items-center mb-3 gap-3">
-                        <h3 class="text-xl font-semibold text-white" id="rolexSalesHeader">Rolex Raffle Sales (SA Only)</h3>
+                        <h3 class="text-xl font-semibold text-white" id="rolexSalesHeader">Rolex Raffle Sales</h3>
                         <!-- NEW FILTER DROPDOWN -->
                         <div id="rolexFilterControls" class="flex items-center space-x-2">
                             <label for="rolexFilter" class="text-sm font-medium text-gray-400">Filter:</label>
@@ -737,10 +737,10 @@
             </div>
 
             <!-- Donations Tab Content (Super Admin Only) -->
-            <!-- (Donations content omitted for brevity, unchanged) -->
+            <!-- Updated header text and tab visibility logic below for Referrers -->
             <div id="tab-donations" class="tab-pane hidden">
                 <div class="dashboard-card p-4 overflow-x-auto">
-                    <h3 class="text-xl font-semibold mb-3 text-white">All Donations (SA Only)</h3>
+                    <h3 id="donationsHeader" class="text-xl font-semibold mb-3 text-white">All Donations</h3>
                     <table class="data-table w-full whitespace-nowrap">
                         <thead>
                             <tr>
@@ -1047,7 +1047,7 @@
                  console.error('Fallback copy failed:', e);
                  showCustomPopup('Error', 'Failed to copy link. Please copy it manually.');
              }
-            }
+         }
         
         const getRefIdFromUrl = () => {
             const urlParams = new URLSearchParams(window.location.search);
@@ -1240,7 +1240,7 @@
                 
                 // 1. Hide/show SA-only sections
                 referrerTab.classList.add('hidden');
-                donationTab.classList.add('hidden');
+                donationTab.classList.add('hidden'); 
                 toolsTab.classList.add('hidden');
                 rolexTab.classList.add('hidden'); 
                 usersTab.classList.add('hidden'); 
@@ -1268,9 +1268,11 @@
                     await fetchAllUsers(); // Fetch users list for SA
 
                 } else if (isReferrer) {
-                    // Regular Referrer sees their overview and Split The Pot Sales (filtered internally)
+                    // Regular Referrer sees their overview and their associated sales/donations
                     overviewCard.classList.remove('hidden');
                     raffleTab.classList.remove('hidden'); 
+                    rolexTab.classList.remove('hidden'); // SHOW ROLEX TAB
+                    donationTab.classList.remove('hidden'); // SHOW DONATIONS TAB
                     raffleFilterControls.classList.add('hidden'); // Hide filter dropdown for non-SA Referrers
                     activeRefIdFilter = null; // Ensure no lingering SA filter
                     currentTab = currentTab || 'raffle';
@@ -1406,7 +1408,7 @@
             
             // Check if all displayed users are selected to tick the selectAll box
             const allDisplayedSelected = filteredAuthUsers.length > 0 && 
-                                                 filteredAuthUsers.every(u => selectedUserUids.has(u.uid));
+                                             filteredAuthUsers.every(u => selectedUserUids.has(u.uid));
             if (allDisplayedSelected) {
                 selectAllCheckbox.checked = true;
             }
@@ -1462,8 +1464,8 @@
 
             const selectAllCheckbox = document.getElementById('selectAllUsers');
             const allDisplayedSelected = filteredAuthUsers.length > 0 && 
-                                                 filteredAuthUsers.every(u => selectedUserUids.has(u.uid));
-                                                
+                                             filteredAuthUsers.every(u => selectedUserUids.has(u.uid));
+                                            
             if (allDisplayedSelected) {
                 selectAllCheckbox.checked = true;
             } else {
@@ -1587,23 +1589,23 @@
                     if (authUser && !authUser.isSuperAdmin && authUser.uid !== auth.currentUser?.uid) {
                         upgradeButton = `
                             <button class="px-2 py-1 text-xs bg-red-500 text-white font-semibold rounded-lg shadow-md hover:bg-red-600 transition-colors mb-1"
-                                                 data-action="promote-sa"
-                                                 data-uid="${authUser.uid}"
-                                                 data-refid="${r.refId}"
-                                                 data-refname="${r.name}">Promote to SA</button>
+                                             data-action="promote-sa"
+                                             data-uid="${authUser.uid}"
+                                             data-refid="${r.refId}"
+                                             data-refname="${r.name}">Promote to SA</button>
                         `;
                     }
                     
                     actionCellContent = `
                         ${upgradeButton}
                         <button class="px-2 py-1 text-xs bg-purple-500 text-white font-semibold rounded-lg shadow-md hover:bg-purple-600 transition-colors mb-1"
-                                                 data-action="assign-rolex-tickets"
-                                                 data-refid="${r.refId}"
-                                                 data-refname="${r.name}">Assign Spin</button>
+                                             data-action="assign-rolex-tickets"
+                                             data-refid="${r.refId}"
+                                             data-refname="${r.name}">Assign Spin</button>
                         <button class="px-2 py-1 text-xs bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 transition-colors"
-                                                 data-action="assign-raffle-tickets"
-                                                 data-refid="${r.refId}"
-                                                 data-refname="${r.name}">Assign Raffle</button>
+                                             data-action="assign-raffle-tickets"
+                                             data-refid="${r.refId}"
+                                             data-refname="${r.name}">Assign Raffle</button>
                     `;
                 }
 
@@ -1722,20 +1724,34 @@
         const renderRolexTable = (entries) => {
             const tbody = document.getElementById('rolexTableBody');
             const headerElement = document.getElementById('rolexSalesHeader');
-
-            // This tab is only visible to Super Admin, so no non-SA referrer logic needed here.
+            const rolexFilterControls = document.getElementById('rolexFilterControls');
+            tbody.innerHTML = '';
             
             // 1. Filter based on current filter state
             let displayEntries = filterSalesEntries(entries, rolexFilter);
             
-            let headerText = "Rolex Raffle Sales (SA Only)";
+            let headerText = "Rolex Raffle Sales"; // Default updated header
 
-            // Apply direct referrer filter (Rolex must also be filtered by the active referrer if set)
-            if (activeRefIdFilter) {
+            if (isReferrer && !isSuperAdmin) {
+                // Non-Super Admin Referrer: filter sales to only show their referred tickets
+                const currentRefId = dashboardData.userData.refId;
+                displayEntries = displayEntries.filter(e => e.referrerRefId === currentRefId);
+                headerText = "Your Rolex Raffle Tickets";
+                activeRefIdFilter = null; // Clear manual filter if automatic filter is active
+                rolexFilterControls.classList.add('hidden'); // Hide filter dropdown for non-SA Referrers
+            } else if (activeRefIdFilter) {
+                // Super Admin manual filter is active
                 displayEntries = displayEntries.filter(e => e.referrerRefId === activeRefIdFilter);
                 headerText = `Rolex Raffle Sales for ${activeRefNameFilter}`;
+                rolexFilterControls.classList.remove('hidden'); // Show filter controls for SA/Admin
+            } else if (isSuperAdmin) {
+                // Super Admin viewing all sales
+                headerText = "All Rolex Raffle Sales (SA Only)";
+                rolexFilterControls.classList.remove('hidden');
             } else {
+                // Non-SA, Non-Referrer (e.g., General Admin)
                 headerText = "Rolex Raffle Sales (SA Only)";
+                rolexFilterControls.classList.add('hidden');
             }
 
             // Set header text and add 'Clear Filter' button if filter is active
@@ -1791,11 +1807,32 @@
         
         const renderDonationsTable = (entries) => {
             const tbody = document.getElementById('donationsTableBody');
+            const headerElement = document.getElementById('donationsHeader'); // Targetting the new ID
             tbody.innerHTML = '';
-            // Donations always sort by creation date descending
-            const sortedEntries = entries.sort((a, b) => getTimestampValue(b.createdAt) - getTimestampValue(a.createdAt));
+            
+            let displayEntries = [...entries];
+            let headerText = "All Donations"; // Default updated header
 
-            if (entries.length === 0) {
+            if (isReferrer && !isSuperAdmin) {
+                // Non-Super Admin Referrer: filter to only show donations referred by them
+                const currentRefId = dashboardData.userData.refId;
+                displayEntries = displayEntries.filter(e => e.referrerRefId === currentRefId);
+                headerText = "Your Referred Donations";
+            } else if (!isSuperAdmin) {
+                // Non-SA, Non-Referrer (General Admin). Hide data unless Super Admin is viewing all.
+                displayEntries = [];
+                headerText = "All Donations (SA Only)";
+            } else {
+                // Super Admin viewing all
+                headerText = "All Donations (SA Only)";
+            }
+
+            // Donations always sort by creation date descending
+            const sortedEntries = displayEntries.sort((a, b) => getTimestampValue(b.createdAt) - getTimestampValue(a.createdAt));
+
+            headerElement.textContent = headerText;
+
+            if (sortedEntries.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-400">No donations found.</td></tr>';
                 return;
             }
@@ -2699,7 +2736,7 @@
             
             // Recheck state to ensure correct select-all state
             const allDisplayedSelected = filteredRaffleSales.length > 0 && 
-                                                 filteredRaffleSales.every(s => selectedRaffleSaleIds.has(s.id));
+                                             filteredRaffleSales.every(s => selectedRaffleSaleIds.has(s.id));
             selectAllCheckbox.checked = allDisplayedSelected;
             
             if (filteredRaffleSales.length === 0) {
@@ -2769,8 +2806,8 @@
             
             const selectAllCheckbox = document.getElementById('selectAllUnassigned');
             const allDisplayedSelected = filteredRaffleSales.length > 0 && 
-                                                 filteredRaffleSales.every(s => selectedRaffleSaleIds.has(s.id));
-                                                
+                                             filteredRaffleSales.every(s => selectedRaffleSaleIds.has(s.id));
+                                            
             if (allDisplayedSelected) {
                 selectAllCheckbox.checked = true;
             } else {
@@ -2876,7 +2913,7 @@
             
             // Recheck state to ensure correct select-all state
             const allDisplayedSelected = filteredRolexSales.length > 0 && 
-                                                 filteredRolexSales.every(s => selectedRolexSaleIds.has(s.id));
+                                             filteredRolexSales.every(s => selectedRolexSaleIds.has(s.id));
             selectAllCheckbox.checked = allDisplayedSelected;
 
             if (filteredRolexSales.length === 0) {
@@ -2956,8 +2993,8 @@
             
             const selectAllCheckbox = document.getElementById('selectAllRolex');
             const allDisplayedSelected = filteredRolexSales.length > 0 && 
-                                                 filteredRolexSales.every(s => selectedRolexSaleIds.has(s.id));
-                                                
+                                             filteredRolexSales.every(s => selectedRolexSaleIds.has(s.id));
+                                            
             if (allDisplayedSelected) {
                 selectAllCheckbox.checked = true;
             } else {

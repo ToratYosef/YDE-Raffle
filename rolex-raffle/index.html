@@ -168,9 +168,10 @@
 <body class="text-white min-h-screen flex flex-col">
 
     <!-- Global Loading Overlay -->
-    <div id="globalLoadingOverlay" class="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center gap-4 hidden">
+    <!-- CRITICAL: Make initially visible. It will be hidden by JS once setup is complete. -->
+    <div id="globalLoadingOverlay" class="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center gap-4">
         <div class="spinner w-12 h-12 border-4 border-t-4 border-yellow-400 border-opacity-20 rounded-full animate-spin"></div>
-        <p id="globalSpinnerText" class="text-white text-xl font-semibold">Loading...</p>
+        <p id="globalSpinnerText" class="text-white text-xl font-semibold">Loading Application...</p>
     </div>
 
     <!-- Custom Popup Modal -->
@@ -320,8 +321,8 @@
                             </p>
                         </div>
 
-                        <!-- Proceed to Payment Button -->
-                        <button id="raffle-proceed-to-payment" class="w-full py-4 rounded-full bg-yellow-400 hover:bg-yellow-500 text-black text-xl font-bold transition-colors duration-300 relative overflow-hidden mt-6 shadow-xl">
+                        <!-- Proceed to Payment Button (CRITICAL: Disabled on load until JS is ready) -->
+                        <button id="raffle-proceed-to-payment" disabled class="w-full py-4 rounded-full bg-yellow-400 hover:bg-yellow-500 text-black text-xl font-bold transition-colors duration-300 relative overflow-hidden mt-6 shadow-xl disabled:opacity-50 disabled:cursor-wait">
                             <span class="button-text">Proceed to Payment</span>
                             <div class="spinner button-spinner absolute inset-0 m-auto w-8 h-8 border-4 border-t-4 border-black border-opacity-20 rounded-full hidden"></div>
                         </button>
@@ -400,20 +401,25 @@
         import { getFirestore, onSnapshot, collection, query, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
-        // --- Firebase Initialization (Using Placeholder/Hardcoded Values) ---
-        // NOTE: This uses placeholder values. If running in a live Canvas environment, 
-        // this connection will need valid keys and rules configured in the Firebase project.
+        // --- Firebase Initialization (Using provided Config) ---
         const appId = 'yde-rolex-raffle';
-        const initialAuthToken = null;
+        // CRITICAL FIX: Ensure the initial load screen is active before anything else runs.
+        const globalLoadingOverlay = document.getElementById('globalLoadingOverlay');
+        globalLoadingOverlay.classList.remove('hidden');
 
+        const initialAuthToken = null;
+        
+        // **--- User-provided Firebase Configuration ---**
         const firebaseConfig = {
-            apiKey: "AIzaSyAT539nr_s2OxHPTAmkxwMpaWt-FiDTgQs", // Placeholder Key
+            apiKey: "AIzaSyAT539nr_s2OxHPTAmkxwMpaWt-FiDTgQs", 
             authDomain: "yderaffle.firebaseapp.com",
             projectId: "yderaffle",
             storageBucket: "yderaffle.firebasestorage.app",
             messagingSenderId: "967768309102",
             appId: "1:967768309102:web:c89d61a747e8cb941f557f"
         };
+        // **--- End User-provided Firebase Configuration ---**
+
         
         // Initialize Firebase instances
         const app = initializeApp(firebaseConfig);
@@ -505,7 +511,7 @@
         // --- END ANIMATION LOGIC ---
 
 
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             // --- UI Elements ---
             const raffleFormTitle = document.getElementById('raffle-form-title');
             const raffleProceedToPaymentButton = document.getElementById('raffle-proceed-to-payment');
@@ -539,9 +545,8 @@
             const digitTensId = 'digit-tens';
             const digitOnesId = 'digit-ones';
 
-            // Common UI Elements
+            // Common UI Elements (re-declared for scope)
             const formInputs = document.querySelectorAll('#initial-form input:not([type="checkbox"])');
-            const globalLoadingOverlay = document.getElementById('globalLoadingOverlay');
             const globalSpinnerText = document.getElementById('globalSpinnerText');
             const customPopupOverlay = document.getElementById('customPopupOverlay');
             const customPopup = document.getElementById('customPopup');
@@ -561,6 +566,7 @@
             let currentTicketQuantity = MIN_TICKETS;
             let currentTotalAmount = TICKET_PRICE;
             let clientSecret;
+            let authInitialized = false; 
 
             // --- Initial State Fix: Ensure checkbox starts unchecked (removed 'checked' attribute from HTML)
             coverFeeCheckbox.checked = false;
@@ -607,6 +613,8 @@
 
             function hideGlobalLoadingOverlay() {
                 globalLoadingOverlay.classList.add('hidden');
+                // Re-enable inputs when loading is complete
+                setFormInputsDisabled(false); 
             }
 
             function toggleInitialFormVisibility(hide) {
@@ -635,7 +643,7 @@
                 } else {
                     raffleStripePaymentElement.classList.add('hidden');
                     raffleStripePayButton.classList.add('hidden');
-                    setFormInputsDisabled(false); 
+                    // We rely on initializeUI or subsequent steps to re-enable the primary button
                 }
             }
             
@@ -706,6 +714,65 @@
                 return true;
             }
 
+            // --- Core UI Initialization (Runs after Auth is ready) ---
+            function initializeUI() {
+                if (authInitialized) return;
+                authInitialized = true;
+                
+                // Initialize the scoreboard and calculation on load
+                initializeScoreboard();
+                calculateTotal();
+
+                // Set up animations
+                setupScrollAnimations();
+                
+                // CRITICAL: Enable the main button and hide loading screen ONLY when ready
+                raffleProceedToPaymentButton.disabled = false;
+                hideGlobalLoadingOverlay();
+
+                console.log("App Initialization Complete. UI enabled.");
+            }
+            // --- End Core UI Initialization ---
+
+            // --- Auth & Firestore Setup ---
+            const authSetup = new Promise((resolve, reject) => {
+                const unsubscribe = onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        unsubscribe(); // Stop listening once we have a user
+                        resolve(user);
+                    } else {
+                        // We rely solely on the anonymous sign-in now that global tokens are removed.
+                        try { await signInAnonymously(auth); } catch(e) { reject(e); }
+                    }
+                }, reject);
+            });
+
+            try {
+                // Wait for authentication to complete
+                await authSetup;
+                
+                // Set up the real-time listener for tickets sold
+                const counterDocRef = doc(db, 'counters', 'rolex_totals');
+                onSnapshot(counterDocRef, (docSnap) => { 
+                    let totalTicketsSold = 0;
+                    if (docSnap.exists()) {
+                         const data = docSnap.data();
+                         totalTicketsSold = data.totalTicketsSold || 0; 
+                    }
+                    updateScoreboardDisplay(totalTicketsSold);
+                }, (error) => { console.error("Error listening to total tickets:", error); });
+
+                initializeUI(); // Initialize UI now that Firebase is connected
+
+            } catch (error) {
+                console.error('Fatal Authentication Error:', error);
+                showCustomPopup('Connection Error', 'Failed to connect to the server. Please check your network.');
+                // Keep the loading screen visible but show the error message
+                globalSpinnerText.textContent = "Error loading app.";
+            }
+            // --- End Auth & Firestore Setup ---
+
+
             // --- Event Listeners ---
             popupCloseButton.addEventListener('click', hideCustomPopup);
             
@@ -713,7 +780,7 @@
                 mainMenu.classList.toggle('hidden'); 
             });
 
-            // FIXED: Ensure decrement/increment directly update the input value and calculate total
+            // Ensure decrement/increment directly update the input value and calculate total
             decrementTicketButton.addEventListener('click', () => {
                 let quantity = parseInt(ticketQuantityInput.value, 10);
                 if (quantity > MIN_TICKETS) {
@@ -755,26 +822,30 @@
                     
                     clientSecret = data.clientSecret;
                     
+                    // CRITICAL FIX: Ensure the container is visible and ready BEFORE mounting the Stripe Element.
+                    toggleInitialFormVisibility(true); 
+
                     // Stripe elements initialization
                     elements = stripe.elements({ 
                         clientSecret: clientSecret, 
+                        // Using explicit fonts for consistency, which can help with rendering on some devices
                         appearance: { theme: 'night', variables: { colorPrimary: '#fde047' } },
                         fonts: [{ cssSrc: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap' }] 
                     });
+                    
+                    // Mount the payment element *after* the container is visible
                     const paymentElement = elements.create('payment');
                     paymentElement.mount(rafflePaymentElementContainer);
                     
                     raffleStripePayButton.querySelector('.button-text').textContent = `Pay ${formatCurrency(currentTotalAmount)}`;
 
-                    toggleInitialFormVisibility(true);
-
                     hideGlobalLoadingOverlay();
-                    setFormInputsDisabled(false); 
+                    setFormInputsDisabled(false); // Re-enable all inputs if we go back to the first form
 
                 } catch (error) {
                     console.error('Error setting up payment:', error);
                     hideGlobalLoadingOverlay();
-                    toggleInitialFormVisibility(false); 
+                    toggleInitialFormVisibility(false); // Go back to initial form
                     showCustomPopup('Payment Setup Error', error.message || 'Could not set up payment. Please check your connection and try again.');
                 }
             });
@@ -809,43 +880,12 @@
                 }
             });
 
-            // --- Firebase Authentication and Real-time Listener (FIXED TO USE AGGREGATE DOCUMENT) ---
-            onAuthStateChanged(auth, async (user) => {
-                if (user) {
-                    // Reading the aggregate total from the document provided by the user: /counters/rolex_totals
-                    const counterDocRef = doc(db, 'counters', 'rolex_totals');
-                    
-                    onSnapshot(counterDocRef, (docSnap) => { 
-                        let totalTicketsSold = 0;
-                        if (docSnap.exists()) {
-                             const data = docSnap.data();
-                             // Assuming the aggregate document holds the total count in a field named 'totalTicketsSold'
-                             totalTicketsSold = data.totalTicketsSold || 0; 
-                             
-                             // If the aggregate field is named 'totalTickets' (a common convention), use that instead:
-                             // totalTicketsSold = data.totalTickets || 0; 
-                        }
-
-                        updateScoreboardDisplay(totalTicketsSold);
-
-                    }, (error) => { console.error("Error listening to total tickets:", error); });
-                } else {
-                    try {
-                        // Sign in anonymously if no user is signed in
-                        await signInAnonymously(auth);
-                    } catch (error) {
-                        console.error('Anonymous sign-in failed:', error);
-                        showCustomPopup('Authentication Error', 'Could not sign you in. Please try again later.');
-                    }
-                }
-            });
-            
-            // Initialize the scoreboard and calculation on load
-            initializeScoreboard();
-            calculateTotal();
+            // The following two lines were moved into initializeUI() and the auth listener for better control
+            // initializeScoreboard();
+            // calculateTotal();
 
             // Set up animations after all elements are structured
-            setupScrollAnimations();
+            // setupScrollAnimations();
         });
     </script>
 </body>

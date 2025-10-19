@@ -914,6 +914,7 @@ exports.createRolexPaymentIntent = functions.https.onCall(async (data, context) 
             currency: 'usd',
             description: `YDE Rolex Raffle - ${ticketsBought} Tickets`,
             payment_method_types: ['card'],
+            receipt_email: email,
             metadata: {
                 name,
                 email,
@@ -987,6 +988,7 @@ exports.createStripePaymentIntent = functions.https.onCall(async (data, context)
             currency: 'usd',
             description: `YDE Split The Pot - ${cleanedTicketsBought} Tickets`,
             payment_method_types: ['card'],
+            receipt_email: email,
             metadata: {
                 name,
                 email,
@@ -1050,6 +1052,7 @@ exports.createDonationPaymentIntent = functions.https.onCall(async (data, contex
             currency: 'usd',
             description: `YDE Donation`,
             payment_method_types: ['card'],
+            receipt_email: email,
             metadata: {
                 name,
                 email,
@@ -2492,5 +2495,95 @@ exports.assignReferrerToRolexTickets = functions.https.onCall(async (data, conte
             throw new functions.https.HttpsError(error.code, error.message);
         }
         throw new functions.https.HttpsError('internal', 'Failed to assign/transfer sales due to server error.', error.message);
+    }
+});
+
+/**
+ * Utility endpoint to simulate a successful donation and trigger Stripe's email receipt.
+ * Requires the SIMULATION_SECRET environment variable to be set and passed via header.
+ */
+exports.simulateDonationReceipt = functions.https.onRequest(async (req, res) => {
+    const allowedMethods = ['POST'];
+    if (!allowedMethods.includes(req.method)) {
+        res.status(405).set('Allow', allowedMethods.join(', ')).json({ error: 'Method Not Allowed' });
+        return;
+    }
+
+    const simulationSecret = process.env.SIMULATION_SECRET;
+    if (!simulationSecret) {
+        console.error('SIMULATION_SECRET is not configured.');
+        res.status(500).json({ error: 'Simulation secret is not configured.' });
+        return;
+    }
+
+    const providedSecret = req.header('x-admin-secret');
+    if (providedSecret !== simulationSecret) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+    }
+
+    try {
+        const {
+            amount = 10,
+            email = 'test@example.com',
+            name = 'Test Donor',
+            phone = '0000000000',
+            referral = null,
+        } = req.body || {};
+
+        const sanitizedEmail = sanitizeString(email);
+        if (!sanitizedEmail || !sanitizedEmail.includes('@')) {
+            res.status(400).json({ error: 'A valid email address is required.' });
+            return;
+        }
+
+        const cleanedAmount = cleanAmount(amount);
+        if (!cleanedAmount || cleanedAmount <= 0) {
+            res.status(400).json({ error: 'Amount must be greater than zero.' });
+            return;
+        }
+
+        const amountInCents = Math.round(cleanedAmount * 100);
+
+        const paymentIntent = await stripe.paymentIntents.create({
+            amount: amountInCents,
+            currency: 'usd',
+            description: 'YDE Donation (Simulation)',
+            payment_method_types: ['card'],
+            payment_method: 'pm_card_visa',
+            confirm: true,
+            receipt_email: sanitizedEmail,
+            metadata: {
+                name: sanitizeString(name),
+                email: sanitizedEmail,
+                phone: sanitizeString(phone),
+                amount: cleanedAmount.toString(),
+                entryType: 'donation-simulation',
+                sourceApp: 'Simulation Endpoint',
+                referrerRefId: sanitizeString(referral) || null,
+            },
+        });
+
+        await admin.firestore().collection('stripe_donation_payment_intents').doc(paymentIntent.id).set({
+            name: sanitizeString(name),
+            email: sanitizedEmail,
+            phone: sanitizeString(phone),
+            amount: cleanedAmount,
+            status: paymentIntent.status,
+            sourceApp: 'Simulation Endpoint',
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            referrerRefId: sanitizeString(referral) || null,
+            simulation: true,
+        });
+
+        res.json({
+            id: paymentIntent.id,
+            status: paymentIntent.status,
+            amount: cleanedAmount,
+            email: sanitizedEmail,
+        });
+    } catch (error) {
+        console.error('Failed to simulate donation receipt:', error);
+        res.status(500).json({ error: 'Failed to simulate donation receipt.' });
     }
 });

@@ -913,7 +913,9 @@ exports.createRolexPaymentIntent = functions.https.onCall(async (data, context) 
             amount: amountInCents,
             currency: 'usd',
             description: `YDE Rolex Raffle - ${ticketsBought} Tickets`,
-            payment_method_types: ['card'],
+            // --- UPDATED PAYMENT METHOD TYPES: ADDED 'us_bank_account' AND 'link' ---
+            payment_method_types: ['card', 'us_bank_account', 'link'],
+            // -----------------------------------------------------------------------
             metadata: {
                 name,
                 email,
@@ -986,7 +988,9 @@ exports.createStripePaymentIntent = functions.https.onCall(async (data, context)
             amount: amountInCents,
             currency: 'usd',
             description: `YDE Split The Pot - ${cleanedTicketsBought} Tickets`,
-            payment_method_types: ['card'],
+            // --- UPDATED PAYMENT METHOD TYPES: ADDED 'us_bank_account' AND 'link' ---
+            payment_method_types: ['card', 'us_bank_account', 'link'],
+            // -----------------------------------------------------------------------
             metadata: {
                 name,
                 email,
@@ -1049,7 +1053,9 @@ exports.createDonationPaymentIntent = functions.https.onCall(async (data, contex
             amount: amountInCents,
             currency: 'usd',
             description: `YDE Donation`,
-            payment_method_types: ['card'],
+            // --- UPDATED PAYMENT METHOD TYPES: ADDED 'us_bank_account' AND 'link' ---
+            payment_method_types: ['card', 'us_bank_account', 'link'],
+            // -----------------------------------------------------------------------
             metadata: {
                 name,
                 email,

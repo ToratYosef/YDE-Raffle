@@ -367,8 +367,34 @@
                         phone: phone,
                         referral: referrerRefId || null // Pass the referral ID if it exists
                     });
+                    
+                    // --- START MODIFICATION FOR DARK MODE STYLING ---
+                    const appearance = {
+                        theme: 'night', // Stripe's built-in dark theme
+                        variables: {
+                            // Customizing primary color to match the site's yellow
+                            colorPrimary: '#FBBF24',
+                            // Setting input background to match glass-panel style for inputs
+                            colorBackground: '#1f2937', 
+                            colorInputBackground: '#1f2937',
+                            colorText: '#f3f4f6', // Light text
+                            colorDanger: '#ef4444',
+                        },
+                        rules: {
+                             // Apply a subtle border to the inputs to match the rest of the form
+                            '.Input': {
+                                'border-color': '#4b5563',
+                                'box-shadow': 'none',
+                            },
+                        }
+                    };
 
-                    elements = stripe.elements({ clientSecret: data.clientSecret });
+                    elements = stripe.elements({ 
+                        clientSecret: data.clientSecret,
+                        appearance: appearance
+                    });
+                    // --- END MODIFICATION FOR DARK MODE STYLING ---
+
                     const paymentElement = elements.create('payment');
                     paymentElement.mount(donationPaymentElementContainer);
 

@@ -72,6 +72,28 @@ function sanitizeString(value) {
     return value.replace(/[\u00A0\uFEFF\u2000-\u200A\u202F\u205F\u3000]/g, ' ').trim();
 }
 
+/**
+ * Retrieves a referrer's document ID using its public refId value.
+ * @param {FirebaseFirestore.Firestore} db Firestore instance.
+ * @param {string|null|undefined} refId The public referrer ID to search for.
+ * @returns {Promise<string|null>} Matching document ID or null if not found/invalid.
+ */
+async function getReferrerUidByRefId(db, refId) {
+    const cleanRefId = sanitizeString(refId);
+    if (!cleanRefId) return null;
+
+    const snapshot = await db.collection('referrers')
+        .where('refId', '==', cleanRefId)
+        .limit(1)
+        .get();
+
+    if (snapshot.empty) {
+        return null;
+    }
+
+    return snapshot.docs[0].id;
+}
+
 // Helper function used to format currency in messages
 const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
@@ -1875,15 +1897,7 @@ exports.addManualDonation = functions.https.onCall(async (data, context) => {
 
     try {
         // Find referrer UID if refId is provided
-        if (actualRefId) {
-            const referrerQuerySnapshot = await db.collection('referrers')
-                .where('refId', '==', actualRefId)
-                .limit(1)
-                .get();
-            if (!referrerQuerySnapshot.empty) {
-                referrerUid = referrerQuerySnapshot.docs[0].id;
-            }
-        }
+        referrerUid = await getReferrerUidByRefId(db, actualRefId);
 
         // Add the donation entry to the stripe_donation_payment_intents collection
         const newDonationEntry = {
@@ -1895,6 +1909,7 @@ exports.addManualDonation = functions.https.onCall(async (data, context) => {
             status: 'MANUAL_DONATED',
             sourceApp: SOURCE_APP_TAG,
             referrerRefId: actualRefId || null,
+            referrerUid: referrerUid || null,
             createdAt: timestamp
         };
 
@@ -1920,6 +1935,159 @@ exports.addManualDonation = functions.https.onCall(async (data, context) => {
         console.error("Error adding manual donation:", error);
         throw new functions.https.HttpsError('internal', 'An internal error occurred during manual donation creation.', error.message);
     }
+});
+
+
+/**
+ * Callable function to update an existing donation entry.
+ * Requires Super Admin role.
+ */
+exports.updateDonationEntry = functions.https.onCall(async (data, context) => {
+    if (!isSuperAdmin(context)) {
+        throw new functions.https.HttpsError('permission-denied', 'You must be a Super Admin to update donations.');
+    }
+
+    const { donationId, updatedData } = data;
+    if (!donationId || !updatedData) {
+        throw new functions.https.HttpsError('invalid-argument', 'Donation ID and updated data are required.');
+    }
+
+    const db = admin.firestore();
+    const donationRef = db.collection('stripe_donation_payment_intents').doc(donationId);
+    const donationSnap = await donationRef.get();
+
+    if (!donationSnap.exists) {
+        throw new functions.https.HttpsError('not-found', 'Donation entry not found.');
+    }
+
+    const originalData = donationSnap.data();
+
+    const sanitizedName = sanitizeString(updatedData.name ?? originalData.name ?? '');
+    if (!sanitizedName) {
+        throw new functions.https.HttpsError('invalid-argument', 'Donor name is required.');
+    }
+
+    const sanitizedEmail = updatedData.email !== undefined ? sanitizeString(updatedData.email) : (originalData.email || null);
+    const sanitizedPhone = updatedData.phone !== undefined ? sanitizeString(updatedData.phone) : (originalData.phone || null);
+
+    const newAmountRaw = updatedData.amount !== undefined ? updatedData.amount : (originalData.amount || originalData.amountPaid || 0);
+    const newAmount = cleanAmount(newAmountRaw);
+    if (newAmount <= 0) {
+        throw new functions.https.HttpsError('invalid-argument', 'Donation amount must be greater than zero.');
+    }
+
+    const originalAmount = cleanAmount(originalData.amount || originalData.amountPaid || 0);
+
+    const incomingRefId = updatedData.referrerRefId !== undefined ? updatedData.referrerRefId : originalData.referrerRefId;
+    const sanitizedIncomingRefId = sanitizeString(incomingRefId);
+    const newReferrerUid = await getReferrerUidByRefId(db, sanitizedIncomingRefId);
+    if (sanitizedIncomingRefId && !newReferrerUid) {
+        throw new functions.https.HttpsError('invalid-argument', `Referrer ID "${sanitizedIncomingRefId}" was not found.`);
+    }
+
+    const originalRefId = sanitizeString(originalData.referrerRefId);
+    let originalRefUid = originalData.referrerUid || null;
+    if (!originalRefUid && originalRefId) {
+        originalRefUid = await getReferrerUidByRefId(db, originalRefId);
+    }
+
+    const amountDiff = cleanAmount(newAmount - originalAmount);
+
+    const updatePayload = {
+        name: sanitizedName,
+        email: sanitizedEmail || null,
+        phone: sanitizedPhone || null,
+        amount: newAmount,
+        referrerRefId: sanitizedIncomingRefId || null,
+        referrerUid: newReferrerUid || null,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+
+    const batch = db.batch();
+    batch.update(donationRef, updatePayload);
+
+    if (amountDiff !== 0) {
+        const donationTotalsRef = db.collection('counters').doc('donation_totals');
+        batch.set(donationTotalsRef, {
+            totalAmount: admin.firestore.FieldValue.increment(amountDiff)
+        }, { merge: true });
+    }
+
+    if (originalRefUid && newReferrerUid && originalRefUid === newReferrerUid) {
+        if (amountDiff !== 0) {
+            const referrerRef = db.collection('referrers').doc(originalRefUid);
+            batch.set(referrerRef, {
+                totalAmount: admin.firestore.FieldValue.increment(amountDiff)
+            }, { merge: true });
+        }
+    } else {
+        if (originalRefUid) {
+            const originalReferrerRef = db.collection('referrers').doc(originalRefUid);
+            batch.set(originalReferrerRef, {
+                totalAmount: admin.firestore.FieldValue.increment(-originalAmount)
+            }, { merge: true });
+        }
+        if (newReferrerUid) {
+            const newReferrerRef = db.collection('referrers').doc(newReferrerUid);
+            batch.set(newReferrerRef, {
+                totalAmount: admin.firestore.FieldValue.increment(newAmount)
+            }, { merge: true });
+        }
+    }
+
+    await batch.commit();
+
+    return { success: true, message: 'Donation entry updated successfully.' };
+});
+
+
+/**
+ * Callable function to delete a donation entry.
+ * Requires Super Admin role.
+ */
+exports.deleteDonationEntry = functions.https.onCall(async (data, context) => {
+    if (!isSuperAdmin(context)) {
+        throw new functions.https.HttpsError('permission-denied', 'You must be a Super Admin to delete donations.');
+    }
+
+    const { donationId } = data;
+    if (!donationId) {
+        throw new functions.https.HttpsError('invalid-argument', 'Donation ID is required.');
+    }
+
+    const db = admin.firestore();
+    const donationRef = db.collection('stripe_donation_payment_intents').doc(donationId);
+    const donationSnap = await donationRef.get();
+
+    if (!donationSnap.exists) {
+        throw new functions.https.HttpsError('not-found', 'Donation entry not found.');
+    }
+
+    const donationData = donationSnap.data();
+    const amount = cleanAmount(donationData.amount || donationData.amountPaid || 0);
+    const refId = sanitizeString(donationData.referrerRefId);
+    let referrerUid = donationData.referrerUid || null;
+    if (!referrerUid && refId) {
+        referrerUid = await getReferrerUidByRefId(db, refId);
+    }
+
+    await donationRef.delete();
+
+    if (amount !== 0) {
+        const donationTotalsRef = db.collection('counters').doc('donation_totals');
+        await donationTotalsRef.set({
+            totalAmount: admin.firestore.FieldValue.increment(-amount)
+        }, { merge: true });
+    }
+
+    if (referrerUid) {
+        const referrerRef = db.collection('referrers').doc(referrerUid);
+        await referrerRef.set({
+            totalAmount: admin.firestore.FieldValue.increment(-amount)
+        }, { merge: true });
+    }
+
+    return { success: true, message: 'Donation entry deleted successfully.' };
 });
 
 

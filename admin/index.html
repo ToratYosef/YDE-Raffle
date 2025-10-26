@@ -214,7 +214,42 @@
             </form>
         </div>
     </div>
-    
+
+    <!-- Edit Donation Modal (Super Admin Only) -->
+    <div id="editDonationModalOverlay" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4 hidden">
+        <div class="bg-gray-800 p-6 rounded-lg shadow-2xl max-w-xs sm:max-w-md w-full">
+            <h2 class="text-xl sm:text-2xl font-bold text-white mb-4">Edit Donation Entry</h2>
+            <form id="editDonationForm" class="space-y-4">
+                <input type="hidden" id="edit-donation-id">
+                <div>
+                    <label for="edit-donation-name" class="block text-sm font-medium text-gray-300">Donor Full Name</label>
+                    <input type="text" id="edit-donation-name" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white" required>
+                </div>
+                <div>
+                    <label for="edit-donation-email" class="block text-sm font-medium text-gray-300">Email</label>
+                    <input type="email" id="edit-donation-email" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white">
+                </div>
+                <div>
+                    <label for="edit-donation-phone" class="block text-sm font-medium text-gray-300">Phone</label>
+                    <input type="tel" id="edit-donation-phone" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white">
+                </div>
+                <div>
+                    <label for="edit-donation-amount" class="block text-sm font-medium text-gray-300">Donation Amount ($)</label>
+                    <input type="number" id="edit-donation-amount" step="0.01" min="0.01" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white" required>
+                </div>
+                <div>
+                    <label for="edit-donation-refId" class="block text-sm font-medium text-gray-300">Referrer ID to Credit</label>
+                    <input type="text" id="edit-donation-refId" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white" placeholder="Optional">
+                    <p class="text-xs text-gray-400 mt-1">Leave blank to remove referrer credit.</p>
+                </div>
+                <div class="pt-4 flex justify-end space-x-3">
+                    <button type="button" id="closeEditDonationModal" class="px-4 py-2 text-gray-300 bg-gray-600 rounded-lg hover:bg-gray-500 transition-colors">Cancel</button>
+                    <button type="submit" class="px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Edit Raffle Sale Modal (Super Admin Only) -->
     <div id="editSaleModalOverlay" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4 hidden">
         <div class="bg-gray-800 p-6 rounded-lg shadow-2xl max-w-xs sm:max-w-md w-full">
@@ -493,11 +528,17 @@
                     <span class="hidden sm:inline">Add Manual Donation</span>
                     <span class="inline sm:hidden">Add Donation</span>
                 </button>
-                <!-- ADD MANUAL SALE BUTTON -->
-                <button id="addManualSaleButton" class="flex items-center px-3 py-2 text-sm bg-green-500 text-white font-semibold rounded-lg shadow-md hover:bg-green-600 transition-colors hidden">
+                <!-- ADD SPLIT POT SALE BUTTON -->
+                <button id="addSplitPotSaleButton" data-entry-type="raffle" class="flex items-center px-3 py-2 text-sm bg-green-500 text-white font-semibold rounded-lg shadow-md hover:bg-green-600 transition-colors hidden">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
-                    <span class="hidden sm:inline">Add Manual Sale</span>
-                    <span class="inline sm:hidden">Add Sale</span>
+                    <span class="hidden sm:inline">Add Split Pot Sale</span>
+                    <span class="inline sm:hidden">Split Pot</span>
+                </button>
+                <!-- ADD ROLEX SALE BUTTON -->
+                <button id="addRolexSaleButton" data-entry-type="rolex_raffle" class="flex items-center px-3 py-2 text-sm bg-purple-600 text-white font-semibold rounded-lg shadow-md hover:bg-purple-500 transition-colors hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2" /></svg>
+                    <span class="hidden sm:inline">Add Rolex Sale</span>
+                    <span class="inline sm:hidden">Rolex Sale</span>
                 </button>
                 <button id="logoutButton" class="px-3 py-2 text-sm text-gray-300 bg-gray-600 rounded-lg hover:bg-gray-500 transition-colors">Logout</button>
             </div>
@@ -750,6 +791,7 @@
                                 <th>Referrer</th>
                                 <th class="text-right">Amount</th>
                                 <th>Status</th>
+                                <th id="donationsActionHeader" class="hidden">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="donationsTableBody">
@@ -1230,7 +1272,8 @@
                 const rolexTab = document.querySelector('[data-tab="rolex"]');
                 const usersTab = document.querySelector('[data-tab="users"]');
                 const raffleTab = document.querySelector('[data-tab="raffle"]');
-                const addManualSaleButton = document.getElementById('addManualSaleButton');
+                const addSplitPotSaleButton = document.getElementById('addSplitPotSaleButton');
+                const addRolexSaleButton = document.getElementById('addRolexSaleButton');
                 const addManualDonationButton = document.getElementById('addManualDonationButton'); // NEW
                 const overviewCard = document.getElementById('referrerOverview');
                 const exportButton = document.getElementById('exportDataButton');
@@ -1244,7 +1287,8 @@
                 toolsTab.classList.add('hidden');
                 rolexTab.classList.add('hidden'); 
                 usersTab.classList.add('hidden'); 
-                addManualSaleButton.classList.add('hidden');
+                addSplitPotSaleButton.classList.add('hidden');
+                addRolexSaleButton.classList.add('hidden');
                 addManualDonationButton.classList.add('hidden'); // NEW
                 overviewCard.classList.add('hidden');
                 exportButton.classList.add('hidden');
@@ -1258,7 +1302,8 @@
                     toolsTab.classList.remove('hidden');
                     rolexTab.classList.remove('hidden'); 
                     usersTab.classList.remove('hidden'); 
-                    addManualSaleButton.classList.remove('hidden');
+                    addSplitPotSaleButton.classList.remove('hidden');
+                    addRolexSaleButton.classList.remove('hidden');
                     addManualDonationButton.classList.remove('hidden'); // NEW
                     exportButton.classList.remove('hidden');
                     overviewCard.classList.remove('hidden');
@@ -1694,9 +1739,14 @@
                 let actionCell = '';
                 if (isSuperAdmin) {
                     actionCell = `
-                        <button class="px-2 py-1 text-xs bg-yellow-500 text-black font-semibold rounded-lg hover:bg-yellow-600 transition-colors"
-                            data-action="edit-sale"
-                            data-entry-id="${e.id}">Edit</button>
+                        <div class="flex flex-col sm:flex-row gap-1">
+                            <button class="px-2 py-1 text-xs bg-yellow-500 text-black font-semibold rounded-lg hover:bg-yellow-600 transition-colors"
+                                data-action="edit-sale"
+                                data-entry-id="${e.id}">Edit</button>
+                            <button class="px-2 py-1 text-xs bg-red-600 text-white font-semibold rounded-lg hover:bg-red-500 transition-colors"
+                                data-action="delete-sale"
+                                data-entry-id="${e.id}">Delete</button>
+                        </div>
                     `;
                 }
 
@@ -1791,20 +1841,29 @@
         
         const renderDonationsTable = (entries) => {
             const tbody = document.getElementById('donationsTableBody');
+            const actionHeader = document.getElementById('donationsActionHeader');
             tbody.innerHTML = '';
             // Donations always sort by creation date descending
             const sortedEntries = entries.sort((a, b) => getTimestampValue(b.createdAt) - getTimestampValue(a.createdAt));
 
+            if (isSuperAdmin && actionHeader) {
+                actionHeader.classList.remove('hidden');
+            } else if (actionHeader) {
+                actionHeader.classList.add('hidden');
+            }
+
+            const columnCount = isSuperAdmin ? 7 : 6;
+
             if (entries.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-400">No donations found.</td></tr>';
+                tbody.innerHTML = `<tr><td colspan="${columnCount}" class="text-center py-4 text-gray-400">No donations found.</td></tr>`;
                 return;
             }
             sortedEntries.forEach(e => {
                 const customerName = e.fullName || e.name || 'N/A';
-                
+
                 // FIX: Combine Email and Phone into Contact column, prioritizing Phone
                 const contactDisplay = e.phone || e.email || 'N/A';
-                
+
                 // Status Handling
                 let statusText = (e.status || 'N/A').toUpperCase();
                 let statusClass = 'bg-green-700/50 text-green-300';
@@ -1817,6 +1876,16 @@
                      statusClass = 'bg-green-700/50 text-green-300';
                 }
 
+                let actionCell = '';
+                if (isSuperAdmin) {
+                    actionCell = `
+                        <div class="flex flex-col sm:flex-row gap-1">
+                            <button class="px-2 py-1 text-xs bg-yellow-500 text-black font-semibold rounded-lg hover:bg-yellow-600 transition-colors" data-action="edit-donation" data-donation-id="${e.id}">Edit</button>
+                            <button class="px-2 py-1 text-xs bg-red-600 text-white font-semibold rounded-lg hover:bg-red-500 transition-colors" data-action="delete-donation" data-donation-id="${e.id}">Delete</button>
+                        </div>
+                    `;
+                }
+
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${formatDate(e.createdAt)}</td>
@@ -1825,6 +1894,7 @@
                     <td>${e.referrerRefId || 'N/A'}</td>
                     <td class="text-right font-medium">${formatCurrency(e.amount || e.amountPaid || 0)}</td>
                     <td><span class="text-xs font-medium px-2 py-1 rounded-full ${statusClass}">${statusText}</span></td>
+                    ${isSuperAdmin ? `<td>${actionCell}</td>` : ''}
                 `;
                 tbody.appendChild(tr);
             });
@@ -1924,7 +1994,7 @@
 
         const handleEditSaleSubmit = async (e) => {
             e.preventDefault();
-            
+
             const entryId = document.getElementById('edit-sale-id').value;
             const updatedData = {
                 fullName: document.getElementById('edit-name').value.trim(),
@@ -1948,6 +2018,106 @@
             } catch (error) {
                 console.error("Error updating sale:", error);
                 showCustomPopup('Update Failed', `Error: ${error.message}`);
+            } finally {
+                hideGlobalLoading();
+            }
+        };
+
+        const handleDeleteSale = async (entryId) => {
+            if (!entryId) return;
+            const confirmed = window.confirm('Are you sure you want to delete this Split The Pot sale? This action cannot be undone.');
+            if (!confirmed) return;
+
+            showGlobalLoading('Deleting sale entry...');
+            try {
+                const deleteRaffleEntryCallable = httpsCallable(functions, 'deleteRaffleEntry');
+                const response = await deleteRaffleEntryCallable({ entryId, entryType: 'raffle' });
+
+                showCustomPopup('Deleted', response.data.message);
+                await fetchDashboardData();
+            } catch (error) {
+                console.error('Error deleting sale entry:', error);
+                showCustomPopup('Delete Failed', `Error: ${error.message}`);
+            } finally {
+                hideGlobalLoading();
+            }
+        };
+
+        const openEditDonationModal = (donationId) => {
+            const donation = dashboardData.donationEntries.find(d => d.id === donationId);
+            if (!donation) {
+                showCustomPopup('Error', 'Donation entry not found.');
+                return;
+            }
+
+            document.getElementById('edit-donation-id').value = donationId;
+            document.getElementById('edit-donation-name').value = donation.fullName || donation.name || '';
+            document.getElementById('edit-donation-email').value = donation.email || '';
+            document.getElementById('edit-donation-phone').value = donation.phone || donation.phoneNumber || '';
+            document.getElementById('edit-donation-amount').value = donation.amount || donation.amountPaid || 0;
+            document.getElementById('edit-donation-refId').value = donation.referrerRefId || '';
+
+            document.getElementById('editDonationModalOverlay').classList.remove('hidden');
+        };
+
+        const closeEditDonationModal = () => {
+            document.getElementById('editDonationForm').reset();
+            document.getElementById('editDonationModalOverlay').classList.add('hidden');
+        };
+
+        const handleEditDonationSubmit = async (e) => {
+            e.preventDefault();
+
+            const donationId = document.getElementById('edit-donation-id').value;
+            const updatedData = {
+                name: document.getElementById('edit-donation-name').value.trim(),
+                email: document.getElementById('edit-donation-email').value.trim(),
+                phone: document.getElementById('edit-donation-phone').value.trim(),
+                amount: parseFloat(document.getElementById('edit-donation-amount').value.trim()),
+                referrerRefId: document.getElementById('edit-donation-refId').value.trim()
+            };
+
+            if (!updatedData.name) {
+                showCustomPopup('Missing Fields', 'Donor name is required.');
+                return;
+            }
+            if (Number.isNaN(updatedData.amount) || updatedData.amount <= 0) {
+                showCustomPopup('Invalid Amount', 'Please enter a valid donation amount greater than $0.');
+                return;
+            }
+
+            closeEditDonationModal();
+            showGlobalLoading('Updating donation entry...');
+
+            try {
+                const updateDonationEntryCallable = httpsCallable(functions, 'updateDonationEntry');
+                const response = await updateDonationEntryCallable({ donationId, updatedData });
+
+                showCustomPopup('Success', response.data.message);
+                await fetchDashboardData();
+            } catch (error) {
+                console.error('Error updating donation entry:', error);
+                showCustomPopup('Update Failed', `Error: ${error.message}`);
+            } finally {
+                hideGlobalLoading();
+            }
+        };
+
+        const handleDeleteDonation = async (donationId) => {
+            if (!donationId) return;
+            const confirmed = window.confirm('Are you sure you want to delete this donation entry? This action cannot be undone.');
+            if (!confirmed) return;
+
+            showGlobalLoading('Deleting donation entry...');
+            try {
+                const deleteDonationEntryCallable = httpsCallable(functions, 'deleteDonationEntry');
+                const response = await deleteDonationEntryCallable({ donationId });
+
+                showCustomPopup('Deleted', response.data.message);
+                await fetchDashboardData();
+            } catch (error) {
+                console.error('Error deleting donation entry:', error);
+                showCustomPopup('Delete Failed', `Error: ${error.message}`);
             } finally {
                 hideGlobalLoading();
             }
@@ -2291,7 +2461,7 @@
 
         // --- Other Modal and Form Handlers ---
 
-        const openManualSaleModal = () => {
+        const openManualSaleModal = (defaultEntryType = 'raffle') => {
             if (!isSuperAdmin) {
                 window.showCustomPopup('Permission Denied', 'Only Super Admins can add manual sales.');
                 return;
@@ -2300,6 +2470,10 @@
             document.getElementById('manualSaleForm').reset();
             // Show Ref ID field only for SA
             document.getElementById('manual-referrer-container').classList.remove('hidden');
+            const entryTypeSelect = document.getElementById('manual-entry-type');
+            if (entryTypeSelect) {
+                entryTypeSelect.value = defaultEntryType;
+            }
         };
 
         const closeManualSaleModal = () => {
@@ -3229,8 +3403,13 @@
                 attachSortAndSearchListeners();
                 
                 // Manual Sale Modal listeners
-                if (document.getElementById('addManualSaleButton')) {
-                    document.getElementById('addManualSaleButton').addEventListener('click', openManualSaleModal);
+                const splitPotButton = document.getElementById('addSplitPotSaleButton');
+                const rolexButton = document.getElementById('addRolexSaleButton');
+                if (splitPotButton) {
+                    splitPotButton.addEventListener('click', () => openManualSaleModal('raffle'));
+                }
+                if (rolexButton) {
+                    rolexButton.addEventListener('click', () => openManualSaleModal('rolex_raffle'));
                 }
                 if (document.getElementById('closeManualSaleModal')) {
                     document.getElementById('closeManualSaleModal').addEventListener('click', closeManualSaleModal);
@@ -3248,6 +3427,13 @@
                 }
                 if (document.getElementById('manualDonationForm')) {
                     document.getElementById('manualDonationForm').addEventListener('submit', handleManualDonationSubmit);
+                }
+
+                if (document.getElementById('closeEditDonationModal')) {
+                    document.getElementById('closeEditDonationModal').addEventListener('click', closeEditDonationModal);
+                }
+                if (document.getElementById('editDonationForm')) {
+                    document.getElementById('editDonationForm').addEventListener('submit', handleEditDonationSubmit);
                 }
                 
                 // Edit Sale Modal listeners
@@ -3419,9 +3605,18 @@
                             showCustomPopup('Permission Denied', 'Only Super Admins can clear referrer filters.');
                         }
                     }
-                    // Also handle Edit button click here for the raffle table if it's on a row item
-                    if (e.target.dataset.action === 'edit-sale' && isSuperAdmin) {
-                        openEditSaleModal(e.target.dataset.entryId);
+                    const actionTarget = e.target.closest('[data-action]');
+                    if (actionTarget && isSuperAdmin) {
+                        const action = actionTarget.dataset.action;
+                        if (action === 'edit-sale') {
+                            openEditSaleModal(actionTarget.dataset.entryId);
+                        } else if (action === 'delete-sale') {
+                            handleDeleteSale(actionTarget.dataset.entryId);
+                        } else if (action === 'edit-donation') {
+                            openEditDonationModal(actionTarget.dataset.donationId);
+                        } else if (action === 'delete-donation') {
+                            handleDeleteDonation(actionTarget.dataset.donationId);
+                        }
                     }
                 });
                 

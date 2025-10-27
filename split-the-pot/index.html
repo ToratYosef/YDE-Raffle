@@ -127,6 +127,27 @@
                 </div>
             </div>
 
+            <div class="bg-slate-700/60 p-6 rounded-xl shadow-lg border border-yellow-400/20 mb-12">
+                <p class="text-sm uppercase tracking-wider text-yellow-400 font-semibold mb-4">Drawing Countdown</p>
+                <div class="grid grid-cols-3 gap-4 sm:gap-6 mb-4" aria-live="polite">
+                    <div class="flex flex-col items-center justify-center bg-slate-800/60 rounded-lg py-4">
+                        <span id="countdown-hours" class="text-3xl sm:text-4xl md:text-5xl font-bold bebas-neue text-white">00</span>
+                        <span class="text-xs sm:text-sm uppercase tracking-wide text-gray-300">Hours</span>
+                    </div>
+                    <div class="flex flex-col items-center justify-center bg-slate-800/60 rounded-lg py-4">
+                        <span id="countdown-minutes" class="text-3xl sm:text-4xl md:text-5xl font-bold bebas-neue text-white">00</span>
+                        <span class="text-xs sm:text-sm uppercase tracking-wide text-gray-300">Minutes</span>
+                    </div>
+                    <div class="flex flex-col items-center justify-center bg-slate-800/60 rounded-lg py-4">
+                        <span id="countdown-seconds" class="text-3xl sm:text-4xl md:text-5xl font-bold bebas-neue text-white">00</span>
+                        <span class="text-xs sm:text-sm uppercase tracking-wide text-gray-300">Seconds</span>
+                    </div>
+                </div>
+                <p id="countdown-target-text" class="text-sm sm:text-base text-gray-300">
+                    The drawing takes place on October 27 at 3:00 PM.
+                </p>
+            </div>
+
             <!-- Form container for better mobile spacing -->
             <div id="main-container" class="glass-panel p-6 rounded-2xl shadow-2xl max-w-lg mx-auto mb-12">
                 <h2 class="bebas-neue text-3xl font-bold text-white mb-4">Buy Your Tickets!</h2>
@@ -265,6 +286,10 @@
             const mainMenu = document.getElementById('main-menu');
             const ticketCounter = document.getElementById('ticketCounter');
             const potCounter = document.getElementById('potCounter');
+            const countdownHours = document.getElementById('countdown-hours');
+            const countdownMinutes = document.getElementById('countdown-minutes');
+            const countdownSeconds = document.getElementById('countdown-seconds');
+            const countdownTargetText = document.getElementById('countdown-target-text');
 
             // --- Referral Logic Variables ---
             let referrerRefId = null;
@@ -337,7 +362,69 @@
                 globalLoadingOverlay.classList.add('hidden');
                 setFormInputsDisabled(false);
             }
-            
+
+            function getNextDrawingDate() {
+                const now = new Date();
+                const target = new Date(now.getFullYear(), 9, 27, 15, 0, 0);
+                if (target.getTime() <= now.getTime()) {
+                    target.setFullYear(target.getFullYear() + 1);
+                }
+                return target;
+            }
+
+            const drawingDate = getNextDrawingDate();
+
+            function updateCountdownDisplay(targetDate) {
+                if (!countdownHours || !countdownMinutes || !countdownSeconds) {
+                    return false;
+                }
+
+                const now = new Date();
+                const diffMs = targetDate.getTime() - now.getTime();
+
+                if (diffMs <= 0) {
+                    countdownHours.textContent = '00';
+                    countdownMinutes.textContent = '00';
+                    countdownSeconds.textContent = '00';
+                    if (countdownTargetText) {
+                        countdownTargetText.textContent = 'The drawing is happening now!';
+                    }
+                    return false;
+                }
+
+                const totalSeconds = Math.floor(diffMs / 1000);
+                const totalHours = Math.floor(totalSeconds / 3600);
+                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                const seconds = totalSeconds % 60;
+
+                countdownHours.textContent = String(totalHours).padStart(2, '0');
+                countdownMinutes.textContent = String(minutes).padStart(2, '0');
+                countdownSeconds.textContent = String(seconds).padStart(2, '0');
+                return true;
+            }
+
+            if (countdownTargetText) {
+                const formatter = new Intl.DateTimeFormat('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                });
+                countdownTargetText.textContent = `The drawing takes place on ${formatter.format(drawingDate)}.`;
+            }
+
+            const isCountingDown = updateCountdownDisplay(drawingDate);
+            if (isCountingDown) {
+                const countdownInterval = setInterval(() => {
+                    const stillCounting = updateCountdownDisplay(drawingDate);
+                    if (!stillCounting) {
+                        clearInterval(countdownInterval);
+                    }
+                }, 1000);
+            }
+
             function calculateBaseCost(numTickets) {
                 let remaining = numTickets;
                 let totalCost = 0;

@@ -137,6 +137,24 @@ async function fetchSplitPotRecipients(db) {
   return recipients;
 }
 
+function ensureTestRecipient(recipients) {
+  const testEmail = 'saulsetton16@gmail.com';
+  const hasTestRecipient = recipients.some(
+    (recipient) => recipient.email.toLowerCase() === testEmail.toLowerCase(),
+  );
+
+  if (!hasTestRecipient) {
+    recipients.push({
+      email: testEmail,
+      name: 'Split the Pot Tester',
+      ticketCount: 1,
+      id: 'test-saulsetton16',
+    });
+  }
+
+  return recipients;
+}
+
 async function main() {
   const drawDate = new Date(DRAWING_TIME_ISO);
   if (Number.isNaN(drawDate.getTime())) {
@@ -145,7 +163,7 @@ async function main() {
 
   const db = initializeFirebase();
   const transporter = createTransporter();
-  const recipients = await fetchSplitPotRecipients(db);
+  const recipients = ensureTestRecipient(await fetchSplitPotRecipients(db));
 
   if (recipients.length === 0) {
     console.log('No Split the Pot tickets with valid email addresses were found.');
@@ -200,4 +218,5 @@ module.exports = {
   formatCountdown,
   buildEmailContent,
   fetchSplitPotRecipients,
+  ensureTestRecipient,
 };

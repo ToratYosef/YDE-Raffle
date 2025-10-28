@@ -12,11 +12,11 @@
     </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Preview the YDE Senior Fund Chinese Auction, browse featured prize baskets, and secure ticket bundles that power unforgettable senior experiences.">
-    <meta name="keywords" content="YDE, Senior Fund, Chinese Auction, Raffle, Fundraising, Tickets">
+    <meta name="description" content="Join the YDE Senior Fund Split the Pot Raffle! Buy tickets for a chance to win half the pot while supporting our seniors.">
+    <meta name="keywords" content="YDE, Senior Fund, Split the Pot, Raffle, Fundraising, Tickets">
     <meta name="author" content="Saul Setton">
     <link rel="icon" type="image/png" href="/favicon/favicon.jpeg">
-    <title>YDE Senior Fund - Chinese Auction</title>
+    <title>YDE Senior Fund - Donate</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -39,127 +39,6 @@
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        .hero-section {
-            position: relative;
-            overflow: hidden;
-            background: radial-gradient(circle at top left, rgba(250, 204, 21, 0.25), transparent 55%),
-                        radial-gradient(circle at bottom right, rgba(56, 189, 248, 0.22), transparent 60%),
-                        linear-gradient(135deg, rgba(13, 18, 34, 0.95), rgba(15, 23, 42, 0.9));
-        }
-        .hero-section::before,
-        .hero-section::after {
-            content: '';
-            position: absolute;
-            border-radius: 9999px;
-            filter: blur(60px);
-            opacity: 0.55;
-        }
-        .hero-section::before {
-            width: 420px;
-            height: 420px;
-            top: -160px;
-            right: -140px;
-            background: rgba(250, 204, 21, 0.35);
-        }
-        .hero-section::after {
-            width: 360px;
-            height: 360px;
-            bottom: -140px;
-            left: -120px;
-            background: rgba(59, 130, 246, 0.35);
-        }
-        .hero-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.35rem 1rem;
-            border-radius: 9999px;
-            background: rgba(15, 23, 42, 0.65);
-            border: 1px solid rgba(250, 204, 21, 0.35);
-            font-size: 0.75rem;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-        }
-        .timeline-step {
-            position: relative;
-            padding-left: 3.25rem;
-        }
-        .timeline-step::before {
-            content: attr(data-step);
-            position: absolute;
-            left: 0.6rem;
-            top: 0;
-            width: 2.4rem;
-            height: 2.4rem;
-            border-radius: 9999px;
-            background: rgba(250, 204, 21, 0.18);
-            border: 1px solid rgba(250, 204, 21, 0.6);
-            display: grid;
-            place-items: center;
-            font-weight: 700;
-            color: #fde047;
-        }
-        .timeline-step::after {
-            content: '';
-            position: absolute;
-            left: 1.75rem;
-            top: 2.6rem;
-            bottom: -1.8rem;
-            width: 2px;
-            background: linear-gradient(to bottom, rgba(250, 204, 21, 0.45), rgba(14, 165, 233, 0.25));
-        }
-        .timeline-step:last-child::after {
-            display: none;
-        }
-        .prize-card {
-            position: relative;
-            overflow: hidden;
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.88), rgba(30, 41, 59, 0.92));
-            border: 1px solid rgba(148, 163, 184, 0.14);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-        .prize-card::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(160deg, rgba(250, 204, 21, 0.12), transparent 55%);
-            pointer-events: none;
-        }
-        .prize-card:hover {
-            transform: translateY(-6px);
-            box-shadow: 0 15px 45px rgba(15, 23, 42, 0.45);
-        }
-        .faq-item {
-            background: rgba(15, 23, 42, 0.78);
-            border: 1px solid rgba(148, 163, 184, 0.18);
-            border-radius: 1rem;
-            padding: 1rem 1.25rem;
-        }
-        .faq-item summary {
-            cursor: pointer;
-            list-style: none;
-            font-weight: 600;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 1rem;
-        }
-        .faq-item summary::-webkit-details-marker {
-            display: none;
-        }
-        .faq-item summary::after {
-            content: '\25BC';
-            transition: transform 0.3s ease;
-            font-size: 0.9rem;
-            color: #facc15;
-        }
-        .faq-item[open] summary::after {
-            transform: rotate(-180deg);
-        }
-        .faq-item p {
-            margin-top: 0.75rem;
-            color: #cbd5f5;
         }
         .donation-option-card {
             cursor: pointer;
@@ -220,218 +99,73 @@
         </nav>
     </header>
 
-    <main class="flex-grow pt-24 sm:pt-28">
-        <section class="hero-section px-4 md:px-8 lg:px-16 py-16 sm:py-20 md:py-24">
-            <div class="container mx-auto max-w-6xl text-center text-white relative z-10">
-                <span class="hero-pill text-yellow-300/90 mx-auto mb-6">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75" />
-                    </svg>
-                    Chinese Auction Preview
-                </span>
-                <h1 class="bebas-neue text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 drop-shadow-xl">
-                    YDE Chinese Auction Experience
-                </h1>
-                <p class="text-base sm:text-lg md:text-xl text-gray-200 max-w-3xl mx-auto">
-                    We’re polishing every raffle basket, streamlining ticket bundles, and making sure checkout feels effortless. Explore the upcoming experience and help us keep the celebration unforgettable for the Class of 2026.
-                </p>
-                <div class="mt-10 grid gap-4 sm:grid-cols-3">
-                    <div class="glass-panel border border-white/10 rounded-2xl p-5">
-                        <p class="bebas-neue text-3xl text-yellow-300">50+</p>
-                        <p class="text-sm text-gray-300">Curated prize baskets &amp; premium packages</p>
+    <main class="flex-grow pt-24 sm:pt-28 px-4 md:px-8 lg:px-16">
+        <div class="container mx-auto text-center p-4 sm:p-6 md:p-12 glass-panel rounded-2xl shadow-2xl max-w-7xl">
+            <h1 class="bebas-neue text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-4 drop-shadow-lg">
+                Support the YDE Senior Fund
+            </h1>
+            <p class="text-base sm:text-lg md:text-xl text-gray-300 mb-8">
+                Your contribution helps make a difference for our senior students.
+            </p>
+
+            <div id="donation-form" class="glass-panel p-6 rounded-2xl shadow-2xl max-w-xl mx-auto mb-12">
+                <h2 class="bebas-neue text-3xl font-bold text-white mb-4">Choose Your Impact</h2>
+                <div id="donation-options" class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
+                    <div class="donation-option-card bg-slate-700/60 p-4 rounded-xl shadow-lg hover:scale-105 transform transition-all duration-300" data-amount="101">
+                        <p class="bebas-neue text-2xl font-bold text-yellow-400">$101</p>
                     </div>
-                    <div class="glass-panel border border-white/10 rounded-2xl p-5">
-                        <p class="bebas-neue text-3xl text-yellow-300">100%</p>
-                        <p class="text-sm text-gray-300">Of proceeds fuel senior programs &amp; trips</p>
+                    <div class="donation-option-card bg-slate-700/60 p-4 rounded-xl shadow-lg hover:scale-105 transform transition-all duration-300" data-amount="201">
+                        <p class="bebas-neue text-2xl font-bold text-yellow-400">$201</p>
                     </div>
-                    <div class="glass-panel border border-white/10 rounded-2xl p-5">
-                        <p class="bebas-neue text-3xl text-yellow-300">1 Night</p>
-                        <p class="text-sm text-gray-300">To celebrate community, generosity, and big wins</p>
+                    <div class="donation-option-card bg-slate-700/60 p-4 rounded-xl shadow-lg hover:scale-105 transform transition-all duration-300" data-amount="501">
+                        <p class="bebas-neue text-2xl font-bold text-yellow-400">$501</p>
                     </div>
-                </div>
-            </div>
-        </section>
-
-        <section class="px-4 md:px-8 lg:px-16 -mt-12 md:-mt-16 relative z-10">
-            <div class="container mx-auto max-w-6xl">
-                <div class="glass-panel rounded-2xl shadow-2xl p-6 sm:p-10">
-                    <div class="grid gap-10 lg:gap-16 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] items-start">
-                        <div class="space-y-10 text-left">
-                            <div class="bg-slate-900/60 border border-cyan-400/30 rounded-2xl p-5">
-                                <h2 class="bebas-neue text-3xl text-yellow-300 mb-2">Test Mode Sandbox</h2>
-                                <p class="text-sm sm:text-base text-gray-200">
-                                    This build is still in staging. Payments are routed through Stripe’s testing environment so the team can finalize prize copy, inventory counts, and automations before launch. Nothing you enter here will be charged.
-                                </p>
-                                <p class="text-sm text-cyan-200/80 mt-3">
-                                    Use Stripe test card <span class="font-semibold text-yellow-200">4242 4242 4242 4242</span> with any future expiry and CVC to simulate a checkout flow.
-                                </p>
-                            </div>
-
-                            <div class="space-y-6">
-                                <h2 class="bebas-neue text-3xl text-white">How the Chinese Auction Works</h2>
-                                <div class="space-y-6">
-                                    <div class="timeline-step" data-step="1">
-                                        <h3 class="text-lg font-semibold text-white">Choose your ticket bundle</h3>
-                                        <p class="text-gray-300 text-sm sm:text-base">Select a package that fits your goals. Every tier unlocks more entries and more chances to grab the spotlight baskets.</p>
-                                    </div>
-                                    <div class="timeline-step" data-step="2">
-                                        <h3 class="text-lg font-semibold text-white">Assign tickets to prizes</h3>
-                                        <p class="text-gray-300 text-sm sm:text-base">At launch you’ll drag and drop your tickets into the baskets you love. The system keeps a running tally so you can strategize.</p>
-                                    </div>
-                                    <div class="timeline-step" data-step="3">
-                                        <h3 class="text-lg font-semibold text-white">Confirm secure payment</h3>
-                                        <p class="text-gray-300 text-sm sm:text-base">We’re using Stripe Elements for a frictionless, mobile-friendly checkout. Cover the fees if you’d like to stretch the fundraiser further.</p>
-                                    </div>
-                                    <div class="timeline-step" data-step="4">
-                                        <h3 class="text-lg font-semibold text-white">Celebrate on drawing night</h3>
-                                        <p class="text-gray-300 text-sm sm:text-base">Winners will be revealed live. Automated texts and emails will go out instantly so nobody misses their prize.</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div>
-                                <h3 class="bebas-neue text-3xl text-white mb-4">Why everyone loves this night</h3>
-                                <div class="grid gap-4 sm:grid-cols-2">
-                                    <div class="bg-slate-900/60 border border-white/10 rounded-xl p-4">
-                                        <p class="bebas-neue text-3xl text-yellow-300">$26K+</p>
-                                        <p class="text-sm text-gray-300">Goal for senior trips, graduation, and milestone events</p>
-                                    </div>
-                                    <div class="bg-slate-900/60 border border-white/10 rounded-xl p-4">
-                                        <p class="bebas-neue text-3xl text-yellow-300">100s</p>
-                                        <p class="text-sm text-gray-300">Of supporters expected to participate across the community</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div>
-                            <div id="donation-form" class="glass-panel p-6 rounded-2xl shadow-2xl border border-white/10">
-                                <h2 class="bebas-neue text-3xl font-bold text-white mb-4">Choose Your Impact</h2>
-                                <div id="donation-options" class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
-                                    <div class="donation-option-card bg-slate-700/60 p-4 rounded-xl shadow-lg hover:scale-105 transform transition-all duration-300" data-amount="101">
-                                        <p class="bebas-neue text-2xl font-bold text-yellow-400">$101</p>
-                                        <p class="text-xs uppercase tracking-[0.25em] text-gray-300 mt-2">Spark Supporter</p>
-                                    </div>
-                                    <div class="donation-option-card bg-slate-700/60 p-4 rounded-xl shadow-lg hover:scale-105 transform transition-all duration-300" data-amount="201">
-                                        <p class="bebas-neue text-2xl font-bold text-yellow-400">$201</p>
-                                        <p class="text-xs uppercase tracking-[0.25em] text-gray-300 mt-2">Momentum Builder</p>
-                                    </div>
-                                    <div class="donation-option-card bg-slate-700/60 p-4 rounded-xl shadow-lg hover:scale-105 transform transition-all duration-300" data-amount="501">
-                                        <p class="bebas-neue text-2xl font-bold text-yellow-400">$501</p>
-                                        <p class="text-xs uppercase tracking-[0.25em] text-gray-300 mt-2">Gold Basket Boost</p>
-                                    </div>
-                                    <div class="donation-option-card bg-slate-700/60 p-4 rounded-xl shadow-lg hover:scale-105 transform transition-all duration-300" data-amount="1000">
-                                        <p class="bebas-neue text-2xl font-bold text-yellow-400">$1000</p>
-                                        <p class="text-xs uppercase tracking-[0.25em] text-gray-300 mt-2">Platinum Patron</p>
-                                    </div>
-                                    <div class="donation-option-card bg-slate-700/60 p-4 rounded-xl shadow-lg hover:scale-105 transform transition-all duration-300" data-amount="1500">
-                                        <p class="bebas-neue text-2xl font-bold text-yellow-400">$1500</p>
-                                        <p class="text-xs uppercase tracking-[0.25em] text-gray-300 mt-2">Legacy Circle</p>
-                                    </div>
-                                    <div class="donation-option-card bg-slate-700/60 p-4 rounded-xl shadow-lg hover:scale-105 transform transition-all duration-300" data-amount="2000">
-                                        <p class="bebas-neue text-2xl font-bold text-yellow-400">$2000</p>
-                                        <p class="text-xs uppercase tracking-[0.25em] text-gray-300 mt-2">Dream Builder</p>
-                                    </div>
-                                    <div class="donation-option-card bg-slate-700/60 p-4 rounded-xl shadow-lg hover:scale-105 transform transition-all duration-300 col-span-full" data-amount="other">
-                                        <p class="bebas-neue text-2xl font-bold text-yellow-400">Enter Other Amount</p>
-                                        <p class="text-xs uppercase tracking-[0.25em] text-gray-300 mt-2">Custom Support</p>
-                                    </div>
-                                </div>
-
-                                <div id="other-amount-container" class="mb-6 hidden">
-                                    <label for="other-amount" class="text-sm text-gray-400 block mb-2 text-left">Please enter your amount:</label>
-                                    <input type="number" id="other-amount" placeholder="Enter Amount" min="1" class="w-full py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300">
-                                </div>
-
-                                <div class="bebas-neue text-2xl font-bold text-yellow-400 text-center mt-4">Total: $<span id="calculated-total-amount">0.00</span></div>
-
-                                <div id="user-info-form" class="space-y-4 mt-6">
-                                    <div><input type="text" id="donation-name" placeholder="Full Name" class="w-full py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300"></div>
-                                    <div><input type="email" id="donation-email" placeholder="Email Address" class="w-full py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300"></div>
-                                    <div><input type="tel" id="donation-phone" placeholder="Phone Number" class="w-full py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300"></div>
-                                </div>
-
-                                <div class="flex items-center justify-center gap-2 mt-4 text-gray-300">
-                                    <input type="checkbox" id="cover-fees-checkbox" class="h-4 w-4 rounded-full text-yellow-400 focus:ring-yellow-400 border-gray-600 bg-gray-700">
-                                    <label for="cover-fees-checkbox" class="text-sm md:text-base">I would like to cover the processing fees</label>
-                                </div>
-
-                                <button id="donation-proceed-to-payment" class="w-full py-3 mt-6 rounded-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold transition-colors duration-300 relative overflow-hidden">
-                                    <span class="button-text">Proceed to Payment</span>
-                                    <div class="button-spinner absolute inset-0 m-auto w-8 h-8 border-4 border-t-4 border-black border-opacity-20 rounded-full hidden"></div>
-                                </button>
-
-                                <div id="stripe-donation-payment-element" class="hidden">
-                                    <div id="donation-payment-element-container"></div>
-                                    <button id="stripe-donation-pay-button" class="w-full py-3 mt-4 rounded-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold transition-colors duration-300 hidden">
-                                        <span class="button-text">Pay Now</span>
-                                        <div class="button-spinner absolute inset-0 m-auto w-8 h-8 border-4 border-t-4 border-black border-opacity-20 rounded-full hidden"></div>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                    <div class="donation-option-card bg-slate-700/60 p-4 rounded-xl shadow-lg hover:scale-105 transform transition-all duration-300" data-amount="1000">
+                        <p class="bebas-neue text-2xl font-bold text-yellow-400">$1000</p>
+                    </div>
+                    <div class="donation-option-card bg-slate-700/60 p-4 rounded-xl shadow-lg hover:scale-105 transform transition-all duration-300" data-amount="1500">
+                        <p class="bebas-neue text-2xl font-bold text-yellow-400">$1500</p>
+                    </div>
+                    <div class="donation-option-card bg-slate-700/60 p-4 rounded-xl shadow-lg hover:scale-105 transform transition-all duration-300" data-amount="2000">
+                        <p class="bebas-neue text-2xl font-bold text-yellow-400">$2000</p>
+                    </div>
+                    <div class="donation-option-card bg-slate-700/60 p-4 rounded-xl shadow-lg hover:scale-105 transform transition-all duration-300 col-span-full" data-amount="other">
+                        <p class="bebas-neue text-2xl font-bold text-yellow-400">Enter Other Amount</p>
                     </div>
                 </div>
-            </div>
-        </section>
 
-        <section class="px-4 md:px-8 lg:px-16 mt-16">
-            <div class="container mx-auto max-w-6xl">
-                <div class="flex flex-wrap items-center justify-between gap-4 mb-8">
-                    <h2 class="bebas-neue text-3xl sm:text-4xl text-white">Featured Prize Boards</h2>
-                    <span class="text-sm uppercase tracking-[0.3em] text-yellow-300">Sneak Peek</span>
+                <div id="other-amount-container" class="mb-6 hidden">
+                    <label for="other-amount" class="text-sm text-gray-400 block mb-2 text-left">Please enter your amount:</label>
+                    <input type="number" id="other-amount" placeholder="Enter Amount" min="1" class="w-full py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300">
                 </div>
-                <div class="grid gap-6 md:grid-cols-3">
-                    <article class="prize-card rounded-2xl p-5 flex flex-col">
-                        <img src="https://images.unsplash.com/photo-1502920917128-1aa500764b8a?auto=format&fit=crop&w=900&q=80" alt="Luxury travel essentials including suitcases and plane wing view" class="rounded-xl h-40 object-cover mb-4">
-                        <h3 class="text-xl font-semibold text-white mb-2">Luxury Travel Escape</h3>
-                        <p class="text-sm text-gray-300 flex-1">Five-star accommodations, business class upgrades, and curated excursions for the ultimate getaway.</p>
-                        <div class="mt-4 flex items-center justify-between text-xs uppercase tracking-[0.3em] text-yellow-200/80">
-                            <span>Tier: Elite</span>
-                            <span>Value: $6,500+</span>
-                        </div>
-                    </article>
-                    <article class="prize-card rounded-2xl p-5 flex flex-col">
-                        <img src="https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=900&q=80" alt="Chef preparing gourmet dishes in a professional kitchen" class="rounded-xl h-40 object-cover mb-4">
-                        <h3 class="text-xl font-semibold text-white mb-2">Private Chef Experience</h3>
-                        <p class="text-sm text-gray-300 flex-1">Invite a renowned chef into your home for a multi-course tasting menu paired with boutique wines.</p>
-                        <div class="mt-4 flex items-center justify-between text-xs uppercase tracking-[0.3em] text-yellow-200/80">
-                            <span>Tier: Signature</span>
-                            <span>Value: $3,200+</span>
-                        </div>
-                    </article>
-                    <article class="prize-card rounded-2xl p-5 flex flex-col">
-                        <img src="https://images.unsplash.com/photo-1595526114035-0d45ed9d04a1?auto=format&fit=crop&w=900&q=80" alt="Cutting-edge gaming and technology devices on a desk" class="rounded-xl h-40 object-cover mb-4">
-                        <h3 class="text-xl font-semibold text-white mb-2">Tech &amp; Gaming Suite</h3>
-                        <p class="text-sm text-gray-300 flex-1">Next-gen console, immersive peripherals, and a productivity laptop to power every passion project.</p>
-                        <div class="mt-4 flex items-center justify-between text-xs uppercase tracking-[0.3em] text-yellow-200/80">
-                            <span>Tier: Spotlight</span>
-                            <span>Value: $4,800+</span>
-                        </div>
-                    </article>
-                </div>
-            </div>
-        </section>
+                
+                <div class="bebas-neue text-2xl font-bold text-yellow-400 text-center mt-4">Total: $<span id="calculated-total-amount">0.00</span></div>
 
-        <section class="px-4 md:px-8 lg:px-16 mt-16 pb-12">
-            <div class="container mx-auto max-w-5xl">
-                <h2 class="bebas-neue text-3xl sm:text-4xl text-white text-center mb-8">Frequently Asked Questions</h2>
-                <div class="space-y-4">
-                    <details class="faq-item">
-                        <summary>How do I assign my tickets to specific prizes?</summary>
-                        <p>Once we launch the live site you’ll see every basket laid out in a drag-and-drop grid. Choose your bundle here, then distribute tickets into the prizes you want most—our system updates your remaining balance instantly.</p>
-                    </details>
-                    <details class="faq-item">
-                        <summary>When will real transactions go live?</summary>
-                        <p>We’re targeting a public launch shortly after QA wraps. Follow the Senior Fund WhatsApp broadcast or email list for the official go-live announcement.</p>
-                    </details>
-                    <details class="faq-item">
-                        <summary>Will I get a receipt and confirmation?</summary>
-                        <p>Yes. Stripe emails confirmations immediately, and our fundraising team follows up with allocation details plus event-night reminders so you never miss a drawing.</p>
-                    </details>
+                <div id="user-info-form" class="space-y-4 mt-6">
+                    <div><input type="text" id="donation-name" placeholder="Full Name" class="w-full py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300"></div>
+                    <div><input type="email" id="donation-email" placeholder="Email Address" class="w-full py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300"></div>
+                    <div><input type="tel" id="donation-phone" placeholder="Phone Number" class="w-full py-3 px-4 rounded-lg bg-slate-600/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all duration-300"></div>
+                </div>
+                
+                <div class="flex items-center justify-center gap-2 mt-4 text-gray-300">
+                    <input type="checkbox" id="cover-fees-checkbox" class="h-4 w-4 rounded-full text-yellow-400 focus:ring-yellow-400 border-gray-600 bg-gray-700">
+                    <label for="cover-fees-checkbox" class="text-sm md:text-base">I would like to cover the processing fees</label>
+                </div>
+                
+                <button id="donation-proceed-to-payment" class="w-full py-3 mt-6 rounded-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold transition-colors duration-300 relative overflow-hidden">
+                    <span class="button-text">Proceed to Payment</span>
+                    <div class="button-spinner absolute inset-0 m-auto w-8 h-8 border-4 border-t-4 border-black border-opacity-20 rounded-full hidden"></div>
+                </button>
+
+                <div id="stripe-donation-payment-element" class="hidden">
+                    <div id="donation-payment-element-container"></div>
+                    <button id="stripe-donation-pay-button" class="w-full py-3 mt-4 rounded-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold transition-colors duration-300 hidden">
+                        <span class="button-text">Pay Now</span>
+                        <div class="button-spinner absolute inset-0 m-auto w-8 h-8 border-4 border-t-4 border-black border-opacity-20 rounded-full hidden"></div>
+                    </button>
                 </div>
             </div>
-        </section>
+        </div>
     </main>
 
     <footer class="bg-black/40 py-8 mt-auto shadow-[0_-5px_15px_rgba(0,0,0,0.5)]">
@@ -707,12 +441,6 @@
                 }
             });
             
-            if (donationOptions.length > 0) {
-                const defaultOption = donationOptions[0];
-                defaultOption.classList.add('selected');
-                baseDonationAmount = parseFloat(defaultOption.dataset.amount);
-            }
-
             // Initial call to set the display to $0.00
             calculateAndDisplayAmount();
         });

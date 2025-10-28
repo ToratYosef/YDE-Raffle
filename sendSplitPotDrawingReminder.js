@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 const path = require('path');
+const fs = require('fs');
 const admin = require('firebase-admin');
 const nodemailer = require('nodemailer');
 
@@ -11,10 +12,6 @@ function resolveServiceAccount() {
   const serviceAccountPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
   const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
 
-  if (!serviceAccountPath && !serviceAccountJson) {
-    throw new Error('Set GOOGLE_APPLICATION_CREDENTIALS or FIREBASE_SERVICE_ACCOUNT with your service account credentials.');
-  }
-
   if (serviceAccountJson) {
     try {
       return JSON.parse(serviceAccountJson);
@@ -23,48 +20,44 @@ function resolveServiceAccount() {
     }
   }
 
-  const absolutePath = path.isAbsolute(serviceAccountPath)
-    ? serviceAccountPath
-    : path.resolve(process.cwd(), serviceAccountPath);
-
-  try {
-    // eslint-disable-next-line import/no-dynamic-require, global-require
-    return require(absolutePath);
-  } catch (error) {
-    throw new Error(`Unable to load service account file at ${absolutePath}: ${error.message}`);
+  const candidates = [];
+  if (serviceAccountPath) {
+    candidates.push(path.isAbsolute(serviceAccountPath) ? serviceAccountPath : path.resolve(process.cwd(), serviceAccountPath));
   }
+  candidates.push(path.join(__dirname, 'serviceAccountKey.json'));
+  candidates.push(path.resolve(process.cwd(), 'serviceAccountKey.json'));
+
+  for (const p of candidates) {
+    try {
+      if (fs.existsSync(p)) {
+        const raw = fs.readFileSync(p, 'utf8');
+        return JSON.parse(raw);
+      }
+    } catch (e) {
+      throw new Error(`Unable to load service account file at ${p}: ${e.message}`);
+    }
+  }
+
+  throw new Error('Service account not found. Set FIREBASE_SERVICE_ACCOUNT, GOOGLE_APPLICATION_CREDENTIALS, or place serviceAccountKey.json next to this script.');
 }
 
 function initializeFirebase() {
-  if (admin.apps.length > 0) {
-    return admin.firestore();
-  }
-
+  if (admin.apps.length > 0) return admin.firestore();
   const credentials = resolveServiceAccount();
-  admin.initializeApp({
-    credential: admin.credential.cert(credentials),
-  });
-
+  admin.initializeApp({ credential: admin.credential.cert(credentials) });
   return admin.firestore();
 }
 
 function createTransporter() {
   const { MAIL_EMAIL, MAIL_PASSWORD, MAIL_SERVICE, MAIL_HOST, MAIL_PORT, MAIL_SECURE } = process.env;
-
   if (!MAIL_EMAIL || !MAIL_PASSWORD) {
     throw new Error('MAIL_EMAIL and MAIL_PASSWORD environment variables are required to send emails.');
   }
-
   if (MAIL_SERVICE) {
-    return nodemailer.createTransport({
-      service: MAIL_SERVICE,
-      auth: { user: MAIL_EMAIL, pass: MAIL_PASSWORD },
-    });
+    return nodemailer.createTransport({ service: MAIL_SERVICE, auth: { user: MAIL_EMAIL, pass: MAIL_PASSWORD } });
   }
-
   const port = MAIL_PORT ? Number(MAIL_PORT) : 465;
   const secure = MAIL_SECURE ? MAIL_SECURE.toLowerCase() === 'true' : port === 465;
-
   return nodemailer.createTransport({
     host: MAIL_HOST || 'smtp.gmail.com',
     port,
@@ -79,12 +72,11 @@ function getCountdown(targetDate, referenceDate = new Date()) {
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
-
   return { hours, minutes, seconds };
 }
 
 function formatCountdown({ hours, minutes, seconds }) {
-  const pad = (value) => String(value).padStart(2, '0');
+  const pad = (v) => String(v).padStart(2, '0');
   return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
 }
 
@@ -110,22 +102,16 @@ function buildEmailContent({ name, ticketCount, countdown, drawDate }) {
       <p style="margin-top: 24px;">Good luck and thank you for supporting the fundraiser!</p>
     </div>
   `;
-
   return { plainText, html };
 }
 
 async function fetchSplitPotRecipients(db) {
   const snapshot = await db.collection('splitThePotTickets').get();
   const recipients = [];
-
   snapshot.forEach((doc) => {
     const data = doc.data() || {};
     const email = (data.email || '').trim();
-
-    if (!email || !email.includes('@')) {
-      return;
-    }
-
+    if (!email || !email.includes('@')) return;
     recipients.push({
       email,
       name: data.firstName || data.fullName || '',
@@ -133,32 +119,22 @@ async function fetchSplitPotRecipients(db) {
       id: doc.id,
     });
   });
-
   return recipients;
 }
 
 function ensureTestRecipient(recipients) {
   const testEmail = 'saulsetton16@gmail.com';
-  const hasTestRecipient = recipients.some(
-    (recipient) => recipient.email.toLowerCase() === testEmail.toLowerCase(),
-  );
-
+  const hasTestRecipient = recipients.some((r) => r.email.toLowerCase() === testEmail.toLowerCase());
   if (!hasTestRecipient) {
-    recipients.push({
-      email: testEmail,
-      name: 'Split the Pot Tester',
-      ticketCount: 1,
-      id: 'test-saulsetton16',
-    });
+    recipients.push({ email: testEmail, name: 'Split the Pot Tester', ticketCount: 1, id: 'test-saulsetton16' });
   }
-
   return recipients;
 }
 
 async function main() {
   const drawDate = new Date(DRAWING_TIME_ISO);
   if (Number.isNaN(drawDate.getTime())) {
-    throw new Error(`The configured drawing time \"${DRAWING_TIME_ISO}\" is not a valid date.`);
+    throw new Error(`The configured drawing time "${DRAWING_TIME_ISO}" is not a valid date.`);
   }
 
   const db = initializeFirebase();

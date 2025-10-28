@@ -106,15 +106,15 @@
 
         <section class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div class="admin-card rounded-2xl p-6 lg:col-span-1">
-                <h2 class="text-2xl font-semibold text-yellow-200 mb-4">Add Participant</h2>
+                <h2 class="text-2xl font-semibold text-yellow-200 mb-4">Add Participant(s)</h2>
                 <form id="addParticipantForm" class="space-y-4">
                     <div>
-                        <label for="participantName" class="block text-sm font-medium text-slate-300 mb-2">Full Name</label>
-                        <input id="participantName" type="text" class="w-full px-4 py-3 rounded-xl bg-slate-900/60 border border-slate-600 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/40 outline-none" placeholder="Jane Doe" required autocomplete="off">
+                        <label for="participantName" class="block text-sm font-medium text-slate-300 mb-2">Full Name(s)</label>
+                        <textarea id="participantName" class="w-full px-4 py-3 rounded-xl bg-slate-900/60 border border-slate-600 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/40 outline-none" placeholder="Jane Doe\nJohn Smith" rows="3" required autocomplete="off"></textarea>
                     </div>
                     <button id="addParticipantButton" type="submit" class="w-full py-3 rounded-xl bg-emerald-400 text-slate-900 font-semibold hover:bg-emerald-300 transition-colors">Add to Wheel</button>
                 </form>
-                <p class="text-xs text-slate-400 mt-4">Names appear on the public wheel immediately after they are saved.</p>
+                <p class="text-xs text-slate-400 mt-4">Enter one name per line or separate names with commas. Everyone appears on the public wheel immediately after saving.</p>
             </div>
 
             <div class="admin-card rounded-2xl p-6 lg:col-span-2">
@@ -299,24 +299,38 @@
                 });
             }
 
-            async function addParticipant(name) {
-                const trimmed = name.trim();
-                if (!trimmed) {
-                    showPopup('Missing Name', 'Please enter a name before adding a participant.');
+            async function addParticipant(rawInput) {
+                const names = rawInput
+                    .split(/[,\n]/)
+                    .map((value) => value.trim())
+                    .filter((value) => value.length > 0);
+
+                if (!names.length) {
+                    showPopup('Missing Name', 'Please enter at least one name before adding participants.');
                     return;
                 }
+
                 try {
                     addParticipantButton.disabled = true;
                     addParticipantButton.textContent = 'Saving...';
-                    await participantsCollection.add({
-                        name: trimmed,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    });
+
+                    await Promise.all(
+                        names.map((name) =>
+                            participantsCollection.add({
+                                name,
+                                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            })
+                        )
+                    );
+
                     participantNameInput.value = '';
-                    adminStatusText.textContent = `Added ${trimmed} to the wheel.`;
+                    adminStatusText.textContent =
+                        names.length === 1
+                            ? `Added ${names[0]} to the wheel.`
+                            : `Added ${names.length} participants to the wheel.`;
                 } catch (error) {
                     console.error('Failed to add participant', error);
-                    showPopup('Save Failed', 'Could not add that participant. Please try again.');
+                    showPopup('Save Failed', 'Could not add those participant names. Please try again.');
                 } finally {
                     addParticipantButton.disabled = false;
                     addParticipantButton.textContent = 'Add to Wheel';

@@ -352,7 +352,6 @@
             const countdownMinutes = document.getElementById('countdown-minutes');
             const countdownSeconds = document.getElementById('countdown-seconds');
             const countdownTargetText = document.getElementById('countdown-target-text');
-            const drawingSoonOverlay = document.getElementById('drawingSoonOverlay');
             const wheelParticipantCountEl = document.getElementById('wheelParticipantCount');
             const wheelParticipantListEl = document.getElementById('wheelParticipantList');
             const wheelCanvas = document.getElementById('wheelCanvas');
@@ -635,20 +634,22 @@
             }
 
             function setFormInputsDisabled(disabled) {
-                const effectiveDisabled = disabled || drawingHoldActive;
-                formInputs.forEach(input => input.disabled = effectiveDisabled);
-                quantityInput.disabled = effectiveDisabled;
-                decreaseQuantityButton.disabled = effectiveDisabled;
-                increaseQuantityButton.disabled = effectiveDisabled;
+                formInputs.forEach(input => {
+                    input.disabled = disabled;
+                    input.classList.toggle('opacity-50', disabled);
+                    input.classList.toggle('cursor-not-allowed', disabled);
+                });
+                quantityInput.disabled = disabled;
+                decreaseQuantityButton.disabled = disabled;
+                increaseQuantityButton.disabled = disabled;
             }
 
             function setButtonsDisabled(disabled) {
-                const effectiveDisabled = disabled || drawingHoldActive;
                 [proceedToPaymentButton, stripePayButton].forEach(button => {
                     if (!button) return;
-                    button.disabled = effectiveDisabled;
-                    button.classList.toggle('opacity-50', effectiveDisabled);
-                    button.classList.toggle('cursor-not-allowed', effectiveDisabled);
+                    button.disabled = disabled;
+                    button.classList.toggle('opacity-50', disabled);
+                    button.classList.toggle('cursor-not-allowed', disabled);
                 });
             }
 
@@ -667,28 +668,7 @@
                 setButtonsDisabled(false);
             }
 
-            function activateDrawingHold() {
-                if (drawingHoldActive) {
-                    return;
-                }
-                drawingHoldActive = true;
-                if (drawingSoonOverlay) {
-                    drawingSoonOverlay.classList.remove('hidden');
-                    drawingSoonOverlay.setAttribute('aria-hidden', 'false');
-                }
-                setFormInputsDisabled(true);
-                setButtonsDisabled(true);
-                if (countdownTargetText) {
-                    countdownTargetText.textContent = 'Drawing soon! Online sales are closed.';
-                }
-            }
-
             const drawingDate = new Date('2024-10-28T15:10:00');
-            let drawingHoldActive = false;
-
-            function hasDrawingStarted() {
-                return new Date().getTime() >= drawingDate.getTime();
-            }
 
             function updateCountdownDisplay(targetDate) {
                 if (!countdownHours || !countdownMinutes || !countdownSeconds) {

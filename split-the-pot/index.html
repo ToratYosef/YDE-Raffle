@@ -104,6 +104,12 @@
         </div>
     </div>
 
+    <!-- Drawing Hold Overlay -->
+    <div id="drawingSoonOverlay" class="fixed inset-0 z-[120] bg-slate-950/90 backdrop-blur-sm flex flex-col items-center justify-center px-6 text-center hidden" aria-hidden="true">
+        <h2 class="bebas-neue text-5xl sm:text-6xl font-bold text-yellow-400 drop-shadow-lg">Drawing Soon</h2>
+        <p class="mt-4 text-lg sm:text-xl text-gray-200 max-w-xl">Online sales are now closed while we prepare for the Split the Pot drawing. Thank you for your support!</p>
+    </div>
+
     <!-- Updated Header for better mobile layout, now fixed -->
     <header class="bg-black/40 py-4 px-4 md:px-12 fixed w-full top-0 z-50 shadow-2xl backdrop-blur-sm">
         <nav class="container mx-auto flex justify-between items-center flex-wrap md:flex-nowrap">
@@ -677,8 +683,9 @@
                     countdownMinutes.textContent = '00';
                     countdownSeconds.textContent = '00';
                     if (countdownTargetText) {
-                        countdownTargetText.textContent = 'The drawing is happening now!';
+                        countdownTargetText.textContent = 'Drawing soon! Online sales are closed.';
                     }
+                    activateDrawingHold();
                     return false;
                 }
 
@@ -706,7 +713,9 @@
             }
 
             const isCountingDown = updateCountdownDisplay(drawingDate);
-            if (isCountingDown) {
+            if (hasDrawingStarted()) {
+                activateDrawingHold();
+            } else if (isCountingDown) {
                 const countdownInterval = setInterval(() => {
                     const stillCounting = updateCountdownDisplay(drawingDate);
                     if (!stillCounting) {

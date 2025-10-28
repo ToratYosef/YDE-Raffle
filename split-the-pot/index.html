@@ -46,6 +46,47 @@
             -webkit-backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
+        .status-banner {
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(135deg, rgba(250, 204, 21, 0.15), rgba(56, 189, 248, 0.15));
+            border: 1px solid rgba(250, 204, 21, 0.25);
+        }
+        .status-banner::before {
+            content: '';
+            position: absolute;
+            inset: -60%;
+            background: radial-gradient(circle at top left, rgba(250, 204, 21, 0.4), transparent 60%);
+            opacity: 0.7;
+        }
+        .status-banner::after {
+            content: '';
+            position: absolute;
+            bottom: -50%;
+            right: -20%;
+            width: 60%;
+            height: 60%;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.35), transparent 70%);
+            opacity: 0.6;
+        }
+        .status-banner-content {
+            position: relative;
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 1.1rem;
+            border-radius: 9999px;
+            background: rgba(15, 23, 42, 0.65);
+            border: 1px solid rgba(250, 204, 21, 0.4);
+            font-weight: 600;
+            letter-spacing: 0.12em;
+        }
+        .status-badge svg {
+            width: 1.1rem;
+            height: 1.1rem;
+        }
         /* Live drawing wheel styles */
         #wheelCanvas {
             max-width: 100%;
@@ -106,8 +147,8 @@
 
     <!-- Drawing Hold Overlay -->
     <div id="drawingSoonOverlay" class="fixed inset-0 z-[120] bg-slate-950/90 backdrop-blur-sm flex flex-col items-center justify-center px-6 text-center hidden" aria-hidden="true">
-        <h2 class="bebas-neue text-5xl sm:text-6xl font-bold text-yellow-400 drop-shadow-lg">Drawing Soon</h2>
-        <p class="mt-4 text-lg sm:text-xl text-gray-200 max-w-xl">Online sales are now closed while we prepare for the Split the Pot drawing. Thank you for your support!</p>
+        <h2 id="drawingSoonOverlayTitle" class="bebas-neue text-5xl sm:text-6xl font-bold text-yellow-400 drop-shadow-lg">Drawing Soon</h2>
+        <p id="drawingSoonOverlayMessage" class="mt-4 text-lg sm:text-xl text-gray-200 max-w-xl">Online sales are now closed while we prepare for the Split the Pot drawing. Thank you for your support!</p>
     </div>
 
     <!-- Updated Header for better mobile layout, now fixed -->
@@ -139,6 +180,26 @@
             <p class="text-base sm:text-lg md:text-xl text-gray-300 mb-8">
                 Your ticket purchase goes directly to the Senior Fund.
             </p>
+
+            <div id="raffle-concluded-banner" class="status-banner rounded-2xl p-6 sm:p-8 mb-10 hidden">
+                <div class="status-banner-content space-y-4 text-left sm:text-center">
+                    <span class="status-badge text-yellow-300 uppercase" id="raffle-concluded-badge">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m5 13 4 4L19 7" />
+                        </svg>
+                        Raffle Concluded
+                    </span>
+                    <h2 id="raffle-concluded-headline" class="bebas-neue text-3xl sm:text-4xl lg:text-5xl text-white drop-shadow">
+                        Congratulations Ezra Sasson (Essas)!
+                    </h2>
+                    <p id="raffle-concluded-body" class="text-gray-200 text-base sm:text-lg max-w-3xl mx-auto">
+                        The Split the Pot drawing has wrapped up and the grand prize goes to Ezra Sasson (Essas). Thank you for powering our seniors!
+                    </p>
+                    <p id="raffle-concluded-secondary" class="text-sm sm:text-base text-cyan-200/80 max-w-2xl mx-auto">
+                        Every supporter has been notified with the results — keep an eye on your inbox for our thank-you message.
+                    </p>
+                </div>
+            </div>
 
             <!-- Grid adjusted to be one column on mobile, two on desktop -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8 mb-12">
@@ -189,7 +250,7 @@
                 </div>
             </section>
 
-            <div class="bg-slate-700/60 p-6 rounded-xl shadow-lg border border-yellow-400/20 mb-12">
+            <div id="countdownContainer" class="bg-slate-700/60 p-6 rounded-xl shadow-lg border border-yellow-400/20 mb-12">
                 <p class="text-sm uppercase tracking-wider text-yellow-400 font-semibold mb-4">Drawing Countdown</p>
                 <div class="grid grid-cols-3 gap-4 sm:gap-6 mb-4" aria-live="polite">
                     <div class="flex flex-col items-center justify-center bg-slate-800/60 rounded-lg py-4">
@@ -322,6 +383,12 @@
         }
         // --- END Referrer Helper Functions ---
 
+        const RAFFLE_CONCLUDED = true;
+        const RAFFLE_WINNER_NAME = 'Ezra Sasson (Essas)';
+        const RAFFLE_CONCLUSION_MESSAGE = 'The Split the Pot raffle has wrapped and our grand prize winner is Ezra Sasson (Essas).';
+        const RAFFLE_COMMUNICATION_NOTE = 'Thank you for supporting the Split the Pot raffle — we appreciate you being part of the excitement!';
+        const RAFFLE_CONCLUDED_DATE = new Date('2024-10-28T15:10:00');
+
         document.addEventListener('DOMContentLoaded', () => {
             // --- UI Elements ---
             const proceedToPaymentButton = document.getElementById('proceed-to-payment');
@@ -348,16 +415,40 @@
             const mainMenu = document.getElementById('main-menu');
             const ticketCounter = document.getElementById('ticketCounter');
             const potCounter = document.getElementById('potCounter');
+            const countdownContainer = document.getElementById('countdownContainer');
             const countdownHours = document.getElementById('countdown-hours');
             const countdownMinutes = document.getElementById('countdown-minutes');
             const countdownSeconds = document.getElementById('countdown-seconds');
             const countdownTargetText = document.getElementById('countdown-target-text');
+            const raffleConcludedBanner = document.getElementById('raffle-concluded-banner');
+            const raffleConcludedHeadline = document.getElementById('raffle-concluded-headline');
+            const raffleConcludedBody = document.getElementById('raffle-concluded-body');
+            const raffleConcludedSecondary = document.getElementById('raffle-concluded-secondary');
+            const drawingSoonOverlay = document.getElementById('drawingSoonOverlay');
+            const drawingSoonOverlayTitle = document.getElementById('drawingSoonOverlayTitle');
+            const drawingSoonOverlayMessage = document.getElementById('drawingSoonOverlayMessage');
             const wheelParticipantCountEl = document.getElementById('wheelParticipantCount');
             const wheelParticipantListEl = document.getElementById('wheelParticipantList');
             const wheelCanvas = document.getElementById('wheelCanvas');
             const wheelStatusText = document.getElementById('wheelStatusText');
             const wheelWinnerText = document.getElementById('wheelWinnerText');
             const wheelCtx = wheelCanvas ? wheelCanvas.getContext('2d') : null;
+
+            const concludedHideTargets = [
+                countdownContainer,
+                document.getElementById('liveDrawingSection'),
+                document.getElementById('main-container')
+            ];
+            const drawingDate = RAFFLE_CONCLUDED_DATE;
+            const drawingDateFormatter = new Intl.DateTimeFormat('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            });
+            let drawingHoldActive = RAFFLE_CONCLUDED;
 
             // --- Referral Logic Variables ---
             let referrerRefId = null;
@@ -406,6 +497,10 @@
             let pendingSpinData = null;
             let unsubscribeWheelParticipants = null;
             let unsubscribeWheelState = null;
+
+            function formatCurrency(amount) {
+                return amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+            }
 
             function drawWheel(rotation = wheelRotation) {
                 if (!wheelCtx || !wheelCanvas) {
@@ -653,10 +748,133 @@
                 });
             }
 
+            function getSalesClosedCopy() {
+                if (RAFFLE_CONCLUDED) {
+                    return {
+                        title: 'Raffle Concluded',
+                        message: `${RAFFLE_CONCLUSION_MESSAGE} ${RAFFLE_COMMUNICATION_NOTE}`
+                    };
+                }
+                return {
+                    title: 'Drawing Soon',
+                    message: 'Online sales are closed while we prepare for the drawing.'
+                };
+            }
+
+            function activateDrawingHold(customTitle, customMessage) {
+                drawingHoldActive = true;
+
+                if (drawingSoonOverlay) {
+                    if (RAFFLE_CONCLUDED) {
+                        drawingSoonOverlay.classList.add('hidden');
+                    } else {
+                        drawingSoonOverlay.classList.remove('hidden');
+                        if (drawingSoonOverlayTitle) {
+                            drawingSoonOverlayTitle.textContent = customTitle || 'Drawing Soon';
+                        }
+                        if (drawingSoonOverlayMessage) {
+                            drawingSoonOverlayMessage.textContent = customMessage || 'Online sales are now closed while we prepare for the Split the Pot drawing. Thank you for your support!';
+                        }
+                    }
+                }
+
+                setFormInputsDisabled(true);
+                setButtonsDisabled(true);
+            }
+
+            function deactivateDrawingHold() {
+                drawingHoldActive = false;
+                if (drawingSoonOverlay && !RAFFLE_CONCLUDED) {
+                    drawingSoonOverlay.classList.add('hidden');
+                }
+                setFormInputsDisabled(false);
+                setButtonsDisabled(false);
+            }
+
+            function ensureSalesHoldOverlay() {
+                const { title, message } = getSalesClosedCopy();
+                activateDrawingHold(title, message);
+            }
+
+            function showSalesClosedNotice() {
+                const { title, message } = getSalesClosedCopy();
+                activateDrawingHold(title, message);
+                showCustomPopup(title, message);
+            }
+
+            function applyRaffleConcludedState() {
+                if (!RAFFLE_CONCLUDED) {
+                    return;
+                }
+
+                if (raffleConcludedBanner) {
+                    raffleConcludedBanner.classList.remove('hidden');
+                }
+                if (raffleConcludedHeadline) {
+                    raffleConcludedHeadline.textContent = `Congratulations ${RAFFLE_WINNER_NAME}!`;
+                }
+                if (raffleConcludedBody) {
+                    raffleConcludedBody.textContent = RAFFLE_CONCLUSION_MESSAGE;
+                }
+                if (raffleConcludedSecondary) {
+                    raffleConcludedSecondary.textContent = RAFFLE_COMMUNICATION_NOTE;
+                }
+
+                concludedHideTargets.forEach(element => {
+                    if (element) {
+                        element.classList.add('hidden');
+                    }
+                });
+
+                if (wheelWinnerText) {
+                    wheelWinnerText.textContent = RAFFLE_WINNER_NAME;
+                }
+                if (wheelStatusText) {
+                    wheelStatusText.textContent = 'Celebrating our Split the Pot champion!';
+                }
+
+                const purchaseTitle = document.querySelector('#main-container h2');
+                if (purchaseTitle) {
+                    purchaseTitle.textContent = 'Online Sales Closed';
+                }
+
+                if (proceedToPaymentButton) {
+                    proceedToPaymentButton.disabled = true;
+                    proceedToPaymentButton.classList.add('opacity-50', 'cursor-not-allowed');
+                    const buttonText = proceedToPaymentButton.querySelector('.button-text');
+                    if (buttonText) {
+                        buttonText.textContent = 'Raffle Concluded';
+                    }
+                }
+
+                if (stripePayButton) {
+                    stripePayButton.disabled = true;
+                    stripePayButton.classList.add('opacity-50', 'cursor-not-allowed');
+                }
+
+                setFormInputsDisabled(true);
+                setButtonsDisabled(true);
+
+                if (countdownTargetText) {
+                    countdownTargetText.textContent = `The Split the Pot raffle concluded on ${drawingDateFormatter.format(RAFFLE_CONCLUDED_DATE)}.`;
+                }
+                if (countdownHours) countdownHours.textContent = '00';
+                if (countdownMinutes) countdownMinutes.textContent = '00';
+                if (countdownSeconds) countdownSeconds.textContent = '00';
+            }
+
+            function hasDrawingStarted() {
+                if (RAFFLE_CONCLUDED) {
+                    return true;
+                }
+                const now = new Date();
+                return drawingHoldActive || now >= drawingDate;
+            }
+
             function showGlobalLoadingOverlay(message = "Loading...", disableForm = false) {
                 globalSpinnerText.textContent = message;
                 globalLoadingOverlay.classList.remove('hidden');
-                if (disableForm) {
+                if (disableForm && !RAFFLE_CONCLUDED) {
                     setFormInputsDisabled(true);
                     setButtonsDisabled(true);
                 }
@@ -664,14 +882,21 @@
 
             function hideGlobalLoadingOverlay() {
                 globalLoadingOverlay.classList.add('hidden');
-                setFormInputsDisabled(false);
-                setButtonsDisabled(false);
+                if (!RAFFLE_CONCLUDED) {
+                    setFormInputsDisabled(false);
+                    setButtonsDisabled(false);
+                }
             }
-
-            const drawingDate = new Date('2024-10-28T15:10:00');
 
             function updateCountdownDisplay(targetDate) {
                 if (!countdownHours || !countdownMinutes || !countdownSeconds) {
+                    return false;
+                }
+
+                if (RAFFLE_CONCLUDED) {
+                    countdownHours.textContent = '00';
+                    countdownMinutes.textContent = '00';
+                    countdownSeconds.textContent = '00';
                     return false;
                 }
 
@@ -685,7 +910,7 @@
                     if (countdownTargetText) {
                         countdownTargetText.textContent = 'Drawing soon! Online sales are closed.';
                     }
-                    activateDrawingHold();
+                    ensureSalesHoldOverlay();
                     return false;
                 }
 
@@ -701,27 +926,28 @@
             }
 
             if (countdownTargetText) {
-                const formatter = new Intl.DateTimeFormat('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    hour12: true
-                });
-                countdownTargetText.textContent = `The drawing takes place on ${formatter.format(drawingDate)}.`;
+                const formattedDate = drawingDateFormatter.format(drawingDate);
+                countdownTargetText.textContent = RAFFLE_CONCLUDED
+                    ? `The Split the Pot raffle concluded on ${formattedDate}.`
+                    : `The drawing takes place on ${formattedDate}.`;
             }
 
-            const isCountingDown = updateCountdownDisplay(drawingDate);
-            if (hasDrawingStarted()) {
-                activateDrawingHold();
-            } else if (isCountingDown) {
-                const countdownInterval = setInterval(() => {
-                    const stillCounting = updateCountdownDisplay(drawingDate);
-                    if (!stillCounting) {
-                        clearInterval(countdownInterval);
-                    }
-                }, 1000);
+            applyRaffleConcludedState();
+
+            if (!RAFFLE_CONCLUDED) {
+                const isCountingDown = updateCountdownDisplay(drawingDate);
+                if (hasDrawingStarted()) {
+                    ensureSalesHoldOverlay();
+                } else if (isCountingDown) {
+                    const countdownInterval = setInterval(() => {
+                        const stillCounting = updateCountdownDisplay(drawingDate);
+                        if (!stillCounting) {
+                            clearInterval(countdownInterval);
+                        }
+                    }, 1000);
+                }
+            } else {
+                updateCountdownDisplay(drawingDate);
             }
 
             function calculateBaseCost(numTickets) {
@@ -807,8 +1033,7 @@
             // "Proceed to Payment" button click event for Stripe
             proceedToPaymentButton.addEventListener('click', async () => {
                 if (hasDrawingStarted()) {
-                    activateDrawingHold();
-                    showCustomPopup('Drawing Soon', 'Online sales are closed while we prepare for the drawing.');
+                    showSalesClosedNotice();
                     return;
                 }
 
@@ -881,8 +1106,7 @@
             stripePayButton.addEventListener('click', async (event) => {
                 event.preventDefault();
                 if (hasDrawingStarted()) {
-                    activateDrawingHold();
-                    showCustomPopup('Drawing Soon', 'Online sales are closed while we prepare for the drawing.');
+                    showSalesClosedNotice();
                     return;
                 }
                 showGlobalLoadingOverlay("Processing payment...", true);
@@ -924,11 +1148,11 @@
                             const totalAmount = data.totalAmount || 0;
                             ticketCounter.textContent = totalTickets.toLocaleString();
                             // Only half the total amount goes to the winner
-                            potCounter.textContent = `$${(totalAmount / 2).toFixed(2).toLocaleString()}`;
+                            potCounter.textContent = formatCurrency(totalAmount / 2);
                         } else {
                             console.warn("Counter document does not exist. Please create it at 'counters/raffle_totals'.");
                             ticketCounter.textContent = '0';
-                            potCounter.textContent = '$0.00';
+                            potCounter.textContent = formatCurrency(0);
                         }
                     }, (error) => {
                         console.error('Error listening to raffle totals:', error);

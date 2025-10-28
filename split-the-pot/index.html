@@ -80,6 +80,12 @@
         </div>
     </div>
 
+    <!-- Drawing Hold Overlay -->
+    <div id="drawingSoonOverlay" class="fixed inset-0 z-[120] bg-slate-950/90 backdrop-blur-sm flex flex-col items-center justify-center px-6 text-center hidden" aria-hidden="true">
+        <h2 class="bebas-neue text-5xl sm:text-6xl font-bold text-yellow-400 drop-shadow-lg">Drawing Soon</h2>
+        <p class="mt-4 text-lg sm:text-xl text-gray-200 max-w-xl">Online sales are now closed while we prepare for the Split the Pot drawing. Thank you for your support!</p>
+    </div>
+
     <!-- Updated Header for better mobile layout, now fixed -->
     <header class="bg-black/40 py-4 px-4 md:px-12 fixed w-full top-0 z-50 shadow-2xl backdrop-blur-sm">
         <nav class="container mx-auto flex justify-between items-center flex-wrap md:flex-nowrap">
@@ -144,7 +150,7 @@
                     </div>
                 </div>
                 <p id="countdown-target-text" class="text-sm sm:text-base text-gray-300">
-                    The drawing takes place on October 27 at 3:00 PM.
+                    The drawing takes place on October 28 at 3:10 PM.
                 </p>
             </div>
 
@@ -290,6 +296,7 @@
             const countdownMinutes = document.getElementById('countdown-minutes');
             const countdownSeconds = document.getElementById('countdown-seconds');
             const countdownTargetText = document.getElementById('countdown-target-text');
+            const drawingSoonOverlay = document.getElementById('drawingSoonOverlay');
 
             // --- Referral Logic Variables ---
             let referrerRefId = null;
@@ -344,10 +351,21 @@
             }
 
             function setFormInputsDisabled(disabled) {
-                formInputs.forEach(input => input.disabled = disabled);
-                quantityInput.disabled = disabled;
-                decreaseQuantityButton.disabled = disabled;
-                increaseQuantityButton.disabled = disabled;
+                const effectiveDisabled = disabled || drawingHoldActive;
+                formInputs.forEach(input => input.disabled = effectiveDisabled);
+                quantityInput.disabled = effectiveDisabled;
+                decreaseQuantityButton.disabled = effectiveDisabled;
+                increaseQuantityButton.disabled = effectiveDisabled;
+            }
+
+            function setButtonsDisabled(disabled) {
+                const effectiveDisabled = disabled || drawingHoldActive;
+                [proceedToPaymentButton, stripePayButton].forEach(button => {
+                    if (!button) return;
+                    button.disabled = effectiveDisabled;
+                    button.classList.toggle('opacity-50', effectiveDisabled);
+                    button.classList.toggle('cursor-not-allowed', effectiveDisabled);
+                });
             }
 
             function showGlobalLoadingOverlay(message = "Loading...", disableForm = false) {
@@ -355,24 +373,38 @@
                 globalLoadingOverlay.classList.remove('hidden');
                 if (disableForm) {
                     setFormInputsDisabled(true);
+                    setButtonsDisabled(true);
                 }
             }
 
             function hideGlobalLoadingOverlay() {
                 globalLoadingOverlay.classList.add('hidden');
                 setFormInputsDisabled(false);
+                setButtonsDisabled(false);
             }
 
-            function getNextDrawingDate() {
-                const now = new Date();
-                const target = new Date(now.getFullYear(), 9, 27, 15, 0, 0);
-                if (target.getTime() <= now.getTime()) {
-                    target.setFullYear(target.getFullYear() + 1);
+            function activateDrawingHold() {
+                if (drawingHoldActive) {
+                    return;
                 }
-                return target;
+                drawingHoldActive = true;
+                if (drawingSoonOverlay) {
+                    drawingSoonOverlay.classList.remove('hidden');
+                    drawingSoonOverlay.setAttribute('aria-hidden', 'false');
+                }
+                setFormInputsDisabled(true);
+                setButtonsDisabled(true);
+                if (countdownTargetText) {
+                    countdownTargetText.textContent = 'Drawing soon! Online sales are closed.';
+                }
             }
 
-            const drawingDate = getNextDrawingDate();
+            const drawingDate = new Date('2024-10-28T15:10:00');
+            let drawingHoldActive = false;
+
+            function hasDrawingStarted() {
+                return new Date().getTime() >= drawingDate.getTime();
+            }
 
             function updateCountdownDisplay(targetDate) {
                 if (!countdownHours || !countdownMinutes || !countdownSeconds) {
@@ -387,8 +419,9 @@
                     countdownMinutes.textContent = '00';
                     countdownSeconds.textContent = '00';
                     if (countdownTargetText) {
-                        countdownTargetText.textContent = 'The drawing is happening now!';
+                        countdownTargetText.textContent = 'Drawing soon! Online sales are closed.';
                     }
+                    activateDrawingHold();
                     return false;
                 }
 
@@ -416,7 +449,9 @@
             }
 
             const isCountingDown = updateCountdownDisplay(drawingDate);
-            if (isCountingDown) {
+            if (hasDrawingStarted()) {
+                activateDrawingHold();
+            } else if (isCountingDown) {
                 const countdownInterval = setInterval(() => {
                     const stillCounting = updateCountdownDisplay(drawingDate);
                     if (!stillCounting) {
@@ -507,6 +542,12 @@
             
             // "Proceed to Payment" button click event for Stripe
             proceedToPaymentButton.addEventListener('click', async () => {
+                if (hasDrawingStarted()) {
+                    activateDrawingHold();
+                    showCustomPopup('Drawing Soon', 'Online sales are closed while we prepare for the drawing.');
+                    return;
+                }
+
                 const name = nameInput.value.trim();
                 const email = emailInput.value.trim();
                 const phone = phoneInput.value.trim();
@@ -575,8 +616,13 @@
             // Stripe "Pay" button event listener
             stripePayButton.addEventListener('click', async (event) => {
                 event.preventDefault();
+                if (hasDrawingStarted()) {
+                    activateDrawingHold();
+                    showCustomPopup('Drawing Soon', 'Online sales are closed while we prepare for the drawing.');
+                    return;
+                }
                 showGlobalLoadingOverlay("Processing payment...", true);
-                
+
                 // Construct the return URL with user details and referral ID
                 const name = encodeURIComponent(nameInput.value.trim());
                 const tickets = quantityInput.value;

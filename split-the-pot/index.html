@@ -46,6 +46,30 @@
             -webkit-backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
+        /* Live drawing wheel styles */
+        #wheelCanvas {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .wheel-card {
+            background: rgba(15, 23, 42, 0.75);
+            border: 1px solid rgba(250, 204, 21, 0.12);
+        }
+
+        .wheel-participant-list {
+            max-height: 260px;
+            overflow-y: auto;
+        }
+
+        .wheel-participant-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .wheel-participant-list::-webkit-scrollbar-thumb {
+            background-color: rgba(148, 163, 184, 0.6);
+            border-radius: 9999px;
+        }
         /* Mobile-first adjustment for header navigation */
         @media (max-width: 767px) {
             #main-menu li {
@@ -127,6 +151,38 @@
                 </div>
             </div>
 
+            <!-- Live Drawing Section -->
+            <section id="liveDrawingSection" class="wheel-card rounded-2xl p-6 sm:p-8 mb-12 shadow-2xl">
+                <div class="flex flex-col lg:flex-row gap-8 items-center">
+                    <div class="flex-1 flex flex-col items-center text-center gap-4">
+                        <h2 class="bebas-neue text-3xl sm:text-4xl font-bold text-yellow-400 drop-shadow">Live Drawing Wheel</h2>
+                        <p class="text-gray-300 max-w-xl">Watch the Split the Pot drawing in real-time. As names are entered by the team, the wheel updates instantly for everyone watching.</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+                            <div class="bg-slate-800/60 rounded-xl p-4 border border-yellow-400/10">
+                                <p class="text-sm uppercase tracking-wide text-yellow-400 font-semibold">Total Participants</p>
+                                <p class="text-3xl bebas-neue text-white mt-2"><span id="wheelParticipantCount">0</span></p>
+                            </div>
+                            <div class="bg-slate-800/60 rounded-xl p-4 border border-yellow-400/10">
+                                <p class="text-sm uppercase tracking-wide text-yellow-400 font-semibold">Latest Winner</p>
+                                <p id="wheelWinnerText" class="text-xl bebas-neue text-white mt-2 break-words">TBD</p>
+                            </div>
+                        </div>
+                        <p id="wheelStatusText" class="text-sm text-gray-400 italic">Waiting for the live drawing to begin.</p>
+                    </div>
+                    <div class="flex-1 w-full flex flex-col lg:flex-row gap-6 items-center">
+                        <div class="flex-1 flex justify-center">
+                            <canvas id="wheelCanvas" width="420" height="420" class="max-w-[420px] w-full"></canvas>
+                        </div>
+                        <div class="flex-1 bg-slate-800/60 border border-yellow-400/10 rounded-xl p-4 w-full max-w-md">
+                            <h3 class="bebas-neue text-2xl text-white mb-3">Participants</h3>
+                            <div id="wheelParticipantList" class="wheel-participant-list space-y-2 text-left text-sm text-gray-200">
+                                <p class="text-gray-400">Names will appear here as they are added.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <div class="bg-slate-700/60 p-6 rounded-xl shadow-lg border border-yellow-400/20 mb-12">
                 <p class="text-sm uppercase tracking-wider text-yellow-400 font-semibold mb-4">Drawing Countdown</p>
                 <div class="grid grid-cols-3 gap-4 sm:gap-6 mb-4" aria-live="polite">
@@ -144,7 +200,7 @@
                     </div>
                 </div>
                 <p id="countdown-target-text" class="text-sm sm:text-base text-gray-300">
-                    The drawing takes place on October 27 at 3:00 PM.
+                    The drawing takes place on October 28 at 3:10 PM.
                 </p>
             </div>
 
@@ -290,6 +346,12 @@
             const countdownMinutes = document.getElementById('countdown-minutes');
             const countdownSeconds = document.getElementById('countdown-seconds');
             const countdownTargetText = document.getElementById('countdown-target-text');
+            const wheelParticipantCountEl = document.getElementById('wheelParticipantCount');
+            const wheelParticipantListEl = document.getElementById('wheelParticipantList');
+            const wheelCanvas = document.getElementById('wheelCanvas');
+            const wheelStatusText = document.getElementById('wheelStatusText');
+            const wheelWinnerText = document.getElementById('wheelWinnerText');
+            const wheelCtx = wheelCanvas ? wheelCanvas.getContext('2d') : null;
 
             // --- Referral Logic Variables ---
             let referrerRefId = null;
@@ -330,6 +392,228 @@
                 { count: 1,  cost: 12 },
             ];
 
+            // --- Live Wheel State ---
+            let wheelParticipants = [];
+            let wheelRotation = -Math.PI / 2;
+            let spinAnimationFrame = null;
+            let currentSpinId = null;
+            let pendingSpinData = null;
+            let unsubscribeWheelParticipants = null;
+            let unsubscribeWheelState = null;
+
+            function drawWheel(rotation = wheelRotation) {
+                if (!wheelCtx || !wheelCanvas) {
+                    return;
+                }
+
+                const total = wheelParticipants.length;
+                const { width, height } = wheelCanvas;
+                const centerX = width / 2;
+                const centerY = height / 2;
+                const radius = Math.min(width, height) / 2 - 16;
+
+                wheelCtx.clearRect(0, 0, width, height);
+
+                if (total === 0) {
+                    wheelCtx.save();
+                    wheelCtx.translate(centerX, centerY);
+                    wheelCtx.fillStyle = '#cbd5f5';
+                    wheelCtx.textAlign = 'center';
+                    wheelCtx.font = '600 20px "Inter", sans-serif';
+                    wheelCtx.fillText('Waiting for names...', 0, 8);
+                    wheelCtx.restore();
+                } else {
+                    const sliceAngle = (Math.PI * 2) / total;
+                    wheelCtx.save();
+                    wheelCtx.translate(centerX, centerY);
+                    wheelCtx.rotate(rotation);
+
+                    wheelParticipants.forEach((participant, index) => {
+                        const startAngle = index * sliceAngle;
+                        const endAngle = startAngle + sliceAngle;
+
+                        wheelCtx.beginPath();
+                        wheelCtx.moveTo(0, 0);
+                        wheelCtx.arc(0, 0, radius, startAngle, endAngle);
+                        wheelCtx.closePath();
+                        wheelCtx.fillStyle = index % 2 === 0 ? '#facc15' : '#1f2937';
+                        wheelCtx.fill();
+                        wheelCtx.strokeStyle = 'rgba(15, 23, 42, 0.85)';
+                        wheelCtx.lineWidth = 2;
+                        wheelCtx.stroke();
+
+                        const textAngle = startAngle + sliceAngle / 2;
+                        wheelCtx.save();
+                        wheelCtx.rotate(textAngle);
+                        wheelCtx.translate(radius - 40, 0);
+                        wheelCtx.rotate(-textAngle);
+                        wheelCtx.fillStyle = index % 2 === 0 ? '#0f172a' : '#e2e8f0';
+                        wheelCtx.font = '600 16px "Inter", sans-serif';
+                        wheelCtx.textAlign = 'right';
+                        wheelCtx.textBaseline = 'middle';
+                        const displayName = participant.name.length > 18 ? `${participant.name.slice(0, 17)}…` : participant.name;
+                        wheelCtx.fillText(displayName, 0, 0);
+                        wheelCtx.restore();
+                    });
+
+                    wheelCtx.beginPath();
+                    wheelCtx.arc(0, 0, 36, 0, Math.PI * 2);
+                    wheelCtx.fillStyle = '#0f172a';
+                    wheelCtx.fill();
+                    wheelCtx.beginPath();
+                    wheelCtx.arc(0, 0, 18, 0, Math.PI * 2);
+                    wheelCtx.fillStyle = '#facc15';
+                    wheelCtx.fill();
+
+                    wheelCtx.restore();
+                }
+
+                wheelCtx.beginPath();
+                wheelCtx.moveTo(centerX, 18);
+                wheelCtx.lineTo(centerX - 18, 60);
+                wheelCtx.lineTo(centerX + 18, 60);
+                wheelCtx.closePath();
+                wheelCtx.fillStyle = '#ef4444';
+                wheelCtx.fill();
+                wheelCtx.lineWidth = 2;
+                wheelCtx.strokeStyle = '#991b1b';
+                wheelCtx.stroke();
+            }
+
+            function alignWheelToWinner(winnerId) {
+                if (!winnerId || wheelParticipants.length === 0) {
+                    return;
+                }
+                const index = wheelParticipants.findIndex(entry => entry.id === winnerId);
+                if (index === -1) {
+                    return;
+                }
+                const sliceAngle = (Math.PI * 2) / wheelParticipants.length;
+                wheelRotation = (Math.PI / 2) - (index * sliceAngle + sliceAngle / 2);
+                drawWheel(wheelRotation);
+            }
+
+            function startSpinAnimation(winnerId, winnerName = 'Winner') {
+                if (spinAnimationFrame) {
+                    cancelAnimationFrame(spinAnimationFrame);
+                    spinAnimationFrame = null;
+                }
+                if (wheelParticipants.length === 0) {
+                    if (wheelStatusText) {
+                        wheelStatusText.textContent = 'Waiting for participants before spinning.';
+                    }
+                    return;
+                }
+                const winnerIndex = wheelParticipants.findIndex(entry => entry.id === winnerId);
+                if (winnerIndex === -1) {
+                    if (wheelStatusText) {
+                        wheelStatusText.textContent = 'Winner selected, awaiting participant list update...';
+                    }
+                    return;
+                }
+
+                const sliceAngle = (Math.PI * 2) / wheelParticipants.length;
+                const normalizedCurrent = ((wheelRotation % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+                const targetAngle = (Math.PI / 2) - (winnerIndex * sliceAngle + sliceAngle / 2);
+                let finalRotation = (Math.PI * 2 * 6) + targetAngle;
+                if (finalRotation <= normalizedCurrent) {
+                    finalRotation += Math.PI * 2;
+                }
+                const rotationDelta = finalRotation - normalizedCurrent;
+                const duration = 7000;
+                const startTime = performance.now();
+
+                function animate(now) {
+                    const elapsed = now - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    const eased = 1 - Math.pow(1 - progress, 3);
+                    wheelRotation = normalizedCurrent + rotationDelta * eased;
+                    drawWheel(wheelRotation);
+                    if (progress < 1) {
+                        if (wheelStatusText) {
+                            wheelStatusText.textContent = 'Spinning...';
+                        }
+                        spinAnimationFrame = requestAnimationFrame(animate);
+                    } else {
+                        spinAnimationFrame = null;
+                        if (wheelStatusText) {
+                            wheelStatusText.textContent = `Winner: ${winnerName}`;
+                        }
+                        if (wheelWinnerText) {
+                            wheelWinnerText.textContent = winnerName || 'Winner';
+                        }
+                        alignWheelToWinner(winnerId);
+                    }
+                }
+
+                if (wheelStatusText) {
+                    wheelStatusText.textContent = 'Spinning...';
+                }
+                spinAnimationFrame = requestAnimationFrame(animate);
+            }
+
+            function updateParticipantListDisplay() {
+                if (!wheelParticipantListEl) {
+                    return;
+                }
+
+                wheelParticipantListEl.innerHTML = '';
+                if (wheelParticipants.length === 0) {
+                    const emptyMessage = document.createElement('p');
+                    emptyMessage.className = 'text-gray-400';
+                    emptyMessage.textContent = 'Names will appear here as they are added.';
+                    wheelParticipantListEl.appendChild(emptyMessage);
+                    return;
+                }
+
+                const MAX_DISPLAY = 100;
+                wheelParticipants.slice(0, MAX_DISPLAY).forEach((participant, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'flex items-center justify-between bg-slate-900/40 rounded-lg px-3 py-2 border border-white/5';
+                    const nameSpan = document.createElement('span');
+                    nameSpan.className = 'font-medium text-white truncate pr-3';
+                    nameSpan.textContent = participant.name;
+                    const indexSpan = document.createElement('span');
+                    indexSpan.className = 'text-xs text-gray-400';
+                    indexSpan.textContent = `#${index + 1}`;
+                    item.appendChild(nameSpan);
+                    item.appendChild(indexSpan);
+                    wheelParticipantListEl.appendChild(item);
+                });
+
+                if (wheelParticipants.length > MAX_DISPLAY) {
+                    const more = document.createElement('p');
+                    more.className = 'text-xs text-gray-400 text-center pt-2';
+                    more.textContent = `...and ${wheelParticipants.length - MAX_DISPLAY} more participants.`;
+                    wheelParticipantListEl.appendChild(more);
+                }
+            }
+
+            function handleSpinData() {
+                if (!pendingSpinData || !pendingSpinData.spinId) {
+                    return;
+                }
+                if (wheelParticipants.length === 0) {
+                    return;
+                }
+                const { spinId, winnerId, winnerName } = pendingSpinData;
+                if (!winnerId) {
+                    return;
+                }
+                if (currentSpinId === spinId) {
+                    alignWheelToWinner(winnerId);
+                    if (wheelWinnerText && winnerName) {
+                        wheelWinnerText.textContent = winnerName;
+                    }
+                    if (wheelStatusText && winnerName) {
+                        wheelStatusText.textContent = `Winner: ${winnerName}`;
+                    }
+                    return;
+                }
+                currentSpinId = spinId;
+                startSpinAnimation(winnerId, winnerName);
+            }
+
             // --- Helper Functions ---
             function showCustomPopup(title, message) {
               popupTitle.textContent = title;
@@ -344,10 +628,23 @@
             }
 
             function setFormInputsDisabled(disabled) {
-                formInputs.forEach(input => input.disabled = disabled);
+                formInputs.forEach(input => {
+                    input.disabled = disabled;
+                    input.classList.toggle('opacity-50', disabled);
+                    input.classList.toggle('cursor-not-allowed', disabled);
+                });
                 quantityInput.disabled = disabled;
                 decreaseQuantityButton.disabled = disabled;
                 increaseQuantityButton.disabled = disabled;
+            }
+
+            function setButtonsDisabled(disabled) {
+                [proceedToPaymentButton, stripePayButton].forEach(button => {
+                    if (!button) return;
+                    button.disabled = disabled;
+                    button.classList.toggle('opacity-50', disabled);
+                    button.classList.toggle('cursor-not-allowed', disabled);
+                });
             }
 
             function showGlobalLoadingOverlay(message = "Loading...", disableForm = false) {
@@ -355,24 +652,17 @@
                 globalLoadingOverlay.classList.remove('hidden');
                 if (disableForm) {
                     setFormInputsDisabled(true);
+                    setButtonsDisabled(true);
                 }
             }
 
             function hideGlobalLoadingOverlay() {
                 globalLoadingOverlay.classList.add('hidden');
                 setFormInputsDisabled(false);
+                setButtonsDisabled(false);
             }
 
-            function getNextDrawingDate() {
-                const now = new Date();
-                const target = new Date(now.getFullYear(), 9, 27, 15, 0, 0);
-                if (target.getTime() <= now.getTime()) {
-                    target.setFullYear(target.getFullYear() + 1);
-                }
-                return target;
-            }
-
-            const drawingDate = getNextDrawingDate();
+            const drawingDate = new Date('2024-10-28T15:10:00');
 
             function updateCountdownDisplay(targetDate) {
                 if (!countdownHours || !countdownMinutes || !countdownSeconds) {
@@ -507,6 +797,12 @@
             
             // "Proceed to Payment" button click event for Stripe
             proceedToPaymentButton.addEventListener('click', async () => {
+                if (hasDrawingStarted()) {
+                    activateDrawingHold();
+                    showCustomPopup('Drawing Soon', 'Online sales are closed while we prepare for the drawing.');
+                    return;
+                }
+
                 const name = nameInput.value.trim();
                 const email = emailInput.value.trim();
                 const phone = phoneInput.value.trim();
@@ -575,8 +871,13 @@
             // Stripe "Pay" button event listener
             stripePayButton.addEventListener('click', async (event) => {
                 event.preventDefault();
+                if (hasDrawingStarted()) {
+                    activateDrawingHold();
+                    showCustomPopup('Drawing Soon', 'Online sales are closed while we prepare for the drawing.');
+                    return;
+                }
                 showGlobalLoadingOverlay("Processing payment...", true);
-                
+
                 // Construct the return URL with user details and referral ID
                 const name = encodeURIComponent(nameInput.value.trim());
                 const tickets = quantityInput.value;
@@ -624,6 +925,63 @@
                         console.error('Error listening to raffle totals:', error);
                         showCustomPopup('Database Error', 'Could not load current totals. Please refresh the page.');
                     });
+
+                    if (!unsubscribeWheelParticipants && db) {
+                        unsubscribeWheelParticipants = db.collection('wheel_participants')
+                            .orderBy('createdAt', 'asc')
+                            .onSnapshot((snapshot) => {
+                                wheelParticipants = snapshot.docs.map(doc => ({
+                                    id: doc.id,
+                                    name: (doc.data().name || 'Unknown').toString().trim() || 'Unnamed',
+                                }));
+                                if (wheelParticipantCountEl) {
+                                    wheelParticipantCountEl.textContent = wheelParticipants.length.toLocaleString();
+                                }
+                                updateParticipantListDisplay();
+                                drawWheel();
+                                handleSpinData();
+                                if (wheelParticipants.length === 0 && wheelStatusText) {
+                                    wheelStatusText.textContent = 'Waiting for the live drawing to begin.';
+                                }
+                            }, (error) => {
+                                console.error('Error listening to wheel participants:', error);
+                                if (wheelStatusText) {
+                                    wheelStatusText.textContent = 'Unable to load participants at this time.';
+                                }
+                            });
+                    }
+
+                    if (!unsubscribeWheelState && db) {
+                        unsubscribeWheelState = db.collection('wheel_state').doc('current')
+                            .onSnapshot((docSnap) => {
+                                if (!docSnap.exists) {
+                                    pendingSpinData = null;
+                                    currentSpinId = null;
+                                    if (wheelStatusText) {
+                                        wheelStatusText.textContent = 'Waiting for the live drawing to begin.';
+                                    }
+                                    return;
+                                }
+                                const data = docSnap.data();
+                                pendingSpinData = {
+                                    spinId: data.spinId || null,
+                                    winnerId: data.winnerId || null,
+                                    winnerName: data.winnerName || null,
+                                };
+                                if (data.winnerName && wheelWinnerText) {
+                                    wheelWinnerText.textContent = data.winnerName;
+                                }
+                                if (data.spinId && wheelStatusText) {
+                                    wheelStatusText.textContent = 'Spinning...';
+                                }
+                                handleSpinData();
+                            }, (error) => {
+                                console.error('Error listening to wheel state:', error);
+                                if (wheelStatusText) {
+                                    wheelStatusText.textContent = 'Unable to load drawing status.';
+                                }
+                            });
+                    }
                 } else {
                     console.log('No user signed in. Attempting anonymous sign-in...');
                     try {
@@ -636,6 +994,7 @@
             });
 
             // Initial calculation on page load
+            drawWheel();
             updateCalculatedTotal();
         });
     </script>

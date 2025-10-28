@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Wheel Admin | YDE Senior Fund</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            background-image: radial-gradient(circle at top, rgba(250,204,21,0.08), transparent 55%),
+                              radial-gradient(circle at bottom, rgba(56,189,248,0.05), transparent 45%),
+                              linear-gradient(160deg, #0b1120 0%, #111827 50%, #020617 100%);
+            color: #e2e8f0;
+        }
+        .admin-card {
+            background-color: rgba(15, 23, 42, 0.88);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            box-shadow: 0 20px 45px -20px rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(10px);
+        }
+        .modal-overlay {
+            background-color: rgba(15, 23, 42, 0.82);
+            backdrop-filter: blur(6px);
+        }
+        .table-scroll {
+            max-height: 360px;
+        }
+        .table-scroll::-webkit-scrollbar {
+            width: 8px;
+        }
+        .table-scroll::-webkit-scrollbar-thumb {
+            background-color: rgba(148, 163, 184, 0.35);
+            border-radius: 999px;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div id="globalLoadingOverlay" class="fixed inset-0 z-50 hidden modal-overlay flex flex-col items-center justify-center gap-4 text-center px-4">
+        <div class="w-14 h-14 border-4 border-t-4 border-yellow-400 border-opacity-30 rounded-full animate-spin"></div>
+        <p id="globalSpinnerText" class="text-lg font-semibold text-slate-100">Loading...</p>
+    </div>
+
+    <div id="customPopupOverlay" class="fixed inset-0 z-40 hidden modal-overlay flex items-center justify-center px-4">
+        <div class="admin-card w-full max-w-md rounded-2xl p-6 shadow-2xl transform transition-all duration-300 scale-95" id="customPopup">
+            <h2 id="popupTitle" class="text-2xl font-semibold text-yellow-300 mb-3"></h2>
+            <p id="popupMessage" class="text-slate-200 mb-6"></p>
+            <button id="popupCloseButton" class="w-full py-3 rounded-xl bg-yellow-400 text-slate-900 font-semibold hover:bg-yellow-300 transition-colors">OK</button>
+        </div>
+    </div>
+
+    <div id="loginModalOverlay" class="fixed inset-0 z-30 modal-overlay flex items-center justify-center px-4">
+        <div class="admin-card w-full max-w-sm rounded-2xl p-8">
+            <h1 class="text-3xl font-bold text-yellow-300 mb-6 text-center">Admin Login</h1>
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label for="loginEmail" class="block text-sm font-medium text-slate-300 mb-1">Email</label>
+                    <input id="loginEmail" type="email" class="w-full px-4 py-3 rounded-xl bg-slate-900/60 border border-slate-600 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/40 outline-none" placeholder="you@example.com" required autocomplete="email">
+                </div>
+                <div>
+                    <label for="loginPassword" class="block text-sm font-medium text-slate-300 mb-1">Password</label>
+                    <input id="loginPassword" type="password" class="w-full px-4 py-3 rounded-xl bg-slate-900/60 border border-slate-600 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/40 outline-none" placeholder="••••••••" required autocomplete="current-password">
+                </div>
+                <button id="loginButton" type="submit" class="w-full py-3 rounded-xl bg-yellow-400 text-slate-900 font-semibold hover:bg-yellow-300 transition-colors">Sign In</button>
+            </form>
+            <p id="loginError" class="text-sm text-red-400 mt-4 hidden text-center"></p>
+        </div>
+    </div>
+
+    <main id="wheelAdminPanel" class="hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-10">
+            <div>
+                <p class="uppercase tracking-[0.35em] text-xs text-slate-400">Split the Pot</p>
+                <h1 class="text-4xl font-bold text-yellow-300">Live Drawing Control Center</h1>
+                <p class="text-sm text-slate-300 mt-2 max-w-2xl">Manage the real-time wheel that the public sees on the Split the Pot page. Add participants, remove mistakes, and trigger spins so everyone watches the same winner reveal.</p>
+            </div>
+            <button id="logoutButton" class="self-start sm:self-center px-4 py-2 rounded-xl border border-slate-600 text-sm font-medium text-slate-200 hover:bg-slate-800 transition-colors">Sign Out</button>
+        </header>
+
+        <section class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+            <div class="admin-card rounded-2xl p-6">
+                <p class="text-sm uppercase tracking-wide text-slate-400 font-semibold">Total Participants</p>
+                <p id="participantCount" class="text-4xl font-bold text-white mt-3">0</p>
+                <p class="text-xs text-slate-400 mt-2">Updates instantly across every screen.</p>
+            </div>
+            <div class="admin-card rounded-2xl p-6">
+                <p class="text-sm uppercase tracking-wide text-slate-400 font-semibold">Latest Winner</p>
+                <p id="lastWinner" class="text-2xl font-semibold text-yellow-200 mt-3 break-words">—</p>
+                <p id="lastSpinTime" class="text-xs text-slate-400 mt-2">Last spin: —</p>
+            </div>
+            <div class="admin-card rounded-2xl p-6 flex flex-col justify-between">
+                <div>
+                    <p class="text-sm uppercase tracking-wide text-slate-400 font-semibold">Status</p>
+                    <p id="adminStatusText" class="text-base text-slate-200 mt-3">Waiting for updates…</p>
+                </div>
+                <div class="mt-6 grid grid-cols-1 gap-3">
+                    <button id="spinWheelButton" class="py-3 rounded-xl bg-yellow-400 text-slate-900 font-semibold hover:bg-yellow-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Spin Wheel for Everyone</button>
+                    <button id="clearParticipantsButton" class="py-3 rounded-xl border border-red-400/60 text-red-300 font-semibold hover:bg-red-500/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">Clear All Participants</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="admin-card rounded-2xl p-6 lg:col-span-1">
+                <h2 class="text-2xl font-semibold text-yellow-200 mb-4">Add Participant(s)</h2>
+                <form id="addParticipantForm" class="space-y-4">
+                    <div>
+                        <label for="participantName" class="block text-sm font-medium text-slate-300 mb-2">Full Name(s)</label>
+                        <textarea id="participantName" class="w-full px-4 py-3 rounded-xl bg-slate-900/60 border border-slate-600 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/40 outline-none" placeholder="Jane Doe\nJohn Smith" rows="3" required autocomplete="off"></textarea>
+                    </div>
+                    <button id="addParticipantButton" type="submit" class="w-full py-3 rounded-xl bg-emerald-400 text-slate-900 font-semibold hover:bg-emerald-300 transition-colors">Add to Wheel</button>
+                </form>
+                <p class="text-xs text-slate-400 mt-4">Enter one name per line or separate names with commas. Everyone appears on the public wheel immediately after saving.</p>
+            </div>
+
+            <div class="admin-card rounded-2xl p-6 lg:col-span-2">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+                    <h2 class="text-2xl font-semibold text-yellow-200">Current Participant List</h2>
+                    <div class="text-xs text-slate-400">Newest entries are added to the bottom. The wheel follows this order.</div>
+                </div>
+                <div class="table-scroll overflow-y-auto border border-slate-700/60 rounded-2xl">
+                    <table class="min-w-full text-sm">
+                        <thead class="bg-slate-900/70 text-slate-400 uppercase text-xs tracking-wide">
+                            <tr>
+                                <th class="text-left px-4 py-3">#</th>
+                                <th class="text-left px-4 py-3">Name</th>
+                                <th class="text-left px-4 py-3">Added</th>
+                                <th class="text-right px-4 py-3">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="participantTableBody" class="divide-y divide-slate-800/80">
+                            <tr>
+                                <td colspan="4" class="px-4 py-6 text-center text-slate-400">No participants yet. Add someone to get started.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAT539nr_s2OxHPTAmkxwMpaWt-FiDTgQs",
+            authDomain: "yderaffle.firebaseapp.com",
+            projectId: "yderaffle",
+            storageBucket: "yderaffle.firebasestorage.app",
+            messagingSenderId: "967768309102",
+            appId: "1:967768309102:web:c89d61a747e8cb941f557f"
+        };
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        const participantsCollection = db.collection('wheel_participants');
+        const wheelStateDoc = db.collection('wheel_state').doc('current');
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const globalOverlay = document.getElementById('globalLoadingOverlay');
+            const globalSpinnerText = document.getElementById('globalSpinnerText');
+            const popupOverlay = document.getElementById('customPopupOverlay');
+            const popupCard = document.getElementById('customPopup');
+            const popupTitle = document.getElementById('popupTitle');
+            const popupMessage = document.getElementById('popupMessage');
+            const popupCloseButton = document.getElementById('popupCloseButton');
+
+            const loginModal = document.getElementById('loginModalOverlay');
+            const loginForm = document.getElementById('loginForm');
+            const loginEmail = document.getElementById('loginEmail');
+            const loginPassword = document.getElementById('loginPassword');
+            const loginError = document.getElementById('loginError');
+            const loginButton = document.getElementById('loginButton');
+
+            const adminPanel = document.getElementById('wheelAdminPanel');
+            const logoutButton = document.getElementById('logoutButton');
+            const addParticipantForm = document.getElementById('addParticipantForm');
+            const participantNameInput = document.getElementById('participantName');
+            const participantCountEl = document.getElementById('participantCount');
+            const participantTableBody = document.getElementById('participantTableBody');
+            const adminStatusText = document.getElementById('adminStatusText');
+            const spinWheelButton = document.getElementById('spinWheelButton');
+            const clearParticipantsButton = document.getElementById('clearParticipantsButton');
+            const addParticipantButton = document.getElementById('addParticipantButton');
+            const lastWinnerEl = document.getElementById('lastWinner');
+            const lastSpinTimeEl = document.getElementById('lastSpinTime');
+
+            let participantsUnsubscribe = null;
+            let stateUnsubscribe = null;
+            let participantCache = [];
+
+            function setGlobalLoading(visible, message = 'Loading...') {
+                if (visible) {
+                    globalSpinnerText.textContent = message;
+                    globalOverlay.classList.remove('hidden');
+                } else {
+                    globalOverlay.classList.add('hidden');
+                }
+            }
+
+            function showPopup(title, message) {
+                popupTitle.textContent = title;
+                popupMessage.textContent = message;
+                popupOverlay.classList.remove('hidden');
+                requestAnimationFrame(() => popupCard.classList.add('scale-100'));
+            }
+
+            function hidePopup() {
+                popupCard.classList.remove('scale-100');
+                setTimeout(() => popupOverlay.classList.add('hidden'), 200);
+            }
+
+            popupCloseButton.addEventListener('click', hidePopup);
+
+            function updateButtonStates() {
+                const hasParticipants = participantCache.length > 0;
+                spinWheelButton.disabled = !hasParticipants;
+                clearParticipantsButton.disabled = !hasParticipants;
+            }
+
+            function renderParticipants() {
+                if (participantCache.length === 0) {
+                    participantTableBody.innerHTML = '<tr><td colspan="4" class="px-4 py-6 text-center text-slate-400">No participants yet. Add someone to get started.</td></tr>';
+                    return;
+                }
+
+                const rows = participantCache.map((participant, index) => {
+                    const createdAt = participant.createdAt ? participant.createdAt.toLocaleString() : 'Syncing...';
+                    return `
+                        <tr class="hover:bg-slate-900/60 transition-colors">
+                            <td class="px-4 py-3 text-slate-400">${index + 1}</td>
+                            <td class="px-4 py-3 font-medium text-slate-100">${participant.name}</td>
+                            <td class="px-4 py-3 text-slate-400">${createdAt}</td>
+                            <td class="px-4 py-3 text-right">
+                                <button class="text-sm text-red-300 hover:text-red-200 font-semibold" data-remove-id="${participant.id}">Remove</button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+
+                participantTableBody.innerHTML = rows;
+            }
+
+            function subscribeToParticipants() {
+                if (participantsUnsubscribe) {
+                    return;
+                }
+                participantsUnsubscribe = participantsCollection.orderBy('createdAt', 'asc').onSnapshot((snapshot) => {
+                    participantCache = snapshot.docs.map((doc) => {
+                        const data = doc.data();
+                        return {
+                            id: doc.id,
+                            name: (data.name || 'Unnamed').toString().trim() || 'Unnamed',
+                            createdAt: data.createdAt && data.createdAt.toDate ? data.createdAt.toDate() : null,
+                        };
+                    });
+                    participantCountEl.textContent = participantCache.length.toLocaleString();
+                    renderParticipants();
+                    updateButtonStates();
+                    adminStatusText.textContent = participantCache.length ? 'Ready to spin whenever you are.' : 'Waiting for participants to be added.';
+                }, (error) => {
+                    console.error('Failed to listen to participants', error);
+                    adminStatusText.textContent = 'Unable to load participants. Please refresh the page.';
+                });
+            }
+
+            function subscribeToState() {
+                if (stateUnsubscribe) {
+                    return;
+                }
+                stateUnsubscribe = wheelStateDoc.onSnapshot((docSnap) => {
+                    if (!docSnap.exists) {
+                        lastWinnerEl.textContent = '—';
+                        lastSpinTimeEl.textContent = 'Last spin: —';
+                        return;
+                    }
+                    const data = docSnap.data();
+                    lastWinnerEl.textContent = data.winnerName || '—';
+                    if (data.triggeredAt && data.triggeredAt.toDate) {
+                        lastSpinTimeEl.textContent = `Last spin: ${data.triggeredAt.toDate().toLocaleString()}`;
+                    } else {
+                        lastSpinTimeEl.textContent = 'Last spin: —';
+                    }
+                    if (data.spinId && data.winnerName) {
+                        adminStatusText.textContent = `Most recent spin winner: ${data.winnerName}`;
+                    }
+                }, (error) => {
+                    console.error('Failed to listen to wheel state', error);
+                    adminStatusText.textContent = 'Unable to load wheel status.';
+                });
+            }
+
+            async function addParticipant(rawInput) {
+                const names = rawInput
+                    .split(/[,\n]/)
+                    .map((value) => value.trim())
+                    .filter((value) => value.length > 0);
+
+                if (!names.length) {
+                    showPopup('Missing Name', 'Please enter at least one name before adding participants.');
+                    return;
+                }
+
+                try {
+                    addParticipantButton.disabled = true;
+                    addParticipantButton.textContent = 'Saving...';
+
+                    await Promise.all(
+                        names.map((name) =>
+                            participantsCollection.add({
+                                name,
+                                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            })
+                        )
+                    );
+
+                    participantNameInput.value = '';
+                    adminStatusText.textContent =
+                        names.length === 1
+                            ? `Added ${names[0]} to the wheel.`
+                            : `Added ${names.length} participants to the wheel.`;
+                } catch (error) {
+                    console.error('Failed to add participant', error);
+                    showPopup('Save Failed', 'Could not add those participant names. Please try again.');
+                } finally {
+                    addParticipantButton.disabled = false;
+                    addParticipantButton.textContent = 'Add to Wheel';
+                }
+            }
+
+            async function removeParticipant(id) {
+                if (!id) return;
+                try {
+                    await participantsCollection.doc(id).delete();
+                    adminStatusText.textContent = 'Participant removed.';
+                } catch (error) {
+                    console.error('Failed to remove participant', error);
+                    showPopup('Delete Failed', 'Could not remove that participant. Please try again.');
+                }
+            }
+
+            async function clearParticipants() {
+                if (!participantCache.length) {
+                    return;
+                }
+                const confirmClear = confirm('Remove all participants from the wheel? This cannot be undone.');
+                if (!confirmClear) {
+                    return;
+                }
+                setGlobalLoading(true, 'Removing everyone from the wheel...');
+                try {
+                    const snapshot = await participantsCollection.get();
+                    const deletions = snapshot.docs.map((doc) => doc.ref.delete());
+                    await Promise.all(deletions);
+                    adminStatusText.textContent = 'All participants removed.';
+                } catch (error) {
+                    console.error('Failed to clear participants', error);
+                    showPopup('Clear Failed', 'We could not remove everyone. Please try again.');
+                } finally {
+                    setGlobalLoading(false);
+                }
+            }
+
+            async function triggerSpin() {
+                if (!participantCache.length) {
+                    showPopup('No Participants', 'Add at least one name before spinning the wheel.');
+                    return;
+                }
+                try {
+                    spinWheelButton.disabled = true;
+                    spinWheelButton.textContent = 'Spinning...';
+                    adminStatusText.textContent = 'Spinning wheel for everyone...';
+                    const randomIndex = Math.floor(Math.random() * participantCache.length);
+                    const winner = participantCache[randomIndex];
+                    const spinId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+                    await wheelStateDoc.set({
+                        spinId,
+                        winnerId: winner.id,
+                        winnerName: winner.name,
+                        participantCount: participantCache.length,
+                        triggeredAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    }, { merge: true });
+                    adminStatusText.textContent = `Spin triggered! Winner: ${winner.name}`;
+                } catch (error) {
+                    console.error('Failed to spin wheel', error);
+                    showPopup('Spin Failed', 'We were unable to trigger the wheel. Please try again.');
+                } finally {
+                    spinWheelButton.disabled = participantCache.length === 0;
+                    spinWheelButton.textContent = 'Spin Wheel for Everyone';
+                }
+            }
+
+            loginForm.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                loginError.classList.add('hidden');
+                loginButton.disabled = true;
+                loginButton.textContent = 'Signing in...';
+                try {
+                    await auth.signInWithEmailAndPassword(loginEmail.value.trim(), loginPassword.value);
+                } catch (error) {
+                    console.error('Login failed', error);
+                    loginError.textContent = error.message || 'Unable to sign in with those credentials.';
+                    loginError.classList.remove('hidden');
+                } finally {
+                    loginButton.disabled = false;
+                    loginButton.textContent = 'Sign In';
+                }
+            });
+
+            logoutButton.addEventListener('click', async () => {
+                await auth.signOut();
+            });
+
+            addParticipantForm.addEventListener('submit', (event) => {
+                event.preventDefault();
+                addParticipant(participantNameInput.value);
+            });
+
+            participantTableBody.addEventListener('click', (event) => {
+                const target = event.target;
+                if (target && target.dataset.removeId) {
+                    removeParticipant(target.dataset.removeId);
+                }
+            });
+
+            clearParticipantsButton.addEventListener('click', clearParticipants);
+            spinWheelButton.addEventListener('click', triggerSpin);
+
+            auth.onAuthStateChanged((user) => {
+                if (user) {
+                    loginModal.classList.add('hidden');
+                    adminPanel.classList.remove('hidden');
+                    setGlobalLoading(false);
+                    subscribeToParticipants();
+                    subscribeToState();
+                } else {
+                    if (participantsUnsubscribe) {
+                        participantsUnsubscribe();
+                        participantsUnsubscribe = null;
+                    }
+                    if (stateUnsubscribe) {
+                        stateUnsubscribe();
+                        stateUnsubscribe = null;
+                    }
+                    participantCache = [];
+                    renderParticipants();
+                    updateButtonStates();
+                    participantCountEl.textContent = '0';
+                    lastWinnerEl.textContent = '—';
+                    lastSpinTimeEl.textContent = 'Last spin: —';
+                    adminStatusText.textContent = 'Please sign in to manage the live wheel.';
+                    loginModal.classList.remove('hidden');
+                    adminPanel.classList.add('hidden');
+                    setGlobalLoading(false);
+                }
+            });
+
+            setGlobalLoading(true, 'Checking permissions...');
+        });
+    </script>
+</body>
+</html>

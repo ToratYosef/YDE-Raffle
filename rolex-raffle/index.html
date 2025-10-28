@@ -70,42 +70,6 @@
             position: relative;
         }
 
-        /* --- Scoreboard Styles (4-Digit) --- */
-        .digit-box {
-            width: 50px; 
-            height: 70px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
-            background-color: #1e293b; 
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            position: relative; 
-            border: 2px solid #fde047; 
-        }
-        @media (min-width: 768px) {
-            .digit-box {
-                width: 70px; 
-                height: 100px;
-            }
-        }
-        
-        .digit-text {
-            color: #fde047; 
-            font-size: 3.5rem; 
-            line-height: 1; 
-            font-family: 'Bebas Neue', sans-serif;
-            text-align: center;
-            /* Adjust vertical alignment slightly */
-            transform: translateY(10%); 
-        }
-        @media (min-width: 768px) {
-            .digit-text {
-                font-size: 5rem;
-            }
-        }
-
         /* Checkbox Styling */
         #cover-fee-checkbox {
             appearance: none;
@@ -332,18 +296,6 @@
                 </div>
                 <!-- End Payment Form Section -->
 
-                <!-- Live Counter (NEW LOCATION: bottom of the glass panel) -->
-                <div class="pt-12">
-                    <h2 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4" id="ticketsSoldTitle">TICKETS SOLD: 0</h2>
-                    <!-- Scoreboard Container (4 Digits) -->
-                    <div id="ticketsSoldDisplay" class="flex justify-center space-x-2 md:space-x-3 lg:space-x-4">
-                        <div id="digit-thousands" class="digit-box"><span class="digit-text">0</span></div>
-                        <div id="digit-hundreds" class="digit-box"><span class="digit-text">0</span></div>
-                        <div id="digit-tens" class="digit-box"><span class="digit-text">0</span></div>
-                        <div id="digit-ones" class="digit-box"><span class="digit-text">0</span></div>
-                    </div>
-                </div>
-                <!-- End Live Counter -->
             </div>
         </section>
     </main>
@@ -389,7 +341,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, onSnapshot, collection, query, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
         // --- Firebase Initialization (Using Placeholder/Hardcoded Values) ---
@@ -484,20 +436,13 @@
             const ticketQuantityInput = document.getElementById('ticket-quantity');
             const totalAmountDisplay = document.getElementById('total-amount-display');
 
-            const ticketsSoldTitle = document.getElementById('ticketsSoldTitle');
             const raffleStripePaymentElement = document.getElementById('raffle-stripe-payment-element');
             const rafflePaymentElementContainer = document.getElementById('raffle-payment-element-container');
-            
+
             // FORM ELEMENTS
             const decrementTicketButton = document.getElementById('decrement-ticket');
             const incrementTicketButton = document.getElementById('increment-ticket');
             const coverFeeCheckbox = document.getElementById('cover-fee-checkbox');
-
-            // Flip Clock Digit IDs
-            const digitThousandsId = 'digit-thousands';
-            const digitHundredsId = 'digit-hundreds';
-            const digitTensId = 'digit-tens';
-            const digitOnesId = 'digit-ones';
 
             // Common UI Elements
             const formInputs = document.querySelectorAll('#initial-form input:not([type="checkbox"])');
@@ -514,9 +459,8 @@
             // --- Global State & Constants ---
             const TICKET_PRICE = 150;
             const FEE_PERCENTAGE = 0.029;
-            const FEE_FLAT = 0.30; 
+            const FEE_FLAT = 0.30;
             const MIN_TICKETS = 1;
-            const DISPLAY_MAX_SCORE = 9999; 
             let elements;
             let currentTicketQuantity = MIN_TICKETS;
             let currentTotalAmount = TICKET_PRICE;
@@ -624,25 +568,6 @@
                 // Disable button if quantity is at minimum
                 decrementTicketButton.disabled = quantity <= MIN_TICKETS;
             }
-
-            // --- SCOREBOARD LOGIC ---
-            function updateScoreboardDisplay(ticketsSold) {
-                const displayCount = Math.min(DISPLAY_MAX_SCORE, ticketsSold);
-                const countString = displayCount.toString().padStart(4, '0');
-                const digits = countString.split('');
-
-                ticketsSoldTitle.textContent = `TICKETS SOLD: ${ticketsSold.toLocaleString()}`;
-
-                document.getElementById(digitThousandsId).innerHTML = `<span class="digit-text">${digits[0]}</span>`;
-                document.getElementById(digitHundredsId).innerHTML = `<span class="digit-text">${digits[1]}</span>`;
-                document.getElementById(digitTensId).innerHTML = `<span class="digit-text">${digits[2]}</span>`;
-                document.getElementById(digitOnesId).innerHTML = `<span class="digit-text">${digits[3]}</span>`;
-            }
-            
-            function initializeScoreboard() {
-                updateScoreboardDisplay(0);
-            }
-            // --- END SCOREBOARD LOGIC ---
 
             // Simple client-side validation for the initial form
             function validateInitialForm() {
@@ -769,29 +694,10 @@
                 }
             });
 
-            // --- Firebase Authentication and Real-time Listener (FIXED TO USE AGGREGATE DOCUMENT) ---
+            // --- Firebase Authentication ---
             onAuthStateChanged(auth, async (user) => {
-                if (user) {
-                    // Reading the aggregate total from the document provided by the user: /counters/rolex_totals
-                    const counterDocRef = doc(db, 'counters', 'rolex_totals');
-                    
-                    onSnapshot(counterDocRef, (docSnap) => { 
-                        let totalTicketsSold = 0;
-                        if (docSnap.exists()) {
-                             const data = docSnap.data();
-                             // Assuming the aggregate document holds the total count in a field named 'totalTicketsSold'
-                             totalTicketsSold = data.totalTicketsSold || 0; 
-                             
-                             // If the aggregate field is named 'totalTickets' (a common convention), use that instead:
-                             // totalTicketsSold = data.totalTickets || 0; 
-                        }
-
-                        updateScoreboardDisplay(totalTicketsSold);
-
-                    }, (error) => { console.error("Error listening to total tickets:", error); });
-                } else {
+                if (!user) {
                     try {
-                        // Sign in anonymously if no user is signed in
                         await signInAnonymously(auth);
                     } catch (error) {
                         console.error('Anonymous sign-in failed:', error);
@@ -799,9 +705,8 @@
                     }
                 }
             });
-            
-            // Initialize the scoreboard and calculation on load
-            initializeScoreboard();
+
+            // Initialize calculation on load
             calculateTotal();
         });
     </script>

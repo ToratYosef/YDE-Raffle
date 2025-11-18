@@ -17,7 +17,7 @@
     <meta keywords="YDE, Senior Fund, Admin, Dashboard, Raffle, Donations, Management">
     <link rel="icon" type="image/x-icon" href="/favicon/favicon.jpeg">
     <title>YDE Senior Fund Admin Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/assets/css/tailwind-local.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     
     <style>
@@ -2474,14 +2474,16 @@
             const name = document.getElementById('manual-name').value.trim();
             const email = document.getElementById('manual-email').value.trim();
             const phone = document.getElementById('manual-phone').value.trim();
-            const ticketsBought = document.getElementById('manual-tickets').value.trim();
-            const amount = document.getElementById('manual-amount').value.trim();
+            const ticketsBoughtInput = document.getElementById('manual-tickets').value.trim();
+            const amountInput = document.getElementById('manual-amount').value.trim();
             const refId = document.getElementById('manual-refId').value.trim();
             const entryType = 'rolex_raffle';
 
+            const ticketsBought = parseInt(ticketsBoughtInput, 10);
+            const amount = parseFloat(amountInput);
 
-            if (!name || !ticketsBought || !amount || !entryType) {
-                window.showCustomPopup('Missing Fields', 'Name, Tickets Bought, Amount Paid, and Sale Type are required.');
+            if (!name || Number.isNaN(ticketsBought) || Number.isNaN(amount) || ticketsBought <= 0 || amount <= 0) {
+                window.showCustomPopup('Missing Fields', 'Name, Tickets Bought, and Amount Paid are required.');
                 return;
             }
 
@@ -2491,8 +2493,13 @@
             try {
                 const addManualSaleCallable = httpsCallable(functions, 'addManualSale');
                 const response = await addManualSaleCallable({
-                    name, email: email || null, phone: phone || null,
-                    ticketsBought, amount, refId: refId || null, entryType
+                    name,
+                    email: email || null,
+                    phone: phone || null,
+                    ticketsBought,
+                    amount,
+                    refId: refId || null,
+                    entryType
                 });
 
                 window.showCustomPopup('Success', response.data.message);

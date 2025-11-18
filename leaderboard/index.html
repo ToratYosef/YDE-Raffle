@@ -18,7 +18,7 @@
     <link rel="icon" type="image/png" href="/favicon/favicon.jpeg">
     <title>YDE Fundraising Leaderboard</title>
     <!-- Load Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/assets/css/tailwind-local.css">
     <!-- Load Lucide Icons (for arrows) -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- Google Fonts -->
@@ -26,28 +26,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     
-    <!-- Configure Tailwind -->
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'primary-dark': '#0f172a', // slate-950
-                        'accent-yellow': '#facc15', // yellow-400
-                        'card-dark': '#1f2937', // gray-800 (used for list items)
-                        'secondary-green': '#10b981', // Emerald Green
-                        'danger-red': '#ef4444', // Red
-                        'podium-silver': '#9ca3af',
-                        'podium-bronze': '#b45309',
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                        title: ['Bebas Neue', 'sans-serif'],
-                    },
-                }
-            }
-        }
-    </script>
     <style>
         /* Base Styling */
         body {

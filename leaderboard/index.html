@@ -18,7 +18,7 @@
     <link rel="icon" type="image/png" href="/favicon/favicon.jpeg">
     <title>YDE Fundraising Leaderboard</title>
     <!-- Load Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/assets/css/tailwind-local.css">
     <!-- Load Lucide Icons (for arrows) -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- Google Fonts -->
@@ -26,28 +26,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     
-    <!-- Configure Tailwind -->
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'primary-dark': '#0f172a', // slate-950
-                        'accent-yellow': '#facc15', // yellow-400
-                        'card-dark': '#1f2937', // gray-800 (used for list items)
-                        'secondary-green': '#10b981', // Emerald Green
-                        'danger-red': '#ef4444', // Red
-                        'podium-silver': '#9ca3af',
-                        'podium-bronze': '#b45309',
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                        title: ['Bebas Neue', 'sans-serif'],
-                    },
-                }
-            }
-        }
-    </script>
     <style>
         /* Base Styling */
         body {
@@ -203,13 +181,13 @@
                         Raised
                         <span class="sort-icon"></span>
                     </div>
-                    <!-- Split Tickets -->
+                    <!-- Raffle Tickets -->
                     <div 
                         class="flex items-center justify-end cursor-pointer hover:text-white transition sortable-header" 
                         data-sort-key="splitTickets" 
                         onclick="handleSort('splitTickets')"
                     >
-                        Split Tickets
+                        Raffle Tickets
                         <span class="sort-icon"></span>
                     </div>
                     <!-- Rolex Tickets -->
@@ -418,10 +396,10 @@
             totalRevenue = totalSplitRevenue + totalSpinRevenue + totalDonationRevenue;
 
             // 2. Calculate Senior Fund Contribution (Kept for internal use if needed)
-            const splitFund = totalSplitRevenue * 0.5;
+            const legacyRaffleFund = totalSplitRevenue * 0.5;
             const spinFund = totalSpinRevenue * 1.0;
             const donationFund = totalDonationRevenue * 1.0;
-            totalSeniorFund = splitFund + spinFund + donationFund;
+            totalSeniorFund = legacyRaffleFund + spinFund + donationFund;
 
             // Update DOM (Only totalReferrers remains)
             totalReferrersEl.textContent = totalReferrers;
@@ -468,7 +446,7 @@
             }, (error) => { console.error("Rolex Tickets Snapshot Error:", error); });
 
 
-            // 3. Split Pot Tickets: /splitThePotTickets/
+            // 3. Legacy Raffle Tickets: /splitThePotTickets/
             const qSplit = collection(dbInstance, 'splitThePotTickets');
             onSnapshot(qSplit, (snapshot) => {
                 let sum = 0;
@@ -478,7 +456,7 @@
                 });
                 totalSplitRevenue = sum;
                 calculateAndRenderRevenue();
-            }, (error) => { console.error("Split Pot Tickets Snapshot Error:", error); });
+            }, (error) => { console.error("Legacy raffle ticket snapshot error:", error); });
         }
 
 
@@ -528,7 +506,7 @@
                         name: data.name || 'Unknown Referrer',
                         refId: data.refId || 'N/A', 
                         totalAmount: parseFloat(data.totalAmount) || 0,
-                        // totalTickets is Split The Pot tickets
+                        // totalTickets reflects legacy raffle tickets
                         splitTickets: parseInt(data.totalTickets) || 0,
                         // rolexTicketsTotal is Rolex Raffle tickets
                         spinTickets: parseInt(data.rolexTicketsTotal) || 0, 
@@ -847,10 +825,10 @@
                                 <span class="text-xs text-gray-400">Raised</span>
                             </div>
 
-                            <!-- Split Tickets -->
+                            <!-- Raffle Tickets -->
                             <div class="flex flex-col items-end">
                                 <span class="font-bold text-lg text-white">${item.splitTickets}</span>
-                                <span class="text-xs text-gray-400 whitespace-nowrap">Split Tickets</span>
+                                <span class="text-xs text-gray-400 whitespace-nowrap">Raffle Tickets</span>
                             </div>
 
                             <!-- Rolex Tickets -->

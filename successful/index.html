@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
-        .bebas-neue { font-family: 'Bebas Neue', sans-serif; }
+        . { font-family: 'Bebas Neue', sans-serif; }
         .spinner { animation: spin 0.8s linear infinite; }
         body {
             background-color: #0d1222;
@@ -62,9 +62,9 @@
             </p>
             <div id="ticket-info" class="space-y-4">
                 <div class="bg-slate-700/60 p-6 rounded-xl shadow-lg">
-                    <p class="text-sm uppercase tracking-wider text-yellow-400 font-semibold mb-2">Your Ticket Number</p>
-                    <div class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold bebas-neue text-white">
-                        <span id="ticketNumberDisplay">N/A</span>
+                    <p class="text-sm tracking-wider text-yellow-400 font-semibold mb-2" id="ticket-label">Your Tickets</p>
+                    <div class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white font-semibold">
+                        <span id="ticketNumberDisplay" class="text-white font-semibold" style="font-family: 'Times New Roman', serif;""text-white">N/A</span>
                     </div>
                 </div>
             </div>
@@ -93,7 +93,8 @@
             </div>
             <p class="text-sm text-gray-500 mt-8">
                 &copy; 2026 YDE Senior Fund. All Rights Reserved.<br/>
-                Website created by <a href="sms:9295845753" target="_blank" class="text-yellow-400 hover:text-yellow-300 transition-colors">Saul Setton</a>            </p>
+                Website created by <a href="sms:9295845753" target="_blank" class="text-yellow-400 hover:text-yellow-300 transition-colors">Saul Setton</a>
+            </p>
         </div>
     </footer>
 
@@ -101,11 +102,26 @@
         document.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
             const name = urlParams.get('name') || 'Valued Donor';
-            const tickets = urlParams.get('tickets') || '1';
-            const amount = urlParams.get('amount') || 'your ticket price';
+            const amountStr = urlParams.get('amount');
 
-            document.getElementById('success-message').textContent = `Hi ${name}, your purchase of ${tickets} ticket${tickets > 1 ? 's' : ''} was successful!`;
-            document.getElementById('ticketNumberDisplay').textContent = `${amount}`;
+            // Each ticket is a flat $150
+            let ticketsCount = 1;
+            if (amountStr) {
+                const amount = parseFloat(amountStr);
+                if (!isNaN(amount) && amount > 0) {
+                    ticketsCount = Math.floor(amount / 150);
+                    if (ticketsCount < 1) ticketsCount = 1;
+                }
+            }
+
+            document.getElementById('success-message').textContent = `Hi ${name}, your purchase of ${ticketsCount} ticket${ticketsCount > 1 ? 's' : ''} was successful!`;
+
+            // Update label & display for tickets
+            document.getElementById('ticket-label').textContent = ticketsCount > 1
+                ? 'Your Tickets Entered'
+                : 'Your Ticket Entered';
+
+            document.getElementById('ticketNumberDisplay').textContent = `${ticketsCount} ticket${ticketsCount > 1 ? 's have' : ' has'} been entered`;
         });
     </script>
 </body>

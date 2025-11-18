@@ -1792,9 +1792,6 @@ exports.addManualSale = functions.https.onCall(async (data, context) => {
         firstName: firstName,
         email: email || null,
         phoneNumber: phone || null,
-        // entryType 'raffle' uses ticketCount, 'rolex_raffle' uses ticketsBought, standardize here:
-        ticketCount: entryType === 'raffle' ? ticketCount : undefined,
-        ticketsBought: entryType === 'rolex_raffle' ? ticketCount : undefined,
         amountPaid: amountPaid, // Base amount (fee-excluded and rounded)
         paymentMethod: "Manual",
         referrerRefId: actualRefId || null,
@@ -1805,6 +1802,13 @@ exports.addManualSale = functions.https.onCall(async (data, context) => {
         sourceApp: SOURCE_APP_TAG,
         status: entryType === 'rolex_raffle' ? 'MANUAL_SALE' : 'paid' // Set status for the new trigger
     };
+
+    if (entryType === 'raffle') {
+        newEntry.ticketCount = ticketCount;
+    }
+    if (entryType === 'rolex_raffle') {
+        newEntry.ticketsBought = ticketCount;
+    }
 
     try {
         let updateRef = null;

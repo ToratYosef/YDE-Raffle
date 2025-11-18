@@ -133,7 +133,6 @@
                 </button>
             </div>
             <ul id="main-menu" class="hidden md:flex flex-col md:flex-row items-center space-y-2 md:space-y-0 md:space-x-8 text-base font-semibold w-full md:w-auto mt-4 md:mt-0">
-                <li><a href="/split-the-pot/" class="text-white hover:text-yellow-400 transition-colors duration-300 block">Split the Pot</a></li>
                 <li><a href="/rolex-raffle/" class="text-white hover:text-yellow-400 transition-colors duration-300 block">Rolex Raffle</a></li>
                 <li><a href="/leaderboard/" class="text-white hover:text-yellow-400 transition-colors duration-300 block">Leaderboard</a></li>
                 <li><a href="/donate/" class="py-2 px-4 rounded-full bg-yellow-400 text-black hover:bg-yellow-500 transition-colors duration-300 font-bold block">Donate Now</a></li>
@@ -204,13 +203,13 @@
                         Raised
                         <span class="sort-icon"></span>
                     </div>
-                    <!-- Split Tickets -->
+                    <!-- Raffle Tickets -->
                     <div 
                         class="flex items-center justify-end cursor-pointer hover:text-white transition sortable-header" 
                         data-sort-key="splitTickets" 
                         onclick="handleSort('splitTickets')"
                     >
-                        Split Tickets
+                        Raffle Tickets
                         <span class="sort-icon"></span>
                     </div>
                     <!-- Rolex Tickets -->
@@ -419,10 +418,10 @@
             totalRevenue = totalSplitRevenue + totalSpinRevenue + totalDonationRevenue;
 
             // 2. Calculate Senior Fund Contribution (Kept for internal use if needed)
-            const splitFund = totalSplitRevenue * 0.5;
+            const legacyRaffleFund = totalSplitRevenue * 0.5;
             const spinFund = totalSpinRevenue * 1.0;
             const donationFund = totalDonationRevenue * 1.0;
-            totalSeniorFund = splitFund + spinFund + donationFund;
+            totalSeniorFund = legacyRaffleFund + spinFund + donationFund;
 
             // Update DOM (Only totalReferrers remains)
             totalReferrersEl.textContent = totalReferrers;
@@ -469,7 +468,7 @@
             }, (error) => { console.error("Rolex Tickets Snapshot Error:", error); });
 
 
-            // 3. Split Pot Tickets: /splitThePotTickets/
+            // 3. Legacy Raffle Tickets: /splitThePotTickets/
             const qSplit = collection(dbInstance, 'splitThePotTickets');
             onSnapshot(qSplit, (snapshot) => {
                 let sum = 0;
@@ -479,7 +478,7 @@
                 });
                 totalSplitRevenue = sum;
                 calculateAndRenderRevenue();
-            }, (error) => { console.error("Split Pot Tickets Snapshot Error:", error); });
+            }, (error) => { console.error("Legacy raffle ticket snapshot error:", error); });
         }
 
 
@@ -529,7 +528,7 @@
                         name: data.name || 'Unknown Referrer',
                         refId: data.refId || 'N/A', 
                         totalAmount: parseFloat(data.totalAmount) || 0,
-                        // totalTickets is Split The Pot tickets
+                        // totalTickets reflects legacy raffle tickets
                         splitTickets: parseInt(data.totalTickets) || 0,
                         // rolexTicketsTotal is Rolex Raffle tickets
                         spinTickets: parseInt(data.rolexTicketsTotal) || 0, 
@@ -848,10 +847,10 @@
                                 <span class="text-xs text-gray-400">Raised</span>
                             </div>
 
-                            <!-- Split Tickets -->
+                            <!-- Raffle Tickets -->
                             <div class="flex flex-col items-end">
                                 <span class="font-bold text-lg text-white">${item.splitTickets}</span>
-                                <span class="text-xs text-gray-400 whitespace-nowrap">Split Tickets</span>
+                                <span class="text-xs text-gray-400 whitespace-nowrap">Raffle Tickets</span>
                             </div>
 
                             <!-- Rolex Tickets -->

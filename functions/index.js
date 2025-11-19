@@ -2143,6 +2143,7 @@ exports.updateRaffleEntry = functions.https.onCall(async (data, context) => {
         const originalTickets = cleanTicketCount(originalData[entryTicketField] || 0);
         const originalAmount = cleanAmount(originalData.amountPaid) || 0; // Base amount
         const originalReferrerUid = originalData.referrerUid;
+        const originalReferrerRefId = sanitizeString(originalData.referrerRefId || '') || null;
 
 
         // Use clean functions for updated data
@@ -2154,6 +2155,40 @@ exports.updateRaffleEntry = functions.https.onCall(async (data, context) => {
         const updatedFirstName = updatedFullName.split(' ')[0] || updatedFullName;
         const updatedEmail = sanitizeString(updatedData.email);
         const updatedPhone = sanitizeString(updatedData.phoneNumber);
+
+        // Determine desired referrer assignment
+        const hasRefIdUpdate = Object.prototype.hasOwnProperty.call(updatedData, 'referrerRefId');
+        let desiredReferrerRefId = hasRefIdUpdate
+            ? (sanitizeString(updatedData.referrerRefId || '') || null)
+            : originalReferrerRefId;
+
+        let targetReferrerUid = null;
+        let targetReferrerName = null;
+
+        if (!hasRefIdUpdate && originalReferrerUid && !desiredReferrerRefId) {
+            targetReferrerUid = originalReferrerUid;
+            targetReferrerName = originalData.referrerName || null;
+        }
+
+        if (desiredReferrerRefId) {
+            if (desiredReferrerRefId === originalReferrerRefId && originalReferrerUid) {
+                targetReferrerUid = originalReferrerUid;
+                targetReferrerName = originalData.referrerName || null;
+            } else {
+                const referrerSnapshot = await db.collection('referrers')
+                    .where('refId', '==', desiredReferrerRefId)
+                    .limit(1)
+                    .get();
+
+                if (referrerSnapshot.empty) {
+                    throw new functions.https.HttpsError('not-found', `Referrer with ID ${desiredReferrerRefId} was not found.`);
+                }
+
+                const refDoc = referrerSnapshot.docs[0];
+                targetReferrerUid = refDoc.id;
+                targetReferrerName = refDoc.data().name || null;
+            }
+        }
 
         // Calculate differences using cleaned numbers
         const ticketDiff = updatedTickets - originalTickets;
@@ -2168,6 +2203,9 @@ exports.updateRaffleEntry = functions.https.onCall(async (data, context) => {
             // Use correct field name based on collection
             [entryTicketField]: updatedTickets,
             amountPaid: updatedAmount, // Store clean amount
+            referrerRefId: desiredReferrerRefId,
+            referrerUid: targetReferrerUid || null,
+            referrerName: targetReferrerName || null,
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
@@ -2179,15 +2217,49 @@ exports.updateRaffleEntry = functions.https.onCall(async (data, context) => {
             totalAmount: admin.firestore.FieldValue.increment(amountDiff)
         }, { merge: true });
 
-        // 2. Update Referrer Counter (Split The Pot and Combined Total)
+        // 2. Update Referrer Counter (Split The Pot and Rolex totals depending on collection)
+        const referrerAdjustmentMap = new Map();
+
+        const queueReferrerAdjustment = (uid, amountDelta, ticketDelta) => {
+            if (!uid) return;
+            if (amountDelta === 0 && ticketDelta === 0) return;
+
+            const existing = referrerAdjustmentMap.get(uid) || { amount: 0, tickets: 0 };
+            existing.amount = cleanAmount(existing.amount + amountDelta);
+            existing.tickets += ticketDelta;
+            referrerAdjustmentMap.set(uid, existing);
+        };
+
         if (originalReferrerUid) {
-            const referrerRef = db.collection('referrers').doc(originalReferrerUid);
-            const updateData = { totalAmount: admin.firestore.FieldValue.increment(amountDiff) };
+            queueReferrerAdjustment(originalReferrerUid, -originalAmount, -originalTickets);
+        }
 
-            // Increment the specific ticket field for the referrer
-            updateData[referrerTicketField] = admin.firestore.FieldValue.increment(ticketDiff);
+        if (targetReferrerUid) {
+            queueReferrerAdjustment(targetReferrerUid, updatedAmount, updatedTickets);
+        }
 
-            await referrerRef.set(updateData, { merge: true });
+        const referrerUpdatePromises = [];
+        referrerAdjustmentMap.forEach((delta, uid) => {
+            if (delta.amount === 0 && delta.tickets === 0) {
+                return;
+            }
+
+            const updateData = {};
+            if (delta.amount !== 0) {
+                updateData.totalAmount = admin.firestore.FieldValue.increment(delta.amount);
+            }
+            if (delta.tickets !== 0) {
+                updateData[referrerTicketField] = admin.firestore.FieldValue.increment(delta.tickets);
+            }
+
+            if (Object.keys(updateData).length > 0) {
+                const referrerRef = db.collection('referrers').doc(uid);
+                referrerUpdatePromises.push(referrerRef.set(updateData, { merge: true }));
+            }
+        });
+
+        if (referrerUpdatePromises.length > 0) {
+            await Promise.all(referrerUpdatePromises);
         }
 
         return { success: true, message: `Entry updated successfully in ${collectionPath}.` };
@@ -2306,6 +2378,7 @@ exports.getAdminDashboardData = functions.https.onCall(async (data, context) => 
     let donationEntries = [];
     let referrers = [];
     let userData = {};
+    let rolexTotals = { totalTicketsSold: 0, totalAmount: 0 };
 
     try {
         // 1. Fetch User/Referrer Data (needed for referrer name, goal, and filtering)
@@ -2364,6 +2437,16 @@ exports.getAdminDashboardData = functions.https.onCall(async (data, context) => 
             donationEntries = donationSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         }
 
+        const rolexTotalsDoc = await db.collection('counters').doc('rolex_totals').get();
+        if (rolexTotalsDoc.exists) {
+            const totalsData = rolexTotalsDoc.data();
+            rolexTotals = {
+                totalTicketsSold: cleanTicketCount(totalsData.totalTicketsSold || 0),
+                totalAmount: cleanAmount(totalsData.totalAmount || 0),
+                lastUpdated: totalsData.lastUpdated || null
+            };
+        }
+
         return {
             isSuperAdmin: isSuperAdminUser,
             isReferrer: isReferrerUser,
@@ -2371,7 +2454,8 @@ exports.getAdminDashboardData = functions.https.onCall(async (data, context) => 
             referrers: referrers,
             rolexEntries: rolexEntries,
             raffleEntries: raffleEntries,
-            donationEntries: donationEntries
+            donationEntries: donationEntries,
+            rolexTotals: rolexTotals
         };
 
     } catch (error) {

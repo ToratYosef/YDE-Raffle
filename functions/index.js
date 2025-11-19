@@ -2306,6 +2306,7 @@ exports.getAdminDashboardData = functions.https.onCall(async (data, context) => 
     let donationEntries = [];
     let referrers = [];
     let userData = {};
+    let rolexTotals = { totalTicketsSold: 0, totalAmount: 0 };
 
     try {
         // 1. Fetch User/Referrer Data (needed for referrer name, goal, and filtering)
@@ -2364,6 +2365,16 @@ exports.getAdminDashboardData = functions.https.onCall(async (data, context) => 
             donationEntries = donationSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         }
 
+        const rolexTotalsDoc = await db.collection('counters').doc('rolex_totals').get();
+        if (rolexTotalsDoc.exists) {
+            const totalsData = rolexTotalsDoc.data();
+            rolexTotals = {
+                totalTicketsSold: cleanTicketCount(totalsData.totalTicketsSold || 0),
+                totalAmount: cleanAmount(totalsData.totalAmount || 0),
+                lastUpdated: totalsData.lastUpdated || null
+            };
+        }
+
         return {
             isSuperAdmin: isSuperAdminUser,
             isReferrer: isReferrerUser,
@@ -2371,7 +2382,8 @@ exports.getAdminDashboardData = functions.https.onCall(async (data, context) => 
             referrers: referrers,
             rolexEntries: rolexEntries,
             raffleEntries: raffleEntries,
-            donationEntries: donationEntries
+            donationEntries: donationEntries,
+            rolexTotals: rolexTotals
         };
 
     } catch (error) {

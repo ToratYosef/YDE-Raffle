@@ -245,9 +245,10 @@
     <!-- Edit Raffle Sale Modal (Super Admin Only) -->
     <div id="editSaleModalOverlay" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4 hidden">
         <div class="bg-gray-800 p-6 rounded-lg shadow-2xl max-w-xs sm:max-w-md w-full">
-            <h2 class="text-xl sm:text-2xl font-bold text-white mb-4">Edit Raffle Sale Entry </h2>
+            <h2 id="editSaleModalTitle" class="text-xl sm:text-2xl font-bold text-white mb-4">Edit Raffle Sale Entry</h2>
             <form id="editSaleForm" class="space-y-4">
                 <input type="hidden" id="edit-sale-id">
+                <input type="hidden" id="edit-entry-type" value="raffle">
                 <div>
                     <label for="edit-name" class="block text-sm font-medium text-gray-300">Customer Full Name</label>
                     <input type="text" id="edit-name" placeholder="Full Name" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white" required>
@@ -748,6 +749,17 @@
                         </div>
                     </div>
 
+                    <div id="rolexTotalsContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                        <div class="bg-purple-900/40 border border-purple-700 rounded-lg p-4">
+                            <p class="text-sm text-purple-200 uppercase tracking-wide">Total Rolex Tickets Sold</p>
+                            <p id="rolexTotalTicketsDisplay" class="text-2xl font-bold text-white mt-1">0</p>
+                        </div>
+                        <div class="bg-purple-900/40 border border-purple-700 rounded-lg p-4">
+                            <p class="text-sm text-purple-200 uppercase tracking-wide">Total Rolex Revenue</p>
+                            <p id="rolexTotalAmountDisplay" class="text-2xl font-bold text-white mt-1">$0.00</p>
+                        </div>
+                    </div>
+
                     <div class="overflow-x-auto">
                         <table class="data-table w-full whitespace-nowrap">
                             <thead>
@@ -759,10 +771,11 @@
                                     <th>Status</th>
                                     <th class="sort-header text-right" data-table="rolex" data-sort-key="amountPaid">Amount Paid <span class="sort-icon ml-1"></span></th>
                                     <th class="sort-header" data-table="rolex" data-sort-key="referrerRefId">Referrer <span class="sort-icon ml-1"></span></th>
+                                    <th id="rolexSalesActionHeader" class="hidden">Action</th>
                                 </tr>
                             </thead>
                             <tbody id="rolexTableBody">
-                                <tr><td colspan="7" class="text-center py-4 text-gray-400">No Rolex Raffle sales found.</td></tr>
+                                <tr><td colspan="8" class="text-center py-4 text-gray-400">No Rolex Raffle sales found.</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -1251,7 +1264,11 @@
                 isReferrer = dashboardData.isReferrer;
                 isLoggedInAdmin = dashboardData.isSuperAdmin || dashboardData.isReferrer || (auth.currentUser && auth.currentUser.customClaims.admin);
 
-                dashboardData = calculateReferrerMetrics(dashboardData); 
+                dashboardData = calculateReferrerMetrics(dashboardData);
+                if (!dashboardData.rolexTotals) {
+                    dashboardData.rolexTotals = { totalTicketsSold: 0, totalAmount: 0 };
+                }
+                updateRolexTotalsDisplay();
 
                 let roleText = 'Admin';
                 if (isSuperAdmin) roleText = 'Super Admin';
@@ -1734,9 +1751,11 @@
                         <div class="flex flex-col sm:flex-row gap-1">
                             <button class="px-2 py-1 text-xs bg-yellow-500 text-black font-semibold rounded-lg hover:bg-yellow-600 transition-colors"
                                 data-action="edit-sale"
+                                data-entry-type="raffle"
                                 data-entry-id="${e.id}">Edit</button>
                             <button class="px-2 py-1 text-xs bg-red-600 text-white font-semibold rounded-lg hover:bg-red-500 transition-colors"
                                 data-action="delete-sale"
+                                data-entry-type="raffle"
                                 data-entry-id="${e.id}">Delete</button>
                         </div>
                     `;
@@ -1761,12 +1780,28 @@
             updateSortIndicators('raffle', raffleSortConfig);
         };
 
+        const updateRolexTotalsDisplay = () => {
+            const ticketsDisplay = document.getElementById('rolexTotalTicketsDisplay');
+            const amountDisplay = document.getElementById('rolexTotalAmountDisplay');
+            if (!ticketsDisplay || !amountDisplay) return;
+
+            const totals = dashboardData.rolexTotals || {};
+            const totalTickets = totals.totalTicketsSold || 0;
+            const totalAmount = totals.totalAmount || 0;
+
+            ticketsDisplay.textContent = totalTickets.toLocaleString();
+            amountDisplay.textContent = formatCurrency(totalAmount);
+        };
+
         const renderRolexTable = (entries) => {
             const tbody = document.getElementById('rolexTableBody');
             const headerElement = document.getElementById('rolexSalesHeader');
+            const actionHeader = document.getElementById('rolexSalesActionHeader');
+
+            updateRolexTotalsDisplay();
 
             // This tab is only visible to Super Admin, so no non-SA referrer logic needed here.
-            
+
             // 1. Filter based on current filter state
             let displayEntries = filterSalesEntries(entries, rolexFilter);
             
@@ -1792,11 +1827,19 @@
             
             // 2. Sort the display entries
             displayEntries = sortEntries(displayEntries, rolexSortConfig);
+            if (actionHeader) {
+                if (isSuperAdmin) {
+                    actionHeader.classList.remove('hidden');
+                } else {
+                    actionHeader.classList.add('hidden');
+                }
+            }
+
             tbody.innerHTML = '';
 
-
+            const columnCount = isSuperAdmin ? 8 : 7;
             if (displayEntries.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-400">No Rolex Raffle sales found matching current criteria.</td></tr>';
+                tbody.innerHTML = `<tr><td colspan="${columnCount}" class="text-center py-4 text-gray-400">No Rolex Raffle sales found matching current criteria.</td></tr>`;
                 return;
             }
             displayEntries.forEach(e => {
@@ -1812,9 +1855,25 @@
                 }
 
                 const customerName = e.fullName || e.name || e.firstName || 'N/A';
-                
+
                 // FIX: Prioritize Phone Number over Email
                 const contactDisplay = e.phoneNumber || e.email || 'N/A';
+
+                let actionCell = '';
+                if (isSuperAdmin) {
+                    actionCell = `
+                        <div class="flex flex-col sm:flex-row gap-1">
+                            <button class="px-2 py-1 text-xs bg-yellow-500 text-black font-semibold rounded-lg hover:bg-yellow-600 transition-colors"
+                                data-action="edit-sale"
+                                data-entry-type="rolex_raffle"
+                                data-entry-id="${e.id}">Edit</button>
+                            <button class="px-2 py-1 text-xs bg-red-600 text-white font-semibold rounded-lg hover:bg-red-500 transition-colors"
+                                data-action="delete-sale"
+                                data-entry-type="rolex_raffle"
+                                data-entry-id="${e.id}">Delete</button>
+                        </div>
+                    `;
+                }
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -1825,6 +1884,7 @@
                     <td><span class="text-xs font-medium px-2 py-1 rounded-full ${statusClass}">${statusText}</span></td>
                     <td class="text-right font-medium">${formatCurrency(e.amountPaid || 0)}</td>
                     <td>${referrerInfo}</td>
+                    ${isSuperAdmin ? `<td>${actionCell}</td>` : ''}
                 `;
                 tbody.appendChild(tr);
             });
@@ -1963,19 +2023,25 @@
         
         // --- Edit Order Feature Functions ---
         
-        const openEditSaleModal = (entryId) => {
-            const sale = dashboardData.raffleEntries.find(e => e.id === entryId);
+        const openEditSaleModal = (entryId, entryType = 'raffle') => {
+            const salesList = entryType === 'rolex_raffle' ? dashboardData.rolexEntries : dashboardData.raffleEntries;
+            const sale = salesList.find(e => e.id === entryId);
             if (!sale) {
                 showCustomPopup('Error', 'Sale entry not found.');
                 return;
             }
 
             document.getElementById('edit-sale-id').value = entryId;
+            document.getElementById('edit-entry-type').value = entryType;
+            document.getElementById('editSaleModalTitle').textContent = entryType === 'rolex_raffle' ? 'Edit Rolex Sale Entry' : 'Edit Raffle Sale Entry';
             document.getElementById('edit-name').value = sale.fullName || sale.name || sale.firstName || '';
             document.getElementById('edit-email').value = sale.email || '';
             document.getElementById('edit-phone').value = sale.phoneNumber || '';
-            document.getElementById('edit-tickets').value = sale.ticketCount || 0;
-            document.getElementById('edit-amount').value = sale.amountPaid || 0;
+            const currentTickets = entryType === 'rolex_raffle'
+                ? (sale.ticketsBought || sale.ticketCount || 0)
+                : (sale.ticketCount || sale.ticketsBought || 0);
+            document.getElementById('edit-tickets').value = currentTickets;
+            document.getElementById('edit-amount').value = sale.amountPaid || sale.amount || 0;
 
             document.getElementById('editSaleModalOverlay').classList.remove('hidden');
         };
@@ -1988,6 +2054,7 @@
             e.preventDefault();
 
             const entryId = document.getElementById('edit-sale-id').value;
+            const entryType = document.getElementById('edit-entry-type').value || 'raffle';
             const updatedData = {
                 fullName: document.getElementById('edit-name').value.trim(),
                 email: document.getElementById('edit-email').value.trim(),
@@ -1997,15 +2064,15 @@
             };
 
             closeEditSaleModal();
-            showGlobalLoading(`Updating sale ${entryId}...`);
+            const saleLabel = entryType === 'rolex_raffle' ? 'Rolex sale' : 'Split The Pot sale';
+            showGlobalLoading(`Updating ${saleLabel} ${entryId}...`);
 
             try {
-                // Assuming entryType is 'raffle' as this is for splitThePotTickets
                 const updateRaffleEntryCallable = httpsCallable(functions, 'updateRaffleEntry');
-                const response = await updateRaffleEntryCallable({ entryId, updatedData, entryType: 'raffle' });
+                const response = await updateRaffleEntryCallable({ entryId, updatedData, entryType });
 
                 showCustomPopup('Success', response.data.message);
-                await fetchDashboardData(); 
+                await fetchDashboardData();
 
             } catch (error) {
                 console.error("Error updating sale:", error);
@@ -2015,15 +2082,16 @@
             }
         };
 
-        const handleDeleteSale = async (entryId) => {
+        const handleDeleteSale = async (entryId, entryType = 'raffle') => {
             if (!entryId) return;
-            const confirmed = window.confirm('Are you sure you want to delete this Split The Pot sale? This action cannot be undone.');
+            const saleLabel = entryType === 'rolex_raffle' ? 'Rolex Raffle sale' : 'Split The Pot sale';
+            const confirmed = window.confirm(`Are you sure you want to delete this ${saleLabel}? This action cannot be undone.`);
             if (!confirmed) return;
 
-            showGlobalLoading('Deleting sale entry...');
+            showGlobalLoading(`Deleting ${saleLabel} entry...`);
             try {
                 const deleteRaffleEntryCallable = httpsCallable(functions, 'deleteRaffleEntry');
-                const response = await deleteRaffleEntryCallable({ entryId, entryType: 'raffle' });
+                const response = await deleteRaffleEntryCallable({ entryId, entryType });
 
                 showCustomPopup('Deleted', response.data.message);
                 await fetchDashboardData();
@@ -3602,10 +3670,11 @@
                     const actionTarget = e.target.closest('[data-action]');
                     if (actionTarget && isSuperAdmin) {
                         const action = actionTarget.dataset.action;
+                        const entryType = actionTarget.dataset.entryType || 'raffle';
                         if (action === 'edit-sale') {
-                            openEditSaleModal(actionTarget.dataset.entryId);
+                            openEditSaleModal(actionTarget.dataset.entryId, entryType);
                         } else if (action === 'delete-sale') {
-                            handleDeleteSale(actionTarget.dataset.entryId);
+                            handleDeleteSale(actionTarget.dataset.entryId, entryType);
                         } else if (action === 'edit-donation') {
                             openEditDonationModal(actionTarget.dataset.donationId);
                         } else if (action === 'delete-donation') {

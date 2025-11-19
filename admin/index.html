@@ -271,6 +271,11 @@
                         <input type="number" id="edit-amount" placeholder="Amount Paid ($)" step="0.01" min="0.01" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white" required>
                     </div>
                 </div>
+                <div>
+                    <label for="edit-refId" class="block text-sm font-medium text-gray-300">Referrer ID to Credit</label>
+                    <input type="text" id="edit-refId" placeholder="e.g., A1B2C3" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-gray-700 text-white">
+                    <p class="text-xs text-gray-400 mt-1">Leave blank to remove or clear referrer credit.</p>
+                </div>
                 <div class="pt-4 flex justify-end space-x-3">
                     <button type="button" id="closeEditSaleModal" class="px-4 py-2 text-gray-300 bg-gray-600 rounded-lg hover:bg-gray-500 transition-colors">Cancel</button>
                     <button type="submit" id="submitEditSale" class="px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors">Save Changes</button>
@@ -2042,6 +2047,7 @@
                 : (sale.ticketCount || sale.ticketsBought || 0);
             document.getElementById('edit-tickets').value = currentTickets;
             document.getElementById('edit-amount').value = sale.amountPaid || sale.amount || 0;
+            document.getElementById('edit-refId').value = sale.referrerRefId || '';
 
             document.getElementById('editSaleModalOverlay').classList.remove('hidden');
         };
@@ -2061,6 +2067,7 @@
                 phoneNumber: document.getElementById('edit-phone').value.trim(),
                 ticketCount: parseInt(document.getElementById('edit-tickets').value.trim(), 10),
                 amountPaid: parseFloat(document.getElementById('edit-amount').value.trim()),
+                referrerRefId: document.getElementById('edit-refId').value.trim()
             };
 
             closeEditSaleModal();

@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YDE Admin Export Center</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            color: #fff;
+            background: radial-gradient(circle at 20% 20%, #1a294d 0%, #0b1020 45%, #070b14 100%);
+            min-height: 100vh;
+        }
+        .panel {
+            background: rgba(17, 24, 39, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+        }
+        .spinner {
+            border-top-color: #facc15;
+            animation: spin 0.9s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div id="loadingOverlay" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+        <div class="flex items-center gap-3 panel px-6 py-4">
+            <div class="spinner w-7 h-7 border-4 border-yellow-300/30 rounded-full"></div>
+            <p id="loadingText" class="font-semibold text-yellow-300">Loading...</p>
+        </div>
+    </div>
+
+    <div id="popupOverlay" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] hidden items-center justify-center p-4">
+        <div class="panel max-w-md w-full p-6">
+            <h2 id="popupTitle" class="text-2xl font-extrabold text-yellow-300 mb-2"></h2>
+            <p id="popupMessage" class="text-slate-200 mb-5"></p>
+            <button id="popupClose" class="w-full rounded-lg bg-yellow-400 text-black font-bold py-2.5 hover:bg-yellow-300">OK</button>
+        </div>
+    </div>
+
+    <main class="max-w-7xl mx-auto space-y-6">
+        <section class="panel p-5 md:p-7">
+            <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight">Export Center</h1>
+            <p class="text-slate-300 mt-2">View totals, inspect all transactions, and export full CSV files for Donations, Split The Pot, and Rolex Raffle.</p>
+        </section>
+
+        <section id="authPanel" class="panel p-5 md:p-7 max-w-xl">
+            <h2 class="text-2xl font-bold mb-4">Admin Sign In</h2>
+            <div class="space-y-3">
+                <input id="emailInput" type="email" placeholder="Admin Email" class="w-full rounded-lg bg-slate-800 border border-slate-600 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-300" required>
+                <input id="passwordInput" type="password" placeholder="Password" class="w-full rounded-lg bg-slate-800 border border-slate-600 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-300" required>
+                <button id="loginButton" type="button" class="w-full rounded-lg bg-yellow-400 text-black font-bold py-3 hover:bg-yellow-300">Sign In</button>
+                <p id="authError" class="text-red-400 text-sm hidden"></p>
+            </div>
+        </section>
+
+        <section id="exportPanel" class="hidden space-y-6">
+            <div class="panel p-5 md:p-7 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <p id="userInfo" class="text-green-300 font-semibold"></p>
+                <div class="flex flex-wrap gap-2">
+                    <button id="refreshButton" class="rounded-lg bg-slate-700 px-4 py-2 font-semibold hover:bg-slate-600">Refresh Data</button>
+                    <button id="exportAllButton" class="rounded-lg bg-blue-600 px-4 py-2 font-semibold hover:bg-blue-500">Export All Transactions CSV</button>
+                    <button id="exportSplitButton" class="rounded-lg bg-sky-700 px-4 py-2 font-semibold hover:bg-sky-600">Export Split CSV</button>
+                    <button id="exportRolexButton" class="rounded-lg bg-indigo-700 px-4 py-2 font-semibold hover:bg-indigo-600">Export Rolex CSV</button>
+                    <button id="exportDonationsButton" class="rounded-lg bg-emerald-700 px-4 py-2 font-semibold hover:bg-emerald-600">Export Donations CSV</button>
+                    <button id="logoutButton" class="rounded-lg bg-slate-600 px-4 py-2 font-semibold hover:bg-slate-500">Logout</button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                <div class="panel p-4">
+                    <p class="text-slate-300 text-sm">Split The Pot Revenue</p>
+                    <p id="splitRevenue" class="text-3xl font-extrabold text-sky-300">$0.00</p>
+                    <p id="splitMeta" class="text-slate-400 text-sm mt-1">0 transactions | 0 tickets</p>
+                </div>
+                <div class="panel p-4">
+                    <p class="text-slate-300 text-sm">Rolex Raffle Revenue</p>
+                    <p id="rolexRevenue" class="text-3xl font-extrabold text-indigo-300">$0.00</p>
+                    <p id="rolexMeta" class="text-slate-400 text-sm mt-1">0 transactions | 0 tickets</p>
+                </div>
+                <div class="panel p-4">
+                    <p class="text-slate-300 text-sm">Donations Revenue</p>
+                    <p id="donationRevenue" class="text-3xl font-extrabold text-emerald-300">$0.00</p>
+                    <p id="donationMeta" class="text-slate-400 text-sm mt-1">0 transactions</p>
+                </div>
+                <div class="panel p-4">
+                    <p class="text-slate-300 text-sm">Total Revenue (All)</p>
+                    <p id="totalRevenue" class="text-3xl font-extrabold text-yellow-300">$0.00</p>
+                    <p id="totalMeta" class="text-slate-400 text-sm mt-1">0 total transactions</p>
+                </div>
+            </div>
+
+            <section class="panel p-5 md:p-7">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+                    <h3 class="text-2xl font-bold">All Transactions</h3>
+                    <input id="searchInput" type="text" placeholder="Search name, email, phone, status, referrer..." class="w-full md:w-96 rounded-lg bg-slate-800 border border-slate-600 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-yellow-300">
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead class="text-left text-slate-300 border-b border-slate-700">
+                            <tr>
+                                <th class="py-2 pr-4">Date</th>
+                                <th class="py-2 pr-4">Type</th>
+                                <th class="py-2 pr-4">ID</th>
+                                <th class="py-2 pr-4">Name</th>
+                                <th class="py-2 pr-4">Email</th>
+                                <th class="py-2 pr-4">Phone</th>
+                                <th class="py-2 pr-4">Tickets</th>
+                                <th class="py-2 pr-4">Amount</th>
+                                <th class="py-2 pr-4">Status</th>
+                                <th class="py-2 pr-4">Referrer</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactionsBody" class="text-slate-100"></tbody>
+                    </table>
+                </div>
+            </section>
+        </section>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+        import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAT539nr_s2OxHPTAmkxwMpaWt-FiDTgQs",
+            authDomain: "yderaffle.firebaseapp.com",
+            projectId: "yderaffle",
+            storageBucket: "yderaffle.firebasestorage.app",
+            messagingSenderId: "967768309102",
+            appId: "1:967768309102:web:c89d61a747e8cb941f557f"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        const ALLOWED_DONATION_STATUSES = new Set(['succeeded', 'MANUAL_DONATED', 'MANUAL_DONATED_CONVERSION_SURPLUS']);
+        const ALLOWED_ROLEX_STATUSES = new Set(['paid', 'converted', 'succeeded', 'MANUAL_SALE']);
+
+        const authPanel = document.getElementById('authPanel');
+        const exportPanel = document.getElementById('exportPanel');
+        const emailInput = document.getElementById('emailInput');
+        const passwordInput = document.getElementById('passwordInput');
+        const loginButton = document.getElementById('loginButton');
+        const logoutButton = document.getElementById('logoutButton');
+        const authError = document.getElementById('authError');
+        const userInfo = document.getElementById('userInfo');
+
+        const refreshButton = document.getElementById('refreshButton');
+        const exportAllButton = document.getElementById('exportAllButton');
+        const exportSplitButton = document.getElementById('exportSplitButton');
+        const exportRolexButton = document.getElementById('exportRolexButton');
+        const exportDonationsButton = document.getElementById('exportDonationsButton');
+        const searchInput = document.getElementById('searchInput');
+        const transactionsBody = document.getElementById('transactionsBody');
+
+        const splitRevenue = document.getElementById('splitRevenue');
+        const splitMeta = document.getElementById('splitMeta');
+        const rolexRevenue = document.getElementById('rolexRevenue');
+        const rolexMeta = document.getElementById('rolexMeta');
+        const donationRevenue = document.getElementById('donationRevenue');
+        const donationMeta = document.getElementById('donationMeta');
+        const totalRevenue = document.getElementById('totalRevenue');
+        const totalMeta = document.getElementById('totalMeta');
+
+        let allTransactions = [];
+        let splitTransactions = [];
+        let rolexTransactions = [];
+        let donationTransactions = [];
+
+        function setLoading(visible, text = 'Loading...') {
+            document.getElementById('loadingText').textContent = text;
+            document.getElementById('loadingOverlay').classList.toggle('hidden', !visible);
+        }
+
+        function showPopup(title, message) {
+            document.getElementById('popupTitle').textContent = title;
+            document.getElementById('popupMessage').textContent = message;
+            const overlay = document.getElementById('popupOverlay');
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+        }
+
+        function hidePopup() {
+            const overlay = document.getElementById('popupOverlay');
+            overlay.classList.add('hidden');
+            overlay.classList.remove('flex');
+        }
+
+        function cleanAmount(value) {
+            const num = parseFloat(value);
+            if (Number.isNaN(num)) return 0;
+            return Math.round(num * 100) / 100;
+        }
+
+        function cleanCount(value) {
+            const num = parseInt(value, 10);
+            if (Number.isNaN(num)) return 0;
+            return Math.max(0, num);
+        }
+
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 2
+            }).format(cleanAmount(amount));
+        }
+
+        function formatTimestamp(ts) {
+            if (!ts) return '';
+            const sec = ts.seconds || ts._seconds;
+            const d = typeof sec === 'number' ? new Date(sec * 1000) : new Date(ts);
+            if (Number.isNaN(d.getTime())) return '';
+            return d.toISOString().replace('T', ' ').slice(0, 19);
+        }
+
+        function csvEscape(value) {
+            if (value === null || value === undefined) return '';
+            const str = String(value).replace(/"/g, '""');
+            return /[",\n]/.test(str) ? `"${str}"` : str;
+        }
+
+        function downloadCsv(rows, fileName) {
+            if (!rows.length) {
+                showPopup('No Data', 'There is no data to export.');
+                return;
+            }
+            const headers = Object.keys(rows[0]);
+            const lines = [headers.join(',')];
+            rows.forEach((row) => {
+                lines.push(headers.map((h) => csvEscape(row[h])).join(','));
+            });
+            const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        function transactionToCsvRow(tx) {
+            return {
+                Date: tx.dateText,
+                Type: tx.type,
+                ID: tx.id,
+                Name: tx.name,
+                Email: tx.email,
+                Phone: tx.phone,
+                Tickets: tx.tickets,
+                Amount: tx.amount,
+                Status: tx.status,
+                Referrer: tx.referrer,
+            };
+        }
+
+        function renderTransactionsTable(transactions) {
+            if (!transactions.length) {
+                transactionsBody.innerHTML = '<tr><td colspan="10" class="py-6 text-center text-slate-400">No transactions found.</td></tr>';
+                return;
+            }
+
+            transactionsBody.innerHTML = transactions.map((tx) => `
+                <tr class="border-b border-slate-800 hover:bg-slate-800/40">
+                    <td class="py-2 pr-4 whitespace-nowrap">${tx.dateText || ''}</td>
+                    <td class="py-2 pr-4">${tx.type}</td>
+                    <td class="py-2 pr-4 font-mono text-xs">${tx.id}</td>
+                    <td class="py-2 pr-4">${tx.name || ''}</td>
+                    <td class="py-2 pr-4">${tx.email || ''}</td>
+                    <td class="py-2 pr-4">${tx.phone || ''}</td>
+                    <td class="py-2 pr-4">${tx.tickets}</td>
+                    <td class="py-2 pr-4">${formatCurrency(tx.amount)}</td>
+                    <td class="py-2 pr-4">${tx.status || ''}</td>
+                    <td class="py-2 pr-4">${tx.referrer || ''}</td>
+                </tr>
+            `).join('');
+        }
+
+        function updateSummaryCards() {
+            const splitRevenueTotal = splitTransactions.reduce((sum, tx) => sum + cleanAmount(tx.amount), 0);
+            const splitTicketTotal = splitTransactions.reduce((sum, tx) => sum + cleanCount(tx.tickets), 0);
+            const rolexRevenueTotal = rolexTransactions.reduce((sum, tx) => sum + cleanAmount(tx.amount), 0);
+            const rolexTicketTotal = rolexTransactions.reduce((sum, tx) => sum + cleanCount(tx.tickets), 0);
+            const donationRevenueTotal = donationTransactions.reduce((sum, tx) => sum + cleanAmount(tx.amount), 0);
+            const grandTotal = splitRevenueTotal + rolexRevenueTotal + donationRevenueTotal;
+
+            splitRevenue.textContent = formatCurrency(splitRevenueTotal);
+            splitMeta.textContent = `${splitTransactions.length} transactions | ${splitTicketTotal} tickets`;
+
+            rolexRevenue.textContent = formatCurrency(rolexRevenueTotal);
+            rolexMeta.textContent = `${rolexTransactions.length} transactions | ${rolexTicketTotal} tickets`;
+
+            donationRevenue.textContent = formatCurrency(donationRevenueTotal);
+            donationMeta.textContent = `${donationTransactions.length} transactions`;
+
+            totalRevenue.textContent = formatCurrency(grandTotal);
+            totalMeta.textContent = `${allTransactions.length} total transactions`;
+        }
+
+        async function fetchAllData() {
+            setLoading(true, 'Fetching transactions...');
+            try {
+                const [splitSnap, rolexSnap, donationSnap] = await Promise.all([
+                    getDocs(collection(db, 'splitThePotTickets')),
+                    getDocs(collection(db, 'rolex_entries')),
+                    getDocs(collection(db, 'stripe_donation_payment_intents')),
+                ]);
+
+                splitTransactions = splitSnap.docs.map((docSnap) => {
+                    const d = docSnap.data();
+                    return {
+                        id: docSnap.id,
+                        type: 'Split The Pot',
+                        timestamp: d.timestamp || d.createdAt || null,
+                        dateText: formatTimestamp(d.timestamp || d.createdAt || null),
+                        name: d.name || d.fullName || `${d.firstName || ''} ${d.lastName || ''}`.trim(),
+                        email: d.email || '',
+                        phone: d.phone || d.phoneNumber || '',
+                        tickets: cleanCount(d.ticketCount || d.tickets || 1),
+                        amount: cleanAmount(d.amountPaid || d.amount || 0),
+                        status: d.status || '',
+                        referrer: d.referrerRefId || d.refId || '',
+                    };
+                });
+
+                rolexTransactions = rolexSnap.docs
+                    .map((docSnap) => {
+                        const d = docSnap.data();
+                        return {
+                            id: docSnap.id,
+                            type: 'Rolex Raffle',
+                            timestamp: d.timestamp || d.createdAt || null,
+                            dateText: formatTimestamp(d.timestamp || d.createdAt || null),
+                            name: d.name || d.fullName || `${d.firstName || ''} ${d.lastName || ''}`.trim(),
+                            email: d.email || '',
+                            phone: d.phone || d.phoneNumber || '',
+                            tickets: cleanCount(d.ticketsBought || d.ticketCount || 1),
+                            amount: cleanAmount(d.amountPaid || d.baseAmount || d.amount || 0),
+                            status: d.status || '',
+                            referrer: d.referrerRefId || d.refId || '',
+                        };
+                    })
+                    .filter((tx) => ALLOWED_ROLEX_STATUSES.has(tx.status));
+
+                donationTransactions = donationSnap.docs
+                    .map((docSnap) => {
+                        const d = docSnap.data();
+                        return {
+                            id: docSnap.id,
+                            type: 'Donation',
+                            timestamp: d.createdAt || d.timestamp || null,
+                            dateText: formatTimestamp(d.createdAt || d.timestamp || null),
+                            name: d.name || d.fullName || `${d.firstName || ''} ${d.lastName || ''}`.trim(),
+                            email: d.email || '',
+                            phone: d.phone || d.phoneNumber || '',
+                            tickets: 0,
+                            amount: cleanAmount(d.amount || d.amountPaid || 0),
+                            status: d.status || '',
+                            referrer: d.referrerRefId || d.refId || '',
+                        };
+                    })
+                    .filter((tx) => ALLOWED_DONATION_STATUSES.has(tx.status));
+
+                allTransactions = [...splitTransactions, ...rolexTransactions, ...donationTransactions]
+                    .sort((a, b) => {
+                        const aSec = (a.timestamp && (a.timestamp.seconds || a.timestamp._seconds)) || 0;
+                        const bSec = (b.timestamp && (b.timestamp.seconds || b.timestamp._seconds)) || 0;
+                        return bSec - aSec;
+                    });
+
+                renderTransactionsTable(allTransactions);
+                updateSummaryCards();
+            } catch (error) {
+                console.error(error);
+                showPopup('Data Fetch Failed', error.message || 'Could not load export data.');
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        function applySearchFilter() {
+            const query = searchInput.value.trim().toLowerCase();
+            if (!query) {
+                renderTransactionsTable(allTransactions);
+                return;
+            }
+
+            const filtered = allTransactions.filter((tx) => {
+                const haystack = [
+                    tx.type,
+                    tx.id,
+                    tx.name,
+                    tx.email,
+                    tx.phone,
+                    tx.status,
+                    tx.referrer,
+                    tx.dateText,
+                    String(tx.tickets),
+                    String(tx.amount),
+                ].join(' ').toLowerCase();
+                return haystack.includes(query);
+            });
+
+            renderTransactionsTable(filtered);
+        }
+
+        async function handleLogin() {
+            authError.classList.add('hidden');
+            setLoading(true, 'Signing in...');
+            try {
+                await signInWithEmailAndPassword(auth, emailInput.value.trim(), passwordInput.value);
+            } catch (error) {
+                authError.textContent = 'Login failed. Check credentials or permissions.';
+                authError.classList.remove('hidden');
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        async function handleLogout() {
+            setLoading(true, 'Logging out...');
+            try {
+                await signOut(auth);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        function updateAuthUI(user, claims) {
+            const isAuthorized = user && (claims.superAdmin === true || claims.admin === true);
+
+            if (!isAuthorized) {
+                authPanel.classList.remove('hidden');
+                exportPanel.classList.add('hidden');
+                allTransactions = [];
+                splitTransactions = [];
+                rolexTransactions = [];
+                donationTransactions = [];
+                renderTransactionsTable([]);
+                return;
+            }
+
+            authPanel.classList.add('hidden');
+            exportPanel.classList.remove('hidden');
+            userInfo.textContent = `Signed in as ${user.email} (${claims.superAdmin ? 'Super Admin' : 'Admin'})`;
+            fetchAllData();
+        }
+
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) {
+                updateAuthUI(null, {});
+                return;
+            }
+            setLoading(true, 'Checking permissions...');
+            try {
+                const tokenResult = await user.getIdTokenResult(true);
+                const claims = tokenResult.claims || {};
+                if (!(claims.superAdmin === true || claims.admin === true)) {
+                    await signOut(auth);
+                    showPopup('Not Authorized', 'This page is only available to Admin or Super Admin users.');
+                    updateAuthUI(null, {});
+                    return;
+                }
+                updateAuthUI(user, claims);
+            } catch (error) {
+                console.error(error);
+                showPopup('Auth Error', 'Could not verify permissions.');
+                updateAuthUI(null, {});
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        loginButton.addEventListener('click', handleLogin);
+        logoutButton.addEventListener('click', handleLogout);
+        refreshButton.addEventListener('click', fetchAllData);
+        searchInput.addEventListener('input', applySearchFilter);
+        document.getElementById('popupClose').addEventListener('click', hidePopup);
+
+        exportAllButton.addEventListener('click', () => {
+            const rows = allTransactions.map(transactionToCsvRow);
+            downloadCsv(rows, `all_transactions_${new Date().toISOString().slice(0, 10)}.csv`);
+        });
+
+        exportSplitButton.addEventListener('click', () => {
+            const rows = splitTransactions.map(transactionToCsvRow);
+            downloadCsv(rows, `split_the_pot_transactions_${new Date().toISOString().slice(0, 10)}.csv`);
+        });
+
+        exportRolexButton.addEventListener('click', () => {
+            const rows = rolexTransactions.map(transactionToCsvRow);
+            downloadCsv(rows, `rolex_raffle_transactions_${new Date().toISOString().slice(0, 10)}.csv`);
+        });
+
+        exportDonationsButton.addEventListener('click', () => {
+            const rows = donationTransactions.map(transactionToCsvRow);
+            downloadCsv(rows, `donations_transactions_${new Date().toISOString().slice(0, 10)}.csv`);
+        });
+
+        renderTransactionsTable([]);
+    </script>
+</body>
+</html>

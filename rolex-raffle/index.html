@@ -200,8 +200,10 @@
                 </p>
 
                 <div id="tickets-remaining-banner" class="mb-8 inline-flex items-center gap-2 bg-yellow-400/10 border border-yellow-400/50 text-yellow-300 px-5 py-2 rounded-full">
-                    <span class="bebas-neue text-2xl tracking-wide">Tickets Left:</span>
-                    <span id="tickets-remaining-count" class="text-2xl font-extrabold text-white">42</span>
+                    <span class="bebas-neue text-2xl tracking-wide">Total Rolex Tickets Sold:</span>
+                    <span id="tickets-sold-count" class="text-2xl font-extrabold text-white">0</span>
+                    <span class="text-2xl font-extrabold text-white">out of</span>
+                    <span id="tickets-total-count" class="text-2xl font-extrabold text-white">300</span>
                 </div>
 
                 <!-- Prize Display Section (Smaller, clickable) -->
@@ -344,7 +346,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
         // --- Firebase Initialization (Using Placeholder/Hardcoded Values) ---
@@ -464,16 +466,16 @@
             const FEE_PERCENTAGE = 0.029;
             const FEE_FLAT = 0.30;
             const MIN_TICKETS = 1;
-            const STARTING_TICKETS_LEFT = 42;
+            const TOTAL_ROLEX_TICKETS = 300;
             let elements;
             let currentTicketQuantity = MIN_TICKETS;
             let currentTotalAmount = TICKET_PRICE;
             let clientSecret;
-            let ticketsRemaining = STARTING_TICKETS_LEFT;
-            let baselineTicketsSold = null;
+            let ticketsRemaining = TOTAL_ROLEX_TICKETS;
 
             const ticketsRemainingBanner = document.getElementById('tickets-remaining-banner');
-            const ticketsRemainingCount = document.getElementById('tickets-remaining-count');
+            const ticketsSoldCount = document.getElementById('tickets-sold-count');
+            const ticketsTotalCount = document.getElementById('tickets-total-count');
 
             // --- Initial State Fix: Ensure checkbox starts unchecked (removed 'checked' attribute from HTML)
             coverFeeCheckbox.checked = false;
@@ -516,9 +518,11 @@
                 return Math.max(0, num);
             }
 
-            function setTicketsRemainingDisplay(remaining) {
-                ticketsRemaining = Math.max(0, cleanTicketCount(remaining));
-                ticketsRemainingCount.textContent = ticketsRemaining.toString();
+            function setTicketsRemainingDisplay(soldCount) {
+                const sold = Math.min(TOTAL_ROLEX_TICKETS, Math.max(0, cleanTicketCount(soldCount)));
+                ticketsRemaining = Math.max(0, TOTAL_ROLEX_TICKETS - sold);
+                ticketsSoldCount.textContent = sold.toString();
+                ticketsTotalCount.textContent = TOTAL_ROLEX_TICKETS.toString();
                 ticketQuantityInput.max = ticketsRemaining > 0 ? ticketsRemaining.toString() : '0';
 
                 if (ticketsRemaining <= 0) {
@@ -540,17 +544,13 @@
             }
 
             async function initializeTicketsCounter() {
-                setTicketsRemainingDisplay(STARTING_TICKETS_LEFT);
+                setTicketsRemainingDisplay(0);
 
                 try {
                     const totalsRef = doc(db, 'counters', 'rolex_totals');
-                    const totalsSnap = await getDoc(totalsRef);
-                    baselineTicketsSold = totalsSnap.exists() ? cleanTicketCount(totalsSnap.data().totalTicketsSold) : 0;
-
                     onSnapshot(totalsRef, (snapshot) => {
-                        const currentSold = snapshot.exists() ? cleanTicketCount(snapshot.data().totalTicketsSold) : baselineTicketsSold;
-                        const soldSinceCounterStarted = Math.max(0, currentSold - baselineTicketsSold);
-                        setTicketsRemainingDisplay(STARTING_TICKETS_LEFT - soldSinceCounterStarted);
+                        const currentSold = snapshot.exists() ? cleanTicketCount(snapshot.data().totalTicketsSold) : 0;
+                        setTicketsRemainingDisplay(currentSold);
                         calculateTotal();
                     }, (error) => {
                         console.error('Could not subscribe to Rolex ticket totals:', error);

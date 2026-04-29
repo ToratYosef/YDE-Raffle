@@ -514,6 +514,11 @@
                     <span class="hidden sm:inline">Export CSV</span>
                     <span class="inline sm:hidden">Export</span>
                 </button>
+                <button id="exportAllTransactionsButton" class="flex items-center px-3 py-2 text-sm bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-500 transition-colors hidden" title="Export all money raised transactions">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 14l2 2 4-4" /><path stroke-linecap="round" stroke-linejoin="round" d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z" /></svg>
+                    <span class="hidden sm:inline">Export All Money Raised</span>
+                    <span class="inline sm:hidden">Export All</span>
+                </button>
                 <!-- REFRESH BUTTON -->
                 <button id="refreshDataButton" class="flex items-center px-3 py-2 text-sm bg-gray-700 text-white font-semibold rounded-lg shadow-md hover:bg-gray-600 transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.76 2.82"></path><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.76-2.82"></path><path d="M3 3v4h4M21 21v-4h-4"></path></svg>
@@ -541,6 +546,29 @@
                 <button id="logoutButton" class="px-3 py-2 text-sm text-gray-300 bg-gray-600 rounded-lg hover:bg-gray-500 transition-colors">Logout</button>
             </div>
         </header>
+
+        <div id="globalRevenueOverview" class="dashboard-card p-4 sm:p-6 mb-6 hidden">
+            <h2 class="text-xl sm:text-2xl font-bold text-white mb-4">Fundraising Totals (Combined)</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="p-4 bg-emerald-900/40 border-l-4 border-emerald-500 rounded-lg">
+                    <p class="text-sm font-medium text-gray-300">Total Money Raised</p>
+                    <p id="globalTotalRaisedDisplay" class="text-2xl font-bold text-emerald-300 mt-1">$0.00</p>
+                </div>
+                <div class="p-4 bg-blue-900/40 border-l-4 border-blue-500 rounded-lg">
+                    <p class="text-sm font-medium text-gray-300">Split The Pot Raised</p>
+                    <p id="globalSplitRaisedDisplay" class="text-2xl font-bold text-blue-300 mt-1">$0.00</p>
+                </div>
+                <div class="p-4 bg-purple-900/40 border-l-4 border-purple-500 rounded-lg">
+                    <p class="text-sm font-medium text-gray-300">Rolex Raffle Raised</p>
+                    <p id="globalRolexRaisedDisplay" class="text-2xl font-bold text-purple-300 mt-1">$0.00</p>
+                </div>
+                <div class="p-4 bg-green-900/40 border-l-4 border-green-500 rounded-lg">
+                    <p class="text-sm font-medium text-gray-300">Donations Raised</p>
+                    <p id="globalDonationRaisedDisplay" class="text-2xl font-bold text-green-300 mt-1">$0.00</p>
+                    <p id="globalTransactionCountDisplay" class="text-xs text-gray-400 mt-1">0 transactions</p>
+                </div>
+            </div>
+        </div>
 
         <!-- Referrer Overview (For Referrers and Super Admins) -->
         <!-- (Overview content omitted for brevity, unchanged) -->
@@ -1292,6 +1320,8 @@
                 const overviewCard = document.getElementById('referrerOverview');
                 const exportButton = document.getElementById('exportDataButton');
                 const raffleFilterControls = document.getElementById('raffleFilterControls');
+                const exportAllTransactionsButton = document.getElementById('exportAllTransactionsButton');
+                const globalRevenueOverview = document.getElementById('globalRevenueOverview');
 
                 // --- Access Control Logic ---
                 
@@ -1306,6 +1336,8 @@
                 addManualDonationButton.classList.add('hidden'); // NEW
                 overviewCard.classList.add('hidden');
                 exportButton.classList.add('hidden');
+                exportAllTransactionsButton.classList.add('hidden');
+                globalRevenueOverview.classList.add('hidden');
                 raffleTab.classList.add('hidden'); 
 
                 
@@ -1320,7 +1352,9 @@
                     addRolexSaleButton.classList.remove('hidden');
                     addManualDonationButton.classList.remove('hidden'); // NEW
                     exportButton.classList.remove('hidden');
+                    exportAllTransactionsButton.classList.remove('hidden');
                     overviewCard.classList.remove('hidden');
+                    globalRevenueOverview.classList.remove('hidden');
                     raffleTab.classList.remove('hidden'); 
                     raffleFilterControls.classList.remove('hidden'); // SA uses the filter control
                     currentTab = currentTab || 'referrers'; 
@@ -1371,6 +1405,7 @@
                 }
                 
                 renderTables();
+                updateGlobalRevenueOverview();
                 updateSortIndicators('referrer', referrerSortConfig); 
                 updateSortIndicators('users', userSortConfig);
                 updateSortIndicators('donations', donationSortConfig);
@@ -1796,6 +1831,98 @@
 
             ticketsDisplay.textContent = totalTickets.toLocaleString();
             amountDisplay.textContent = formatCurrency(totalAmount);
+        };
+
+        const calculateCombinedRevenueTotals = () => {
+            const splitTotal = (dashboardData.raffleEntries || []).reduce((sum, entry) => sum + (parseFloat(entry.amountPaid) || 0), 0);
+            const rolexTotal = (dashboardData.rolexEntries || []).reduce((sum, entry) => sum + (parseFloat(entry.amountPaid) || 0), 0);
+            const donationTotal = (dashboardData.donationEntries || []).reduce((sum, entry) => {
+                const donationAmount = parseFloat(entry.amount || entry.amountPaid) || 0;
+                return sum + donationAmount;
+            }, 0);
+
+            return {
+                splitTotal,
+                rolexTotal,
+                donationTotal,
+                totalRaised: splitTotal + rolexTotal + donationTotal,
+                transactionCount: (dashboardData.raffleEntries || []).length + (dashboardData.rolexEntries || []).length + (dashboardData.donationEntries || []).length,
+            };
+        };
+
+        const updateGlobalRevenueOverview = () => {
+            const totals = calculateCombinedRevenueTotals();
+
+            const totalRaisedEl = document.getElementById('globalTotalRaisedDisplay');
+            const splitRaisedEl = document.getElementById('globalSplitRaisedDisplay');
+            const rolexRaisedEl = document.getElementById('globalRolexRaisedDisplay');
+            const donationRaisedEl = document.getElementById('globalDonationRaisedDisplay');
+            const txCountEl = document.getElementById('globalTransactionCountDisplay');
+
+            if (!totalRaisedEl || !splitRaisedEl || !rolexRaisedEl || !donationRaisedEl || !txCountEl) return;
+
+            totalRaisedEl.textContent = formatCurrency(totals.totalRaised);
+            splitRaisedEl.textContent = formatCurrency(totals.splitTotal);
+            rolexRaisedEl.textContent = formatCurrency(totals.rolexTotal);
+            donationRaisedEl.textContent = formatCurrency(totals.donationTotal);
+            txCountEl.textContent = `${totals.transactionCount.toLocaleString()} transactions`;
+        };
+
+        const getAllMoneyRaisedExportData = () => {
+            const splitRows = (dashboardData.raffleEntries || []).map((entry) => ({
+                Type: 'Split The Pot',
+                Date: formatDate(entry.timestamp),
+                Entry_ID: entry.id || '',
+                Name: entry.fullName || entry.name || entry.firstName || '',
+                Email: entry.email || '',
+                Phone: entry.phoneNumber || '',
+                Tickets: parseInt(entry.ticketCount, 10) || 0,
+                Amount: parseFloat(entry.amountPaid) || 0,
+                Status: entry.status || 'paid',
+                Referrer: entry.referrerRefId || '',
+                Source: entry.sourceApp || ''
+            }));
+
+            const rolexRows = (dashboardData.rolexEntries || []).map((entry) => ({
+                Type: 'Rolex Raffle',
+                Date: formatDate(entry.timestamp),
+                Entry_ID: entry.id || '',
+                Name: entry.fullName || entry.name || entry.firstName || '',
+                Email: entry.email || '',
+                Phone: entry.phoneNumber || '',
+                Tickets: parseInt(entry.ticketsBought || entry.ticketCount, 10) || 0,
+                Amount: parseFloat(entry.amountPaid) || 0,
+                Status: entry.status || '',
+                Referrer: entry.referrerRefId || '',
+                Source: entry.sourceApp || ''
+            }));
+
+            const donationRows = (dashboardData.donationEntries || []).map((entry) => ({
+                Type: 'Donation',
+                Date: formatDate(entry.createdAt),
+                Entry_ID: entry.id || '',
+                Name: entry.fullName || entry.name || '',
+                Email: entry.email || '',
+                Phone: entry.phone || entry.phoneNumber || '',
+                Tickets: 0,
+                Amount: parseFloat(entry.amount || entry.amountPaid) || 0,
+                Status: entry.status || '',
+                Referrer: entry.referrerRefId || '',
+                Source: entry.sourceApp || ''
+            }));
+
+            return [...splitRows, ...rolexRows, ...donationRows];
+        };
+
+        const handleExportAllMoneyRaised = () => {
+            if (!isSuperAdmin) {
+                showCustomPopup('Permission Denied', 'Only Super Admins can export all money raised data.');
+                return;
+            }
+
+            const dataToExport = getAllMoneyRaisedExportData();
+            const filename = `All_Money_Raised_Transactions_${new Date().toISOString().slice(0, 10)}.csv`;
+            downloadCSV(dataToExport, filename);
         };
 
         const renderRolexTable = (entries) => {
@@ -3459,6 +3586,7 @@
                 document.getElementById('closeExportConfirmationModal').addEventListener('click', closeExportConfirmationModal);
                 document.getElementById('exportAllRowsButton').addEventListener('click', () => performExport('all'));
                 document.getElementById('exportFilteredRowsButton').addEventListener('click', () => performExport('filtered'));
+                document.getElementById('exportAllTransactionsButton').addEventListener('click', handleExportAllMoneyRaised);
                 
                 // NEW: Refresh Data Button
                 document.getElementById('refreshDataButton').addEventListener('click', handleRefreshClick);

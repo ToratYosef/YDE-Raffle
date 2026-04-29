@@ -199,6 +199,11 @@
                     Win a prestigious Rolex Sky-Dweller or $26,000 in Cash!
                 </p>
 
+                <div id="tickets-remaining-banner" class="mb-8 inline-flex items-center gap-2 bg-yellow-400/10 border border-yellow-400/50 text-yellow-300 px-5 py-2 rounded-full">
+                    <span class="bebas-neue text-2xl tracking-wide">Tickets Left:</span>
+                    <span id="tickets-remaining-count" class="text-2xl font-extrabold text-white">42</span>
+                </div>
+
                 <!-- Prize Display Section (Smaller, clickable) -->
                 <div class="mb-12 max-w-sm mx-auto">
                     <h2 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4">GRAND PRIZE: ROLEX OR $26,000</h2>
@@ -339,7 +344,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
         // --- Firebase Initialization (Using Placeholder/Hardcoded Values) ---
@@ -459,10 +464,16 @@
             const FEE_PERCENTAGE = 0.029;
             const FEE_FLAT = 0.30;
             const MIN_TICKETS = 1;
+            const STARTING_TICKETS_LEFT = 42;
             let elements;
             let currentTicketQuantity = MIN_TICKETS;
             let currentTotalAmount = TICKET_PRICE;
             let clientSecret;
+            let ticketsRemaining = STARTING_TICKETS_LEFT;
+            let baselineTicketsSold = null;
+
+            const ticketsRemainingBanner = document.getElementById('tickets-remaining-banner');
+            const ticketsRemainingCount = document.getElementById('tickets-remaining-count');
 
             // --- Initial State Fix: Ensure checkbox starts unchecked (removed 'checked' attribute from HTML)
             coverFeeCheckbox.checked = false;
@@ -497,6 +508,56 @@
                 decrementTicketButton.disabled = disabled || (currentTicketQuantity <= MIN_TICKETS);
                 incrementTicketButton.disabled = disabled;
                 coverFeeCheckbox.disabled = disabled;
+            }
+
+            function cleanTicketCount(value) {
+                const num = parseInt(value, 10);
+                if (Number.isNaN(num)) return 0;
+                return Math.max(0, num);
+            }
+
+            function setTicketsRemainingDisplay(remaining) {
+                ticketsRemaining = Math.max(0, cleanTicketCount(remaining));
+                ticketsRemainingCount.textContent = ticketsRemaining.toString();
+                ticketQuantityInput.max = ticketsRemaining > 0 ? ticketsRemaining.toString() : '0';
+
+                if (ticketsRemaining <= 0) {
+                    raffleProceedToPaymentButton.disabled = true;
+                    raffleProceedToPaymentButton.querySelector('.button-text').textContent = 'Sold Out';
+                    raffleProceedToPaymentButton.classList.add('opacity-60', 'cursor-not-allowed');
+                    ticketQuantityInput.value = '0';
+                    totalAmountDisplay.textContent = formatCurrency(0);
+                    return;
+                }
+
+                raffleProceedToPaymentButton.disabled = false;
+                raffleProceedToPaymentButton.querySelector('.button-text').textContent = 'Proceed to Payment';
+                raffleProceedToPaymentButton.classList.remove('opacity-60', 'cursor-not-allowed');
+
+                if (parseInt(ticketQuantityInput.value, 10) > ticketsRemaining) {
+                    ticketQuantityInput.value = ticketsRemaining;
+                }
+            }
+
+            async function initializeTicketsCounter() {
+                setTicketsRemainingDisplay(STARTING_TICKETS_LEFT);
+
+                try {
+                    const totalsRef = doc(db, 'counters', 'rolex_totals');
+                    const totalsSnap = await getDoc(totalsRef);
+                    baselineTicketsSold = totalsSnap.exists() ? cleanTicketCount(totalsSnap.data().totalTicketsSold) : 0;
+
+                    onSnapshot(totalsRef, (snapshot) => {
+                        const currentSold = snapshot.exists() ? cleanTicketCount(snapshot.data().totalTicketsSold) : baselineTicketsSold;
+                        const soldSinceCounterStarted = Math.max(0, currentSold - baselineTicketsSold);
+                        setTicketsRemainingDisplay(STARTING_TICKETS_LEFT - soldSinceCounterStarted);
+                        calculateTotal();
+                    }, (error) => {
+                        console.error('Could not subscribe to Rolex ticket totals:', error);
+                    });
+                } catch (error) {
+                    console.error('Could not initialize Rolex ticket counter:', error);
+                }
             }
 
             function showGlobalLoadingOverlay(message = "Loading...", disableForm = false) {
@@ -544,10 +605,20 @@
             // Function to handle total calculation including fee
             function calculateTotal() {
                 let quantity = parseInt(ticketQuantityInput.value, 10);
+
+                if (ticketsRemaining <= 0) {
+                    currentTicketQuantity = 0;
+                    currentTotalAmount = 0;
+                    totalAmountDisplay.textContent = formatCurrency(0);
+                    decrementTicketButton.disabled = true;
+                    incrementTicketButton.disabled = true;
+                    return;
+                }
                 
                 // Enforce minimum and maximum limits
                 if (isNaN(quantity) || quantity < MIN_TICKETS) quantity = MIN_TICKETS;
-                if (quantity > 999999) quantity = 999999;
+                const maxAllowed = Math.min(999999, ticketsRemaining);
+                if (quantity > maxAllowed) quantity = maxAllowed;
                 
                 ticketQuantityInput.value = quantity; 
                 currentTicketQuantity = quantity;
@@ -565,6 +636,7 @@
 
                 // Disable button if quantity is at minimum
                 decrementTicketButton.disabled = quantity <= MIN_TICKETS;
+                incrementTicketButton.disabled = quantity >= maxAllowed;
             }
 
             // Simple client-side validation for the initial form
@@ -579,7 +651,9 @@
                 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                 const phoneDigits = phone.replace(/\D/g, '');
 
+                if (ticketsRemaining <= 0) { showCustomPopup('Sold Out', 'Sorry, all Rolex raffle tickets are sold out.'); return false; }
                 if (isNaN(quantity) || quantity < MIN_TICKETS) { showCustomPopup('Invalid Quantity', `Please enter a valid number of tickets (at least ${MIN_TICKETS}).`); return false; }
+                if (quantity > ticketsRemaining) { showCustomPopup('Not Enough Tickets Left', `Only ${ticketsRemaining} ticket(s) left.`); return false; }
                 if (!name) { showCustomPopup('Missing Field', 'Please enter your full name.'); return false; }
                 if (!email) { showCustomPopup('Missing Field', 'Please enter your email address.'); return false; }
                 if (!emailRegex.test(email)) { showCustomPopup('Invalid Email', 'Please enter a valid email address.'); return false; }
@@ -607,7 +681,9 @@
 
             incrementTicketButton.addEventListener('click', () => {
                 let quantity = parseInt(ticketQuantityInput.value, 10);
-                ticketQuantityInput.value = quantity + 1;
+                if (quantity < ticketsRemaining) {
+                    ticketQuantityInput.value = quantity + 1;
+                }
                 calculateTotal();
             });
 
@@ -705,6 +781,7 @@
             });
 
             // Initialize calculation on load
+            initializeTicketsCounter();
             calculateTotal();
         });
     </script>

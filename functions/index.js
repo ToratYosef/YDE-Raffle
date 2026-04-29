@@ -2464,6 +2464,28 @@ exports.getAdminDashboardData = functions.https.onCall(async (data, context) => 
     }
 });
 
+/**
+ * Public callable function to fetch Rolex totals for the public raffle page.
+ * Uses the same counters source as the admin dashboard: counters/rolex_totals.
+ */
+exports.getPublicRolexTotals = functions.https.onCall(async () => {
+    try {
+        const db = admin.firestore();
+        const rolexTotalsDoc = await db.collection('counters').doc('rolex_totals').get();
+
+        let totalTicketsSold = 0;
+        if (rolexTotalsDoc.exists) {
+            const totalsData = rolexTotalsDoc.data() || {};
+            totalTicketsSold = cleanTicketCount(totalsData.totalTicketsSold || 0);
+        }
+
+        return { totalTicketsSold };
+    } catch (error) {
+        console.error('Error in getPublicRolexTotals:', error);
+        throw new functions.https.HttpsError('internal', 'Failed to fetch Rolex totals.', error.message);
+    }
+});
+
 
 /**
  * Callable function to assign or transfer a batch of raffle sales (SplitThePot) to a specific referrer.

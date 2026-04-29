@@ -1834,7 +1834,10 @@
         };
 
         const calculateCombinedRevenueTotals = () => {
-            const splitTotal = (dashboardData.raffleEntries || []).reduce((sum, entry) => sum + (parseFloat(entry.amountPaid) || 0), 0);
+            const splitTotal = (dashboardData.raffleEntries || []).reduce((sum, entry) => {
+                const grossSplitAmount = parseFloat(entry.amountPaid) || 0;
+                return sum + (grossSplitAmount / 2);
+            }, 0);
             const rolexTotal = (dashboardData.rolexEntries || []).reduce((sum, entry) => sum + (parseFloat(entry.amountPaid) || 0), 0);
             const donationTotal = (dashboardData.donationEntries || []).reduce((sum, entry) => {
                 const donationAmount = parseFloat(entry.amount || entry.amountPaid) || 0;
@@ -1877,7 +1880,7 @@
                 Email: entry.email || '',
                 Phone: entry.phoneNumber || '',
                 Tickets: parseInt(entry.ticketCount, 10) || 0,
-                Amount: parseFloat(entry.amountPaid) || 0,
+                Amount: (parseFloat(entry.amountPaid) || 0) / 2,
                 Status: entry.status || 'paid',
                 Referrer: entry.referrerRefId || '',
                 Source: entry.sourceApp || ''

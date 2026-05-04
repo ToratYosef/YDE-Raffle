@@ -3,13 +3,36 @@ const { firestore } = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 const cors = require('cors');
 const nodemailer = require('nodemailer'); // NEW: Nodemailer import
+const path = require('path');
+
+// Load local env vars from functions/.env when present.
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 
 // IMPORTANT: Initialize the Firebase Admin SDK
 admin.initializeApp();
 
 // NOTE: It's crucial that the 'stripe' config variable is correctly set in your Firebase environment
 // Example of how to configure: firebase functions:config:set stripe.secret_key="sk_live_..."
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const legacyStripeConfig = (() => {
+    try {
+        return functions.config()?.stripe?.secret_key || '';
+    } catch {
+        return '';
+    }
+})();
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET || legacyStripeConfig;
+const stripe = require('stripe')(STRIPE_SECRET_KEY || '');
+const STRIPE_KEY_SOURCE = process.env.STRIPE_SECRET_KEY
+    ? 'process.env.STRIPE_SECRET_KEY'
+    : (process.env.STRIPE_SECRET
+        ? 'process.env.STRIPE_SECRET'
+        : (legacyStripeConfig ? 'functions.config().stripe.secret_key' : 'missing'));
+
+function hasValidStripeKey() {
+    return typeof STRIPE_SECRET_KEY === 'string' && STRIPE_SECRET_KEY.startsWith('sk_');
+}
+
+console.log(`[Stripe] Key source: ${STRIPE_KEY_SOURCE}. Valid format: ${hasValidStripeKey()}`);
 
 // NEW: Nodemailer Setup - Reads config from environment: firebase functions:config:set mail.email="your-email@gmail.com" mail.password="your-app-password"
 const mailConfig = { email: process.env.MAIL_EMAIL, password: process.env.MAIL_PASSWORD };
@@ -908,6 +931,10 @@ exports.adminResetPasswordByEmail = functions.https.onRequest((req, res) => {
  */
 exports.createRolexPaymentIntent = functions.https.onCall(async (data, context) => {
     const SOURCE_APP_TAG = 'YDE Rolex Raffle';
+
+    if (!hasValidStripeKey()) {
+        throw new functions.https.HttpsError('failed-precondition', 'Stripe is not configured correctly on the server.');
+    }
 
     try {
         // NEW: Sanitize inputs before processing
@@ -2789,7 +2816,7 @@ const AUCTION_PACKAGES = ['package1','package2','package3','package4','package5'
 const auctionZeroAlloc = () => ({ package1:0, package2:0, package3:0, package4:0, package5:0 });
 
 exports.createAuctionCheckoutSession = functions.https.onCall(async (data) => {
-    if (!process.env.STRIPE_SECRET_KEY) {
+    if (!hasValidStripeKey()) {
         throw new functions.https.HttpsError('failed-precondition', 'Stripe is not configured on the server.');
     }
 

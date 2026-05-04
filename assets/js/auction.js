@@ -257,8 +257,11 @@ checkoutBtn.addEventListener('click', async () => {
     if (!response?.data?.url) throw new Error('No checkout URL returned.');
     window.location.href = response.data.url;
   } catch (e) {
-    const details = e?.details ? ` (${e.details})` : '';
-    err.textContent = `${e?.message || 'Checkout failed. Please try again.'}${details}`;
+    const detailText = typeof e?.details === 'string'
+      ? e.details
+      : (e?.details && typeof e.details.message === 'string' ? e.details.message : '');
+    const suffix = detailText ? ` (${detailText})` : '';
+    err.textContent = `${e?.message || 'Checkout failed. Please try again.'}${suffix}`;
     checkoutBtn.disabled = false;
     checkoutBtn.textContent = 'Proceed to Payment';
   }

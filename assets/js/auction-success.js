@@ -1,7 +1,7 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js';
 import { getFirestore, collection, query, where, getDocs } from 'https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/11.9.1/firebase-functions.js';
-const firebaseConfig={apiKey:'<SECRET>',authDomain:'yderaffle.firebaseapp.com',projectId:'yderaffle',storageBucket:'yderaffle.firebasestorage.app',messagingSenderId:'970928262173',appId:'1:970928262173:web:d14d5b2f7130fef2ec850f'};
+const firebaseConfig={apiKey:'AIzaSyAT539nr_s2OxHPTAmkxwMpaWt-FiDTgQs',authDomain:'yderaffle.firebaseapp.com',projectId:'yderaffle',storageBucket:'yderaffle.firebasestorage.app',messagingSenderId:'967768309102',appId:'1:967768309102:web:c89d61a747e8cb941f557f'};
 const app=initializeApp(firebaseConfig),db=getFirestore(app),submitFn=httpsCallable(getFunctions(app),'submitAuctionAllocation');
 const sid=new URLSearchParams(location.search).get('session_id');const status=document.getElementById('status');const alloc=document.getElementById('alloc');
 if(!sid){status.textContent='Missing session_id';throw new Error('missing');}

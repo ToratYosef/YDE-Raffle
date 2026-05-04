@@ -2778,3 +2778,77 @@ exports.assignReferrerToRolexTickets = functions.https.onCall(async (data, conte
         throw new functions.https.HttpsError('internal', 'Failed to assign/transfer sales due to server error.', error.message);
     }
 });
+
+const AUCTION_BUNDLES = {
+  bundle1: { ticketCount: 1, amount: 3000 },
+  bundle4: { ticketCount: 4, amount: 10000 },
+  bundle10: { ticketCount: 10, amount: 20000 },
+  bundle20: { ticketCount: 20, amount: 35000 }
+};
+const AUCTION_PACKAGES = ['package1','package2','package3','package4','package5'];
+const auctionZeroAlloc = () => ({ package1:0, package2:0, package3:0, package4:0, package5:0 });
+
+exports.createAuctionCheckoutSession = functions.https.onCall(async (data) => {
+  const { name,email,phone,ticketBundleId } = data || {};
+  if (!name || !email || !phone || !AUCTION_BUNDLES[ticketBundleId]) throw new functions.https.HttpsError('invalid-argument','Invalid input.');
+  const db = admin.firestore();
+  const orderRef = db.collection('auctionOrders').doc();
+  const bundle = AUCTION_BUNDLES[ticketBundleId];
+  const orderId = orderRef.id;
+  await orderRef.set({ orderId, status:'pending', source:'stripe', name, email, phone, ticketBundleId, ticketCount:bundle.ticketCount, amountPaid:0, currency:'usd', allocations:auctionZeroAlloc(), createdAt: admin.firestore.FieldValue.serverTimestamp(), note:'' });
+  const baseUrl = process.env.APP_URL || process.env.SITE_URL || 'https://ydeseniors.com';
+  const session = await stripe.checkout.sessions.create({
+    mode:'payment', payment_method_types:['card'],
+    line_items:[{ price_data:{ currency:'usd', product_data:{ name:`Chinese Auction - ${bundle.ticketCount} Tickets`}, unit_amount:bundle.amount }, quantity:1 }],
+    success_url:`${baseUrl}/auction/success?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url:`${baseUrl}/auction`,
+    metadata:{ type:'auction', orderId, name,email,phone,ticketBundleId, ticketCount:String(bundle.ticketCount) }
+  });
+  return { url: session.url, orderId };
+});
+
+exports.submitAuctionAllocation = functions.https.onCall(async (data) => {
+  const { orderId, sessionId, allocations } = data || {};
+  if (!orderId || !sessionId || !allocations) throw new functions.https.HttpsError('invalid-argument','Missing fields.');
+  const db = admin.firestore(); const ref = db.collection('auctionOrders').doc(orderId); const snap = await ref.get();
+  if (!snap.exists) throw new functions.https.HttpsError('not-found','Order not found.');
+  const order = snap.data(); if (order.status !== 'paid') throw new functions.https.HttpsError('failed-precondition','Order must be paid.');
+  if (order.stripeSessionId !== sessionId) throw new functions.https.HttpsError('permission-denied','Session mismatch.');
+  let sum = 0; const clean = auctionZeroAlloc(); for (const k of AUCTION_PACKAGES){ const v=Number(allocations[k]||0); if (!Number.isFinite(v) || v < 0) throw new functions.https.HttpsError('invalid-argument','Invalid allocations.'); clean[k]=Math.floor(v); sum += clean[k]; }
+  if (sum !== Number(order.ticketCount||0)) throw new functions.https.HttpsError('invalid-argument','Allocation total must match ticket count.');
+  await ref.set({ allocations:clean, status:'submitted', submittedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge:true });
+  return { ok:true };
+});
+
+exports.createManualAuctionOrder = functions.https.onCall(async (data, context) => {
+  if (!isAdmin(context)) throw new functions.https.HttpsError('permission-denied','Admins only.');
+  const { name,email,phone,ticketCount,note,allocations } = data || {};
+  if (!name || !email || !phone || !Number.isInteger(Number(ticketCount)) || Number(ticketCount) < 1) throw new functions.https.HttpsError('invalid-argument','Invalid input.');
+  const clean = auctionZeroAlloc(); let sum = 0;
+  for (const k of AUCTION_PACKAGES){ const v = Number((allocations||{})[k] || 0); if (!Number.isFinite(v) || v < 0) throw new functions.https.HttpsError('invalid-argument','Invalid allocations.'); clean[k]=Math.floor(v); sum += clean[k]; }
+  let status = 'manual'; if (sum > 0) { if (sum !== Number(ticketCount)) throw new functions.https.HttpsError('invalid-argument','Allocation total mismatch.'); status = 'submitted'; }
+  const ref = admin.firestore().collection('auctionOrders').doc();
+  await ref.set({ orderId:ref.id, stripeSessionId:'', paymentIntentId:'', status, source:'manual', name,email,phone, ticketBundleId:'manual', ticketCount:Number(ticketCount), amountPaid:0, currency:'usd', allocations:clean, createdAt: admin.firestore.FieldValue.serverTimestamp(), submittedAt: status==='submitted' ? admin.firestore.FieldValue.serverTimestamp() : null, note:note||'' });
+  return { orderId:ref.id };
+});
+
+exports.updateAuctionAllocationAdmin = functions.https.onCall(async (data, context) => {
+  if (!isAdmin(context)) throw new functions.https.HttpsError('permission-denied','Admins only.');
+  const { orderId, allocations } = data || {}; if (!orderId || !allocations) throw new functions.https.HttpsError('invalid-argument','Missing fields.');
+  const ref = admin.firestore().collection('auctionOrders').doc(orderId); const snap = await ref.get(); if (!snap.exists) throw new functions.https.HttpsError('not-found','Order missing.');
+  const order = snap.data(); let sum = 0; const clean = auctionZeroAlloc(); for (const k of AUCTION_PACKAGES){const v = Number(allocations[k]||0); if (!Number.isFinite(v) || v < 0) throw new functions.https.HttpsError('invalid-argument','Invalid allocations.'); clean[k]=Math.floor(v); sum += clean[k]; }
+  if (sum !== Number(order.ticketCount || 0)) throw new functions.https.HttpsError('invalid-argument','Totals must equal ticket count.');
+  await ref.set({ allocations:clean, status:'submitted', submittedAt:admin.firestore.FieldValue.serverTimestamp() }, { merge:true }); return { ok:true };
+});
+
+exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
+  const sig = req.headers['stripe-signature']; let event;
+  try { event = stripe.webhooks.constructEvent(req.rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET); } catch (err) { res.status(400).send(`Webhook Error: ${err.message}`); return; }
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object; if (session.metadata && session.metadata.type === 'auction') {
+      const orderId = session.metadata.orderId; const ref = admin.firestore().collection('auctionOrders').doc(orderId); const snap = await ref.get();
+      if (snap.exists) { const order = snap.data(); if (order.status === 'pending' || order.status === 'paid') { await ref.set({ status:'paid', stripeSessionId: session.id, paymentIntentId: session.payment_intent || '', amountPaid: ((session.amount_total || 0) / 100), paidAt: admin.firestore.FieldValue.serverTimestamp() }, { merge:true }); } }
+    }
+  }
+  res.json({ received: true });
+});

@@ -19,6 +19,7 @@ const bundleWrap = document.getElementById('bundles');
 const packageWrap = document.getElementById('packages');
 const err = document.getElementById('err');
 const selectedBundleLabel = document.getElementById('selectedBundleLabel');
+const selectionBreakdown = document.getElementById('selectionBreakdown');
 const checkoutBtn = document.getElementById('checkout');
 const nameEl = document.getElementById('name');
 const emailEl = document.getElementById('email');
@@ -52,11 +53,51 @@ const packageThemes = [
 ];
 
 const bundleThemes = [
-  'bg-gradient-to-br from-rose-500/20 to-rose-900/25 border-rose-300/40 hover:border-rose-200/90 hover:shadow-[0_0_20px_rgba(244,63,94,0.35)]',
-  'bg-gradient-to-br from-blue-500/20 to-blue-900/25 border-blue-300/40 hover:border-blue-200/90 hover:shadow-[0_0_20px_rgba(59,130,246,0.35)]',
-  'bg-gradient-to-br from-emerald-500/20 to-emerald-900/25 border-emerald-300/40 hover:border-emerald-200/90 hover:shadow-[0_0_20px_rgba(16,185,129,0.35)]',
-  'bg-gradient-to-br from-amber-500/20 to-amber-900/25 border-amber-300/40 hover:border-amber-200/90 hover:shadow-[0_0_20px_rgba(251,191,36,0.4)]'
+  'bg-slate-900/70 border-rose-300/45 hover:border-rose-200/85',
+  'bg-slate-900/70 border-sky-300/45 hover:border-sky-200/85',
+  'bg-slate-900/70 border-emerald-300/45 hover:border-emerald-200/85',
+  'bg-slate-900/70 border-amber-300/45 hover:border-amber-200/85'
 ];
+
+const bundleState = {};
+const bundleCards = {};
+const bundleQtyEls = {};
+
+const setBundleState = (next) => {
+  Object.keys(bundleState).forEach((k) => delete bundleState[k]);
+  Object.entries(next).forEach(([k, v]) => {
+    if (v > 0) bundleState[k] = v;
+  });
+};
+
+const getCheapestCombination = (ticketTarget) => {
+  const maxTickets = Math.max(0, Number(ticketTarget) || 0);
+  const dp = Array(maxTickets + 1).fill(null);
+  dp[0] = { cost: 0, counts: {} };
+
+  for (let tickets = 1; tickets <= maxTickets; tickets += 1) {
+    let best = null;
+    for (const bundle of ticketBundles) {
+      const prevTickets = tickets - bundle.ticketCount;
+      if (prevTickets < 0 || !dp[prevTickets]) continue;
+
+      const prev = dp[prevTickets];
+      const cost = prev.cost + bundle.price;
+      if (!best || cost < best.cost) {
+        best = {
+          cost,
+          counts: {
+            ...prev.counts,
+            [bundle.id]: Number(prev.counts[bundle.id] || 0) + 1
+          }
+        };
+      }
+    }
+    dp[tickets] = best;
+  }
+
+  return dp[maxTickets]?.counts || {};
+};
 
 const getBundleTotals = () => {
   return ticketBundles.reduce((acc, bundle) => {
@@ -71,12 +112,44 @@ const renderSelectionSummary = () => {
   const { totalTickets, totalAmount } = getBundleTotals();
   if (totalTickets === 0) {
     selectedBundleLabel.textContent = 'No bundle selected';
-    selectedBundleLabel.classList.remove('border-yellow-300/60', 'text-yellow-100', 'bg-yellow-500/10');
+    if (selectionBreakdown) selectionBreakdown.innerHTML = '';
     return;
   }
 
   selectedBundleLabel.textContent = `Selected: ${totalTickets} tickets for $${totalAmount}`;
-  selectedBundleLabel.classList.add('border-yellow-300/60', 'text-yellow-100', 'bg-yellow-500/10');
+
+  if (selectionBreakdown) {
+    const lines = ticketBundles
+      .filter((bundle) => Number(bundleState[bundle.id] || 0) > 0)
+      .map((bundle) => {
+        const qty = Number(bundleState[bundle.id] || 0);
+        const countLabel = bundle.ticketCount === 1 ? 'ticket' : 'tickets';
+        return `<p>${qty} x ${bundle.ticketCount} ${countLabel} ($${bundle.price} each) = $${qty * bundle.price}</p>`;
+      });
+    selectionBreakdown.innerHTML = lines.join('');
+  }
+};
+
+const refreshBundleUI = () => {
+  ticketBundles.forEach((bundle) => {
+    const qty = Number(bundleState[bundle.id] || 0);
+    const qtyEl = bundleQtyEls[bundle.id];
+    const card = bundleCards[bundle.id];
+    if (qtyEl) qtyEl.textContent = String(qty);
+    if (card) {
+      card.classList.toggle('ring-1', qty > 0);
+      card.classList.toggle('ring-white/40', qty > 0);
+    }
+  });
+};
+
+const applyTicketDelta = (ticketDelta) => {
+  const { totalTickets } = getBundleTotals();
+  const nextTickets = Math.max(0, totalTickets + ticketDelta);
+  const optimized = getCheapestCombination(nextTickets);
+  setBundleState(optimized);
+  refreshBundleUI();
+  renderSelectionSummary();
 };
 
 auctionPackages.forEach((pkg, index) => {
@@ -99,8 +172,7 @@ auctionPackages.forEach((pkg, index) => {
 
 ticketBundles.forEach((bundle, index) => {
   const theme = bundleThemes[index % bundleThemes.length];
-  const card = document.createElement('button');
-  card.type = 'button';
+  const card = document.createElement('div');
   card.className = `bundle border rounded-xl p-4 transition-all duration-200 ${theme}`;
   card.innerHTML = `
     <div class="flex items-center justify-between gap-4">
@@ -117,35 +189,26 @@ ticketBundles.forEach((bundle, index) => {
     </div>
   `;
 
-  const updateBundleCardState = () => {
-    const qty = Number(selectedBundles[bundle.id] || 0);
-    const qtyEl = document.getElementById(`qty-${bundle.id}`);
-    if (qtyEl) qtyEl.textContent = String(qty);
-    card.classList.toggle('ring-2', qty > 0);
-    card.classList.toggle('ring-yellow-300', qty > 0);
-    card.classList.toggle('scale-[1.01]', qty > 0);
-  };
+  bundleCards[bundle.id] = card;
+  bundleQtyEls[bundle.id] = card.querySelector(`#qty-${bundle.id}`);
 
   card.addEventListener('click', (event) => {
     const target = event.target.closest('button[data-action]');
     if (!target) return;
 
     const action = target.dataset.action;
-    const current = Number(selectedBundles[bundle.id] || 0);
     if (action === 'inc') {
-      selectedBundles[bundle.id] = current + 1;
+      applyTicketDelta(bundle.ticketCount);
     } else if (action === 'dec') {
-      selectedBundles[bundle.id] = Math.max(0, current - 1);
+      applyTicketDelta(-bundle.ticketCount);
     }
-
-    updateBundleCardState();
-    renderSelectionSummary();
   });
 
   bundleWrap.appendChild(card);
-  updateBundleCardState();
 });
 
+setBundleState({});
+refreshBundleUI();
 renderSelectionSummary();
 
 checkoutBtn.addEventListener('click', async () => {
@@ -154,7 +217,7 @@ checkoutBtn.addEventListener('click', async () => {
   const email = emailEl.value.trim();
   const phone = phoneEl.value.trim();
   const selected = Object.fromEntries(
-    Object.entries(selectedBundles).filter(([, qty]) => Number(qty) > 0)
+    Object.entries(bundleState).filter(([, qty]) => Number(qty) > 0)
   );
   const { totalTickets } = getBundleTotals();
 

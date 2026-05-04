@@ -26,16 +26,26 @@ const manualFormEl = document.getElementById('manualForm');
 const manualErrEl = document.getElementById('manualErr');
 const manualSubmitEl = document.getElementById('manualSubmit');
 const wheelEl = document.getElementById('wheel');
+const allocModalEl = document.getElementById('allocModal');
+const allocModalMetaEl = document.getElementById('allocModalMeta');
+const allocModalTicketsEl = document.getElementById('allocModalTickets');
+const allocModalRemainingEl = document.getElementById('allocModalRemaining');
+const allocModalAmountEl = document.getElementById('allocModalAmount');
+const allocModalFieldsEl = document.getElementById('allocModalFields');
+const allocModalErrEl = document.getElementById('allocModalErr');
+const allocModalSaveEl = document.getElementById('allocModalSave');
+const allocModalCloseEl = document.getElementById('allocModalClose');
+const allocModalCancelEl = document.getElementById('allocModalCancel');
 
 const packageIds = ['package1', 'package2', 'package3', 'package4', 'package5'];
 let orders = [];
+let activeModalOrderId = '';
 
 manualFormEl.innerHTML = `
   <input id="mname" class="w-full rounded-lg border border-slate-700 bg-slate-950 p-2" placeholder="Full name">
   <input id="memail" class="w-full rounded-lg border border-slate-700 bg-slate-950 p-2" placeholder="Email">
   <input id="mphone" class="w-full rounded-lg border border-slate-700 bg-slate-950 p-2" placeholder="Phone">
   <input id="mtickets" class="w-full rounded-lg border border-slate-700 bg-slate-950 p-2" type="number" min="1" placeholder="Ticket count">
-  <input id="mnote" class="w-full rounded-lg border border-slate-700 bg-slate-950 p-2" placeholder="Note">
   ${packageIds.map((id, idx) => `<input id="mp${idx + 1}" class="w-full rounded-lg border border-slate-700 bg-slate-950 p-2" type="number" min="0" placeholder="${id}">`).join('')}
 `;
 
@@ -176,6 +186,173 @@ const load = async () => {
   renderStats();
   renderOrders();
   renderWheel();
+const getOrderKey = (order) => order.orderId || order.id;
+
+const buildOrderCard = (order) => {
+
+searchEl.addEventListener('input', renderOrders);
+
+  const orderKey = getOrderKey(order);
+manualSubmitEl.addEventListener('click', async () => {
+  manualErrEl.textContent = '';
+    <button type="button" data-edit="${orderKey}" class="w-full text-left rounded-xl border border-slate-700 bg-slate-900/70 p-4 hover:border-yellow-300/60 hover:bg-slate-900 transition-colors duration-200">
+      <div class="flex items-start justify-between gap-3">
+  packageIds.forEach((id, idx) => {
+          <p class="text-lg font-semibold text-white">${order.name || 'Unknown'}</p>
+          <p class="text-xs text-slate-400 mt-1">${order.email || ''}</p>
+  });
+        <span class="text-xs px-2 py-1 rounded-full border border-slate-600 text-slate-300">${order.status || 'unknown'}</span>
+  const payload = {
+      <div class="mt-3 flex items-center justify-between gap-2 text-sm">
+        <p class="text-slate-200">Tickets <span class="font-semibold text-white">${Number(order.ticketCount || 0)}</span></p>
+        <p class="text-slate-200">Remaining <span class="font-semibold ${remaining === 0 ? 'text-emerald-300' : 'text-amber-300'}">${remaining}</span></p>
+        <p class="text-slate-200">Paid <span class="font-semibold text-white">$${Number(order.amountPaid || 0).toFixed(2)}</span></p>
+    note: document.getElementById('mnote').value,
+      <p class="mt-2 text-xs text-yellow-300 uppercase tracking-wider">Click to edit allocations</p>
+    </button>
+  `;
+};
+
+const getWheelEntriesForPackage = (packageId) => {
+  const entries = [];
+  orders.forEach((o) => {
+    const count = Number((o.allocations || {})[packageId] || 0);
+    const name = (o.name || '').trim() || 'Unknown';
+    for (let i = 0; i < count; i += 1) {
+      entries.push(name);
+    }
+  });
+  return entries;
+};
+
+const buildWheelUrl = (packageName, entries) => {
+  const params = new URLSearchParams({
+    entries: entries.join(','),
+    title: `${packageName} - YDE Auction`,
+    description: `${entries.length} entries`,
+    colors: 'facc15,38bdf8,34d399,f59e0b,f472b6,60a5fa,a78bfa',
+    spinTime: '8',
+    confetti: 'false',
+    hideOverlayText: 'true',
+    displayWinnerDialog: 'true',
+    pageBackgroundColor: '0d1222',
+    pageGradient: 'false'
+  });
+  return `https://wheelofnames.com/?${params.toString()}`;
+};
+
+const renderWheel = () => {
+  wheelEl.innerHTML = window.AUCTION_DATA.auctionPackages.map((pkg, idx) => {
+    const packageId = `package${idx + 1}`;
+    const entries = getWheelEntriesForPackage(packageId);
+    const preview = Array.from(new Set(entries)).slice(0, 3).join(', ');
+
+    return `
+      <div class="rounded-xl border border-slate-700 bg-slate-900/70 p-4" data-wheel-card="${idx}">
+        <h3 class="text-xl font-semibold text-white">${pkg.name}</h3>
+        <p class="text-sm text-slate-300 mt-1">Entries: ${entries.length}</p>
+        <p class="text-xs text-slate-400 mt-2 min-h-5">${preview || 'No names yet'}</p>
+        <button ${entries.length ? '' : 'disabled'} data-wheel-open="${idx}" class="mt-3 w-full bg-yellow-400 hover:bg-yellow-500 text-black font-semibold px-3 py-2 rounded-lg transition-colors duration-300 disabled:opacity-40 disabled:cursor-not-allowed">
+          Submit To Wheel Of Names
+        </button>
+      </div>
+    `;
+  }).join('');
+};
+
+const renderOrders = () => {
+  const search = (searchEl.value || '').toLowerCase();
+  const filtered = orders.filter((o) => `${o.name || ''} ${o.email || ''} ${o.phone || ''}`.toLowerCase().includes(search));
+
+  ordersInfoEl.textContent = `${filtered.length} of ${orders.length} orders shown`;
+  ordersEl.innerHTML = filtered.map(buildOrderCard).join('');
+};
+
+const openAllocModal = (orderId) => {
+  const order = orders.find((o) => getOrderKey(o) === orderId);
+  if (!order) return;
+
+  activeModalOrderId = orderId;
+  const allocations = getSafeAllocations(order.allocations);
+
+  allocModalMetaEl.textContent = `${order.name || 'Unknown'} • ${order.email || ''} ${order.phone || ''}`;
+  allocModalTicketsEl.textContent = String(Number(order.ticketCount || 0));
+  allocModalAmountEl.textContent = `$${Number(order.amountPaid || 0).toFixed(2)}`;
+  allocModalErrEl.textContent = '';
+
+  allocModalFieldsEl.innerHTML = packageIds.map((id) => `
+    <label class="text-xs text-slate-300">
+      ${id}
+      <input data-modal-p="${id}" class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 p-2" type="number" min="0" value="${allocations[id]}">
+    </label>
+  `).join('');
+
+  const syncRemaining = () => {
+    let sum = 0;
+    allocModalFieldsEl.querySelectorAll('input[data-modal-p]').forEach((input) => {
+      const value = Math.max(0, Number(input.value || 0));
+      sum += value;
+    });
+    const remaining = Number(order.ticketCount || 0) - sum;
+    allocModalRemainingEl.textContent = String(remaining);
+    allocModalRemainingEl.className = `font-semibold ${remaining === 0 ? 'text-emerald-300' : 'text-amber-300'}`;
+  };
+
+  allocModalFieldsEl.querySelectorAll('input[data-modal-p]').forEach((input) => {
+    input.addEventListener('input', syncRemaining);
+  });
+
+  syncRemaining();
+  allocModalEl.classList.remove('hidden');
+  allocModalEl.classList.add('flex');
+};
+
+const closeAllocModal = () => {
+  activeModalOrderId = '';
+  allocModalEl.classList.add('hidden');
+  allocModalEl.classList.remove('flex');
+  allocModalFieldsEl.innerHTML = '';
+  allocModalErrEl.textContent = '';
+};
+
+const saveAllocModal = async () => {
+  if (!activeModalOrderId) return;
+
+  const allocations = {};
+  allocModalFieldsEl.querySelectorAll('input[data-modal-p]').forEach((input) => {
+    allocations[input.dataset.modalP] = Number(input.value || 0);
+  });
+
+  allocModalSaveEl.disabled = true;
+  allocModalSaveEl.textContent = 'Saving...';
+  allocModalErrEl.textContent = '';
+
+  try {
+    await updateAlloc({ orderId: activeModalOrderId, allocations });
+    await load();
+    closeAllocModal();
+  } catch (error) {
+    allocModalErrEl.textContent = error?.message || 'Save failed';
+  } finally {
+    allocModalSaveEl.disabled = false;
+    allocModalSaveEl.textContent = 'Save Allocations';
+  }
+};
+
+const load = async () => {
+  const snap = await getDocs(collection(db, 'auctionOrders'));
+  orders = snap.docs
+    .map((doc) => ({ id: doc.id, ...doc.data() }))
+    .filter((order) => order.status === 'paid' || order.status === 'submitted');
+  orders.sort((a, b) => {
+    const aTime = a.createdAt?.seconds || 0;
+    const bTime = b.createdAt?.seconds || 0;
+    return bTime - aTime;
+  });
+
+  renderStats();
+  renderOrders();
+  renderWheel();
 };
 
 searchEl.addEventListener('input', renderOrders);
@@ -194,7 +371,6 @@ manualSubmitEl.addEventListener('click', async () => {
     email: document.getElementById('memail').value,
     phone: document.getElementById('mphone').value,
     ticketCount: Number(document.getElementById('mtickets').value || 0),
-    note: document.getElementById('mnote').value,
     allocations
   };
 
@@ -204,13 +380,7 @@ manualSubmitEl.addEventListener('click', async () => {
     await createManual(payload);
     await load();
     manualFormEl.querySelectorAll('input').forEach((input) => {
-      if (input.id === 'mnote') {
-        input.value = '';
-      } else if (input.type === 'number') {
-        input.value = '';
-      } else {
-        input.value = '';
-      }
+      input.value = '';
     });
   } catch (error) {
     manualErrEl.textContent = error?.message || 'Failed to create manual order.';
@@ -220,74 +390,32 @@ manualSubmitEl.addEventListener('click', async () => {
   }
 });
 
-ordersEl.addEventListener('click', async (event) => {
-  const btn = event.target.closest('button[data-save]');
-  if (!btn) return;
-
-  const orderId = btn.dataset.save;
-  const card = btn.closest(`[data-order-card="${orderId}"]`);
-  if (!card) return;
-
-  const allocations = {};
-  card.querySelectorAll('input[data-p]').forEach((input) => {
-    allocations[input.dataset.p] = Number(input.value || 0);
-  });
-
-  btn.disabled = true;
-  btn.textContent = 'Saving...';
-  try {
-    await updateAlloc({ orderId, allocations });
-    await load();
-  } catch (error) {
-    btn.textContent = error?.message || 'Save failed';
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Save Allocations';
-  }
+ordersEl.addEventListener('click', (event) => {
+  const editBtn = event.target.closest('button[data-edit]');
+  if (!editBtn) return;
+  openAllocModal(editBtn.dataset.edit);
 });
 
-wheelEl.addEventListener('click', async (event) => {
-  const copyBtn = event.target.closest('button[data-copy]');
-  const downloadBtn = event.target.closest('button[data-download]');
+allocModalCloseEl.addEventListener('click', closeAllocModal);
+allocModalCancelEl.addEventListener('click', closeAllocModal);
+allocModalSaveEl.addEventListener('click', saveAllocModal);
 
-  if (copyBtn) {
-    const idx = Number(copyBtn.dataset.copy);
-    const { rows } = buildPackageRows(idx);
-    const names = rows.map((r) => r.name).join('\n');
-    await navigator.clipboard.writeText(names);
-    copyBtn.textContent = 'Copied';
-    setTimeout(() => {
-      copyBtn.textContent = 'Copy Names';
-    }, 900);
-  }
+allocModalEl.addEventListener('click', (event) => {
+  if (event.target === allocModalEl) closeAllocModal();
+});
 
-  if (downloadBtn) {
-    const idx = Number(downloadBtn.dataset.download);
-    const { packageId, rows } = buildPackageRows(idx);
+wheelEl.addEventListener('click', (event) => {
+  const wheelBtn = event.target.closest('button[data-wheel-open]');
+  if (!wheelBtn) return;
 
-    const header = ['name', 'email', 'phone', 'package', 'ticketNumber', 'orderId'];
-    const lines = [header.join(',')];
-    rows.forEach((row) => {
-      lines.push([
-        toCsvCell(row.name),
-        toCsvCell(row.email),
-        toCsvCell(row.phone),
-        toCsvCell(row.package),
-        toCsvCell(row.ticketNumber),
-        toCsvCell(row.orderId)
-      ].join(','));
-    });
+  const idx = Number(wheelBtn.dataset.wheelOpen);
+  const packageId = `package${idx + 1}`;
+  const packageName = window.AUCTION_DATA.auctionPackages[idx]?.name || packageId;
+  const entries = getWheelEntriesForPackage(packageId);
+  if (!entries.length) return;
 
-    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `${packageId}.csv`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
-  }
+  const url = buildWheelUrl(packageName, entries);
+  window.open(url, '_blank', 'noopener');
 });
 
 load().catch((error) => {

@@ -174,7 +174,7 @@ const renderSelectionSummary = () => {
     return;
   }
 
-  selectedBundleLabel.textContent = `Selected: ${totalTickets} tickets for $${totalAmount}`;
+  selectedBundleLabel.textContent = `Selected: ${totalTickets} tickets for $${totalAmount.toFixed(2)}`;
 
   if (!selectionBreakdown) return;
   const rows = ticketBundles
@@ -182,7 +182,17 @@ const renderSelectionSummary = () => {
     .map((bundle) => {
       const qty = Number(bundleState[bundle.id] || 0);
       const ticketWord = bundle.ticketCount === 1 ? 'ticket' : 'tickets';
-      return `<p>${qty} x ${bundle.ticketCount} ${ticketWord} ($${bundle.price} each) = $${qty * bundle.price}</p>`;
+      const rowTotal = qty * bundle.price;
+      return `
+        <div class="flex items-center justify-between gap-3 rounded-lg border border-slate-700/80 bg-slate-950/60 px-3 py-2">
+          <p class="text-xs sm:text-sm text-slate-200">
+            <span class="font-semibold text-white">${qty} x ${bundle.ticketCount}</span>
+            <span class="text-slate-300"> ${ticketWord}</span>
+            <span class="text-slate-400"> · $${bundle.price} each</span>
+          </p>
+          <p class="text-sm sm:text-base font-semibold text-yellow-300">$${rowTotal.toFixed(2)}</p>
+        </div>
+      `;
     });
 
   selectionBreakdown.innerHTML = rows.join('');

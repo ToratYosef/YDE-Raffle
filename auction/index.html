@@ -83,27 +83,27 @@
 		</nav>
 	</header>
 
-	<main class="flex-grow pt-24 sm:pt-28 px-4 md:px-8 lg:px-16">
-		<div class="container mx-auto p-4 sm:p-6 md:p-10 glass-panel rounded-2xl shadow-2xl max-w-7xl">
+	<main class="flex-grow pt-24 sm:pt-28 px-3 sm:px-4 md:px-8 lg:px-16">
+		<div class="container mx-auto p-3 sm:p-6 md:p-10 glass-panel rounded-2xl shadow-2xl max-w-7xl">
 			<section class="text-center mb-8 md:mb-10">
 				<h1 class="bebas-neue text-5xl sm:text-6xl md:text-7xl text-yellow-400 drop-shadow-lg">Chinese Auction</h1>
 				<p class="text-gray-200 text-base sm:text-lg md:text-xl mt-2">Pick your ticket amount, check out, then allocate tickets to your favorite packages.</p>
 				<p class="text-emerald-400 font-semibold mt-2">Premium giveaway lineup worth over $26,000</p>
 			</section>
 
-			<section class="space-y-6 md:space-y-8">
-				<div class="bg-slate-900/55 border border-slate-700 rounded-2xl p-5 sm:p-6 md:p-8">
-					<div class="flex items-center justify-between gap-3 mb-4">
+			<section class="space-y-5 sm:space-y-6 md:space-y-8">
+				<div class="bg-slate-900/55 border border-slate-700 rounded-2xl p-4 sm:p-6 md:p-8">
+					<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 mb-4">
 						<h2 class="bebas-neue text-3xl sm:text-4xl text-yellow-400">Prize Packages</h2>
 						<span class="text-xs sm:text-sm uppercase tracking-wide text-slate-300">Choose where your tickets go</span>
 					</div>
 					<div id="packages" class="space-y-4"></div>
 				</div>
 
-				<div class="checkout-shell rounded-2xl p-5 sm:p-6 md:p-8">
-					<h2 class="bebas-neue text-5xl sm:text-6xl text-white text-center mb-6">Buy Your Tickets!</h2>
+				<div class="checkout-shell rounded-2xl p-4 sm:p-6 md:p-8">
+					<h2 class="bebas-neue text-4xl sm:text-6xl text-white text-center mb-5 sm:mb-6">Buy Your Tickets!</h2>
 					<p class="text-slate-300 mb-2 font-semibold">Build your ticket quantity</p>
-					<div id="bundles" class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4"></div>
+					<div id="bundles" class="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4"></div>
 
 					<div class="mt-4 rounded-lg border border-slate-600 bg-slate-900/70 px-3 py-3">
 						<p id="selectedBundleLabel" class="text-sm text-slate-200">No bundle selected</p>
@@ -111,20 +111,20 @@
 					</div>
 
 					<div class="mt-4 space-y-3">
-						<input id="name" class="checkout-field w-full rounded-xl p-4 focus:outline-none focus:ring-2 focus:ring-yellow-400" placeholder="Full Name">
-						<input id="email" class="checkout-field w-full rounded-xl p-4 focus:outline-none focus:ring-2 focus:ring-yellow-400" placeholder="Email Address">
-						<input id="phone" class="checkout-field w-full rounded-xl p-4 focus:outline-none focus:ring-2 focus:ring-yellow-400" placeholder="Phone Number">
+						<input id="name" class="checkout-field w-full rounded-xl p-3.5 sm:p-4 focus:outline-none focus:ring-2 focus:ring-yellow-400" placeholder="Full Name">
+						<input id="email" class="checkout-field w-full rounded-xl p-3.5 sm:p-4 focus:outline-none focus:ring-2 focus:ring-yellow-400" placeholder="Email Address">
+						<input id="phone" class="checkout-field w-full rounded-xl p-3.5 sm:p-4 focus:outline-none focus:ring-2 focus:ring-yellow-400" placeholder="Phone Number">
 					</div>
 
-					<div class="mt-6 text-center">
-						<p class="bebas-neue text-4xl sm:text-5xl text-white tracking-wide">Total: <span id="checkoutTotal" class="text-yellow-400">$0.00</span></p>
+					<div class="mt-5 sm:mt-6 text-center">
+						<p class="bebas-neue text-3xl sm:text-5xl text-white tracking-wide">Total: <span id="checkoutTotal" class="text-yellow-400">$0.00</span></p>
 					</div>
 
 					<button id="checkout" class="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold px-6 py-3 rounded-full mt-4 transition-colors duration-300">
 						Proceed to Payment
 					</button>
 
-					<div id="auctionPaymentSection" class="mt-4 rounded-xl border border-slate-600 bg-slate-900/80 p-4">
+					<div id="auctionPaymentSection" class="mt-4 rounded-xl border border-slate-600 bg-slate-900/80 p-3 sm:p-4">
 						<div id="auctionPaymentElementContainer"></div>
 						<button id="auctionStripePayButton" class="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold px-6 py-3 rounded-full mt-4 transition-colors duration-300">
 							Pay Now

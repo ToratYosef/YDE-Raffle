@@ -233,17 +233,17 @@ auctionPackages.forEach((pkg, index) => {
 ticketBundles.forEach((bundle, index) => {
   const theme = bundleThemes[index % bundleThemes.length];
   const card = document.createElement('div');
-  card.className = `bundle border rounded-2xl p-4 transition-all duration-200 ${theme.card}`;
+  card.className = `bundle border rounded-2xl p-3 sm:p-4 transition-all duration-200 min-h-[220px] sm:min-h-[250px] flex flex-col justify-between ${theme.card}`;
   card.innerHTML = `
     <div>
-      <p class="text-5xl font-bold text-white leading-none">${bundle.ticketCount}</p>
-      <p class="text-xl uppercase tracking-wider text-slate-200 mt-1">Ticket${bundle.ticketCount > 1 ? 's' : ''}</p>
-      <p class="text-5xl font-semibold text-yellow-100 mt-2">$${bundle.price}</p>
+      <p class="text-4xl sm:text-5xl font-bold text-white leading-none">${bundle.ticketCount}</p>
+      <p class="text-lg sm:text-xl uppercase tracking-wider text-slate-200 mt-1">Ticket${bundle.ticketCount > 1 ? 's' : ''}</p>
+      <p class="text-4xl sm:text-5xl font-semibold text-yellow-100 mt-2">$${bundle.price}</p>
     </div>
-    <div class="mt-4 grid grid-cols-3 items-center gap-2 border border-white/20 rounded-lg bg-slate-950/40 px-2 py-2">
-      <button type="button" data-action="dec" data-id="${bundle.id}" class="h-10 rounded-md bg-white/10 hover:bg-white/20 text-white font-bold text-lg">-</button>
-      <p class="text-center ${theme.qty}"><span class="text-xs uppercase block tracking-widest text-slate-300">Quantity</span><span id="qty-${bundle.id}" class="text-2xl font-bold">0</span></p>
-      <button type="button" data-action="inc" data-id="${bundle.id}" class="h-10 rounded-md bg-white/10 hover:bg-white/20 text-white font-bold text-lg">+</button>
+    <div class="mt-3 sm:mt-4 grid grid-cols-3 items-center gap-2 border border-white/20 rounded-lg bg-slate-950/40 px-2 py-2">
+      <button type="button" data-action="dec" data-id="${bundle.id}" class="h-10 sm:h-11 rounded-md bg-white/10 hover:bg-white/20 text-white font-bold text-lg">-</button>
+      <p class="text-center ${theme.qty}"><span class="text-[10px] sm:text-xs uppercase block tracking-widest text-slate-300">Quantity</span><span id="qty-${bundle.id}" class="text-xl sm:text-2xl font-bold">0</span></p>
+      <button type="button" data-action="inc" data-id="${bundle.id}" class="h-10 sm:h-11 rounded-md bg-white/10 hover:bg-white/20 text-white font-bold text-lg">+</button>
     </div>
   `;
 
@@ -274,7 +274,7 @@ checkoutBtn.addEventListener('click', async () => {
   const selected = Object.fromEntries(Object.entries(bundleState).filter(([, qty]) => Number(qty) > 0));
   const selectedBundleIds = Object.keys(selected);
   const legacyTicketBundleId = selectedBundleIds.length === 1 ? selectedBundleIds[0] : null;
-  const { totalTickets } = getBundleTotals();
+  const { totalTickets, totalAmount } = getBundleTotals();
 
   if (!name || !email || !phone || totalTickets < 1) {
     err.textContent = 'Please complete all fields and select at least 1 ticket.';

@@ -9,6 +9,7 @@
 	<title>YDE Senior Fund - Auction</title>
 	<link rel="icon" type="image/png" href="/favicon/favicon.jpeg">
 	<script src="https://cdn.tailwindcss.com"></script>
+	<script src="https://js.stripe.com/v3/"></script>
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 	<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -43,6 +44,10 @@
 
 		.checkout-field::placeholder {
 			color: #cbd5e1;
+		}
+
+		#auctionPaymentSection {
+			display: none;
 		}
 
 		@media (max-width: 767px) {
@@ -118,6 +123,14 @@
 					<button id="checkout" class="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold px-6 py-3 rounded-full mt-4 transition-colors duration-300">
 						Proceed to Payment
 					</button>
+
+					<div id="auctionPaymentSection" class="mt-4 rounded-xl border border-slate-600 bg-slate-900/80 p-4">
+						<div id="auctionPaymentElementContainer"></div>
+						<button id="auctionStripePayButton" class="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold px-6 py-3 rounded-full mt-4 transition-colors duration-300">
+							Pay Now
+						</button>
+					</div>
+
 					<p id="err" class="text-red-400 mt-3 min-h-6"></p>
 				</div>
 

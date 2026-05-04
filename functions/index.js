@@ -2815,6 +2815,98 @@ const AUCTION_BUNDLES = {
 const AUCTION_PACKAGES = ['package1','package2','package3','package4','package5'];
 const auctionZeroAlloc = () => ({ package1:0, package2:0, package3:0, package4:0, package5:0 });
 
+exports.createAuctionPaymentIntent = functions.https.onCall(async (data) => {
+    if (!hasValidStripeKey()) {
+        throw new functions.https.HttpsError('failed-precondition', 'Stripe is not configured on the server.');
+    }
+
+    const { name, email, phone, ticketBundleId, bundleSelections } = data || {};
+    if (!name || !email || !phone) {
+        throw new functions.https.HttpsError('invalid-argument', 'Invalid input.');
+    }
+
+    let normalizedSelections = {};
+    if (bundleSelections && typeof bundleSelections === 'object' && !Array.isArray(bundleSelections)) {
+        for (const [bundleId, qtyRaw] of Object.entries(bundleSelections)) {
+            if (!AUCTION_BUNDLES[bundleId]) continue;
+            const qty = Number(qtyRaw);
+            if (!Number.isFinite(qty) || qty < 0 || !Number.isInteger(qty)) {
+                throw new functions.https.HttpsError('invalid-argument', 'Invalid bundle quantities.');
+            }
+            if (qty > 0) normalizedSelections[bundleId] = qty;
+        }
+    } else if (AUCTION_BUNDLES[ticketBundleId]) {
+        normalizedSelections = { [ticketBundleId]: 1 };
+    }
+
+    const selectedBundleIds = Object.keys(normalizedSelections);
+    if (!selectedBundleIds.length) {
+        throw new functions.https.HttpsError('invalid-argument', 'Select at least one bundle.');
+    }
+
+    let totalTickets = 0;
+    let totalAmountCents = 0;
+    for (const bundleId of selectedBundleIds) {
+        const bundle = AUCTION_BUNDLES[bundleId];
+        const quantity = normalizedSelections[bundleId];
+        totalTickets += bundle.ticketCount * quantity;
+        totalAmountCents += bundle.amount * quantity;
+    }
+
+    const primaryBundleId = selectedBundleIds.length === 1 ? selectedBundleIds[0] : 'mixed';
+    const db = admin.firestore();
+    const orderRef = db.collection('auctionOrders').doc();
+    const orderId = orderRef.id;
+
+    try {
+        const paymentIntent = await stripe.paymentIntents.create({
+            amount: totalAmountCents,
+            currency: 'usd',
+            payment_method_types: ['card', 'link', 'us_bank_account'],
+            description: `Chinese Auction - ${totalTickets} Tickets`,
+            metadata: {
+                type: 'auction',
+                orderId,
+                name,
+                email,
+                phone,
+                ticketBundleId: primaryBundleId,
+                ticketCount: String(totalTickets),
+                bundleSelections: JSON.stringify(normalizedSelections)
+            }
+        });
+
+        await orderRef.set({
+            orderId,
+            status: 'pending',
+            source: 'stripe',
+            name,
+            email,
+            phone,
+            ticketBundleId: primaryBundleId,
+            bundleSelections: normalizedSelections,
+            ticketCount: totalTickets,
+            amountPaid: 0,
+            currency: 'usd',
+            stripeSessionId: '',
+            paymentIntentId: paymentIntent.id,
+            allocations: auctionZeroAlloc(),
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            note: ''
+        });
+
+        return {
+            clientSecret: paymentIntent.client_secret,
+            paymentIntentId: paymentIntent.id,
+            orderId
+        };
+    } catch (error) {
+        console.error('createAuctionPaymentIntent failed:', error);
+        const message = error?.message || 'Unable to create auction payment intent.';
+        throw new functions.https.HttpsError('internal', message);
+    }
+});
+
 exports.createAuctionCheckoutSession = functions.https.onCall(async (data) => {
     if (!hasValidStripeKey()) {
         throw new functions.https.HttpsError('failed-precondition', 'Stripe is not configured on the server.');
@@ -2908,12 +3000,13 @@ exports.createAuctionCheckoutSession = functions.https.onCall(async (data) => {
 });
 
 exports.submitAuctionAllocation = functions.https.onCall(async (data) => {
-  const { orderId, sessionId, allocations } = data || {};
-  if (!orderId || !sessionId || !allocations) throw new functions.https.HttpsError('invalid-argument','Missing fields.');
+    const { orderId, sessionId, paymentIntentId, allocations } = data || {};
+    if (!orderId || !allocations || (!sessionId && !paymentIntentId)) throw new functions.https.HttpsError('invalid-argument','Missing fields.');
   const db = admin.firestore(); const ref = db.collection('auctionOrders').doc(orderId); const snap = await ref.get();
   if (!snap.exists) throw new functions.https.HttpsError('not-found','Order not found.');
   const order = snap.data(); if (order.status !== 'paid') throw new functions.https.HttpsError('failed-precondition','Order must be paid.');
-  if (order.stripeSessionId !== sessionId) throw new functions.https.HttpsError('permission-denied','Session mismatch.');
+    if (sessionId && order.stripeSessionId !== sessionId) throw new functions.https.HttpsError('permission-denied','Session mismatch.');
+    if (paymentIntentId && order.paymentIntentId !== paymentIntentId) throw new functions.https.HttpsError('permission-denied','Payment intent mismatch.');
   let sum = 0; const clean = auctionZeroAlloc(); for (const k of AUCTION_PACKAGES){ const v=Number(allocations[k]||0); if (!Number.isFinite(v) || v < 0) throw new functions.https.HttpsError('invalid-argument','Invalid allocations.'); clean[k]=Math.floor(v); sum += clean[k]; }
   if (sum !== Number(order.ticketCount||0)) throw new functions.https.HttpsError('invalid-argument','Allocation total must match ticket count.');
   await ref.set({ allocations:clean, status:'submitted', submittedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge:true });
@@ -2944,6 +3037,25 @@ exports.updateAuctionAllocationAdmin = functions.https.onCall(async (data, conte
 exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
   const sig = req.headers['stripe-signature']; let event;
   try { event = stripe.webhooks.constructEvent(req.rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET); } catch (err) { res.status(400).send(`Webhook Error: ${err.message}`); return; }
+    if (event.type === 'payment_intent.succeeded') {
+        const pi = event.data.object;
+        if (pi.metadata && pi.metadata.type === 'auction') {
+            const orderId = pi.metadata.orderId;
+            const ref = admin.firestore().collection('auctionOrders').doc(orderId);
+            const snap = await ref.get();
+            if (snap.exists) {
+                const order = snap.data();
+                if (order.status === 'pending' || order.status === 'paid') {
+                    await ref.set({
+                        status: 'paid',
+                        paymentIntentId: pi.id,
+                        amountPaid: ((pi.amount || 0) / 100),
+                        paidAt: admin.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true });
+                }
+            }
+        }
+    }
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object; if (session.metadata && session.metadata.type === 'auction') {
       const orderId = session.metadata.orderId; const ref = admin.firestore().collection('auctionOrders').doc(orderId); const snap = await ref.get();

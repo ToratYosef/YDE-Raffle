@@ -66,6 +66,14 @@ const showSubmittedState = () => {
   modalOverlay.classList.add('hidden');
 };
 
+const findOrderByPaymentIntentId = async (paymentIntentId) => {
+  const intentQuery = query(collection(db, 'auctionOrders'), where('paymentIntentId', '==', paymentIntentId));
+  const snap = await getDocs(intentQuery);
+  if (snap.empty) return null;
+  const doc = snap.docs[0];
+  return { id: doc.id, ...doc.data() };
+};
+
 const findOrderBySessionId = async (sessionId) => {
   const sessionQuery = query(collection(db, 'auctionOrders'), where('stripeSessionId', '==', sessionId));
   const snap = await getDocs(sessionQuery);
@@ -74,7 +82,7 @@ const findOrderBySessionId = async (sessionId) => {
   return { id: doc.id, ...doc.data() };
 };
 
-const buildAllocator = ({ order, sessionId }) => {
+const buildAllocator = ({ order, sessionId, paymentIntentId }) => {
   const allocations = {};
   packageList.forEach((pkg) => {
     allocations[pkg.id] = 0;
@@ -146,6 +154,7 @@ const buildAllocator = ({ order, sessionId }) => {
       await submitFn({
         orderId: order.orderId || order.id,
         sessionId,
+        paymentIntentId,
         allocations
       });
 
@@ -176,14 +185,27 @@ const run = async () => {
 
   const cookieState = getPendingOrderCookie();
   const sessionId = params.get('session_id') || cookieState?.sessionId || '';
+  const paymentIntentId = params.get('payment_intent') || cookieState?.paymentIntentId || '';
+  const orderIdFromParam = params.get('orderId') || cookieState?.orderId || '';
 
-  if (!sessionId) {
+  if (!sessionId && !paymentIntentId && !orderIdFromParam) {
     statusEl.textContent = 'No active payment session found. Please return to the auction page.';
     return;
   }
 
   statusEl.textContent = 'Confirming your payment details...';
-  const order = await findOrderBySessionId(sessionId);
+  let order = null;
+
+  if (paymentIntentId) {
+    order = await findOrderByPaymentIntentId(paymentIntentId);
+  }
+  if (!order && sessionId) {
+    order = await findOrderBySessionId(sessionId);
+  }
+  if (!order && orderIdFromParam) {
+    const orderDoc = await getDocs(query(collection(db, 'auctionOrders'), where('orderId', '==', orderIdFromParam)));
+    if (!orderDoc.empty) order = { id: orderDoc.docs[0].id, ...orderDoc.docs[0].data() };
+  }
 
   if (!order) {
     statusEl.textContent = 'Payment is being confirmed. Please refresh in a few seconds.';
@@ -204,12 +226,13 @@ const run = async () => {
   setPendingOrderCookie({
     orderId: order.orderId || order.id,
     sessionId,
+    paymentIntentId: paymentIntentId || order.paymentIntentId || '',
     ticketCount: Number(order.ticketCount || 0),
     updatedAt: Date.now()
   });
 
   statusEl.textContent = 'Payment confirmed. Please allocate all tickets below.';
-  buildAllocator({ order, sessionId });
+  buildAllocator({ order, sessionId, paymentIntentId: paymentIntentId || order.paymentIntentId || '' });
 };
 
 run().catch((error) => {

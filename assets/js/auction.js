@@ -11,8 +11,10 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const createCheckout = httpsCallable(getFunctions(app), 'createAuctionCheckoutSession');
+const createPaymentIntent = httpsCallable(getFunctions(app), 'createAuctionPaymentIntent');
 const { ticketBundles, auctionPackages } = window.AUCTION_DATA;
+
+const stripe = Stripe('pk_live_51JFiZnKhiMP0wjNsMlHMg2o7Eo6xaWczALlQ0eu0GVpnWel1Pgz1AbUVXUJGs2pFaavhaln5jKpHSrRhxrBppBDq00Hijyiu4V');
 
 const bundleWrap = document.getElementById('bundles');
 const packageWrap = document.getElementById('packages');
@@ -24,10 +26,16 @@ const checkoutBtn = document.getElementById('checkout');
 const nameEl = document.getElementById('name');
 const emailEl = document.getElementById('email');
 const phoneEl = document.getElementById('phone');
+const paymentSectionEl = document.getElementById('auctionPaymentSection');
+const paymentElementContainerEl = document.getElementById('auctionPaymentElementContainer');
+const stripePayBtn = document.getElementById('auctionStripePayButton');
 
 const bundleState = {};
 const bundleCards = {};
 const bundleQtyEls = {};
+let stripeElements = null;
+let activeOrderId = '';
+let activePaymentIntentId = '';
 
 const packageThemes = [
   {
@@ -168,14 +176,28 @@ const renderSelectionSummary = () => {
   selectionBreakdown.innerHTML = rows.join('');
 };
 
+const resetPaymentSection = () => {
+  if (!paymentSectionEl || !paymentElementContainerEl) return;
+  paymentSectionEl.style.display = 'none';
+  paymentElementContainerEl.innerHTML = '';
+  stripeElements = null;
+  activeOrderId = '';
+  activePaymentIntentId = '';
+  stripePayBtn.disabled = false;
+  stripePayBtn.textContent = 'Pay Now';
+  checkoutBtn.disabled = false;
+  checkoutBtn.textContent = 'Proceed to Payment';
+};
+
 const applyTicketDelta = (deltaTickets) => {
-  const { totalTickets } = getBundleTotals();
+  const { totalTickets, totalAmount } = getBundleTotals();
   const nextTickets = Math.max(0, totalTickets + deltaTickets);
   const optimizedCounts = getCheapestCombination(nextTickets);
 
   setBundleState(optimizedCounts);
   refreshBundleUI();
   renderSelectionSummary();
+  resetPaymentSection();
 };
 
 auctionPackages.forEach((pkg, index) => {
@@ -248,14 +270,35 @@ checkoutBtn.addEventListener('click', async () => {
   }
 
   checkoutBtn.disabled = true;
-  checkoutBtn.textContent = 'Preparing checkout...';
+  checkoutBtn.textContent = 'Preparing payment...';
   try {
     const payload = { name, email, phone, bundleSelections: selected };
     if (legacyTicketBundleId) payload.ticketBundleId = legacyTicketBundleId;
 
-    const response = await createCheckout(payload);
-    if (!response?.data?.url) throw new Error('No checkout URL returned.');
-    window.location.href = response.data.url;
+    const response = await createPaymentIntent(payload);
+    const clientSecret = response?.data?.clientSecret;
+    activeOrderId = response?.data?.orderId || '';
+    activePaymentIntentId = response?.data?.paymentIntentId || '';
+
+    if (!clientSecret) throw new Error('No client secret returned.');
+
+    stripeElements = stripe.elements({
+      clientSecret,
+      appearance: {
+        theme: 'night',
+        variables: {
+          colorPrimary: '#facc15'
+        }
+      }
+    });
+
+    const paymentElement = stripeElements.create('payment');
+    paymentElement.mount('#auctionPaymentElementContainer');
+
+    paymentSectionEl.style.display = 'block';
+    stripePayBtn.textContent = `Pay $${totalAmount.toFixed(2)}`;
+    checkoutBtn.textContent = 'Payment Ready';
+    err.textContent = '';
   } catch (e) {
     const detailText = typeof e?.details === 'string'
       ? e.details
@@ -266,3 +309,43 @@ checkoutBtn.addEventListener('click', async () => {
     checkoutBtn.textContent = 'Proceed to Payment';
   }
 });
+
+stripePayBtn.addEventListener('click', async (event) => {
+  event.preventDefault();
+  if (!stripeElements || !activeOrderId) {
+    err.textContent = 'Please prepare payment first.';
+    return;
+  }
+
+  err.textContent = '';
+  stripePayBtn.disabled = true;
+  stripePayBtn.textContent = 'Processing...';
+
+  const returnUrl = `${window.location.origin}/auction/success/?orderId=${encodeURIComponent(activeOrderId)}`;
+  const result = await stripe.confirmPayment({
+    elements: stripeElements,
+    confirmParams: { return_url: returnUrl },
+    redirect: 'if_required'
+  });
+
+  if (result.error) {
+    err.textContent = result.error.message || 'Payment failed. Please try again.';
+    stripePayBtn.disabled = false;
+    stripePayBtn.textContent = 'Pay Now';
+    return;
+  }
+
+  if (result.paymentIntent && result.paymentIntent.status === 'succeeded') {
+    const pi = encodeURIComponent(result.paymentIntent.id);
+    window.location.href = `/auction/success/?orderId=${encodeURIComponent(activeOrderId)}&payment_intent=${pi}`;
+    return;
+  }
+
+  // If Stripe handled a redirect-required flow, control may leave the page.
+  stripePayBtn.disabled = false;
+  stripePayBtn.textContent = 'Pay Now';
+});
+
+nameEl.addEventListener('input', resetPaymentSection);
+emailEl.addEventListener('input', resetPaymentSection);
+phoneEl.addEventListener('input', resetPaymentSection);

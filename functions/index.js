@@ -2789,20 +2789,82 @@ const AUCTION_PACKAGES = ['package1','package2','package3','package4','package5'
 const auctionZeroAlloc = () => ({ package1:0, package2:0, package3:0, package4:0, package5:0 });
 
 exports.createAuctionCheckoutSession = functions.https.onCall(async (data) => {
-  const { name,email,phone,ticketBundleId } = data || {};
-  if (!name || !email || !phone || !AUCTION_BUNDLES[ticketBundleId]) throw new functions.https.HttpsError('invalid-argument','Invalid input.');
+    const { name, email, phone, ticketBundleId, bundleSelections } = data || {};
+    if (!name || !email || !phone) throw new functions.https.HttpsError('invalid-argument','Invalid input.');
+
+    let normalizedSelections = {};
+
+    if (bundleSelections && typeof bundleSelections === 'object' && !Array.isArray(bundleSelections)) {
+        for (const [bundleId, qtyRaw] of Object.entries(bundleSelections)) {
+            if (!AUCTION_BUNDLES[bundleId]) continue;
+            const qty = Number(qtyRaw);
+            if (!Number.isFinite(qty) || qty < 0 || !Number.isInteger(qty)) {
+                throw new functions.https.HttpsError('invalid-argument', 'Invalid bundle quantities.');
+            }
+            if (qty > 0) normalizedSelections[bundleId] = qty;
+        }
+    } else if (AUCTION_BUNDLES[ticketBundleId]) {
+        // Backward compatibility for older clients that send a single bundle id.
+        normalizedSelections = { [ticketBundleId]: 1 };
+    }
+
+    const selectedBundleIds = Object.keys(normalizedSelections);
+    if (!selectedBundleIds.length) {
+        throw new functions.https.HttpsError('invalid-argument', 'Select at least one bundle.');
+    }
+
+    let totalTickets = 0;
+    const lineItems = [];
+    for (const bundleId of selectedBundleIds) {
+        const bundle = AUCTION_BUNDLES[bundleId];
+        const quantity = normalizedSelections[bundleId];
+        totalTickets += bundle.ticketCount * quantity;
+        lineItems.push({
+            price_data: {
+                currency: 'usd',
+                product_data: { name: `Chinese Auction - ${bundle.ticketCount} Tickets` },
+                unit_amount: bundle.amount
+            },
+            quantity
+        });
+    }
+
+    const primaryBundleId = selectedBundleIds.length === 1 ? selectedBundleIds[0] : 'mixed';
   const db = admin.firestore();
   const orderRef = db.collection('auctionOrders').doc();
-  const bundle = AUCTION_BUNDLES[ticketBundleId];
   const orderId = orderRef.id;
-  await orderRef.set({ orderId, status:'pending', source:'stripe', name, email, phone, ticketBundleId, ticketCount:bundle.ticketCount, amountPaid:0, currency:'usd', allocations:auctionZeroAlloc(), createdAt: admin.firestore.FieldValue.serverTimestamp(), note:'' });
+    await orderRef.set({
+        orderId,
+        status:'pending',
+        source:'stripe',
+        name,
+        email,
+        phone,
+        ticketBundleId: primaryBundleId,
+        bundleSelections: normalizedSelections,
+        ticketCount: totalTickets,
+        amountPaid: 0,
+        currency:'usd',
+        allocations:auctionZeroAlloc(),
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        note:''
+    });
   const baseUrl = process.env.APP_URL || process.env.SITE_URL || 'https://ydeseniors.com';
   const session = await stripe.checkout.sessions.create({
     mode:'payment', payment_method_types:['card'],
-    line_items:[{ price_data:{ currency:'usd', product_data:{ name:`Chinese Auction - ${bundle.ticketCount} Tickets`}, unit_amount:bundle.amount }, quantity:1 }],
+        line_items: lineItems,
     success_url:`${baseUrl}/auction/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url:`${baseUrl}/auction`,
-    metadata:{ type:'auction', orderId, name,email,phone,ticketBundleId, ticketCount:String(bundle.ticketCount) }
+        metadata:{
+            type:'auction',
+            orderId,
+            name,
+            email,
+            phone,
+            ticketBundleId: primaryBundleId,
+            ticketCount: String(totalTickets),
+            bundleSelections: JSON.stringify(normalizedSelections)
+        }
   });
   return { url: session.url, orderId };
 });

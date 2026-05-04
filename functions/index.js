@@ -32,7 +32,38 @@ function hasValidStripeKey() {
     return typeof STRIPE_SECRET_KEY === 'string' && STRIPE_SECRET_KEY.startsWith('sk_');
 }
 
+const AUCTION_LIVE_MODE = String(process.env.AUCTION_LIVE || 'false').toLowerCase() === 'true';
+
+function getAuctionStripeSecretKey() {
+    if (AUCTION_LIVE_MODE) {
+        return process.env.AUCTION_STRIPE_SECRET_KEY_LIVE || process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET || '';
+    }
+    return process.env.AUCTION_STRIPE_SECRET_KEY_TEST || process.env.STRIPE_SECRET_KEY_TEST || '';
+}
+
+function getAuctionStripePublishableKey() {
+    if (AUCTION_LIVE_MODE) {
+        return process.env.AUCTION_STRIPE_PUBLISHABLE_KEY_LIVE || process.env.STRIPE_PUBLISHABLE_KEY || '';
+    }
+    return process.env.AUCTION_STRIPE_PUBLISHABLE_KEY_TEST || process.env.STRIPE_PUBLISHABLE_KEY_TEST || '';
+}
+
+function hasValidAuctionStripeSecretKey() {
+    const key = getAuctionStripeSecretKey();
+    return typeof key === 'string' && key.startsWith('sk_');
+}
+
+function hasValidAuctionStripePublishableKey() {
+    const key = getAuctionStripePublishableKey();
+    return typeof key === 'string' && key.startsWith('pk_');
+}
+
+function getAuctionStripeClient() {
+    return require('stripe')(getAuctionStripeSecretKey() || '');
+}
+
 console.log(`[Stripe] Key source: ${STRIPE_KEY_SOURCE}. Valid format: ${hasValidStripeKey()}`);
+console.log(`[Auction Stripe] Live mode: ${AUCTION_LIVE_MODE}. Secret key valid: ${hasValidAuctionStripeSecretKey()}. Publishable key valid: ${hasValidAuctionStripePublishableKey()}`);
 
 // NEW: Nodemailer Setup - Reads config from environment: firebase functions:config:set mail.email="your-email@gmail.com" mail.password="your-app-password"
 const mailConfig = { email: process.env.MAIL_EMAIL, password: process.env.MAIL_PASSWORD };
@@ -2815,10 +2846,23 @@ const AUCTION_BUNDLES = {
 const AUCTION_PACKAGES = ['package1','package2','package3','package4','package5'];
 const auctionZeroAlloc = () => ({ package1:0, package2:0, package3:0, package4:0, package5:0 });
 
+exports.getAuctionStripeConfig = functions.https.onCall(async () => {
+    if (!hasValidAuctionStripePublishableKey()) {
+        throw new functions.https.HttpsError('failed-precondition', 'Auction Stripe publishable key is not configured.');
+    }
+
+    return {
+        publishableKey: getAuctionStripePublishableKey(),
+        liveMode: AUCTION_LIVE_MODE
+    };
+});
+
 exports.createAuctionPaymentIntent = functions.https.onCall(async (data) => {
-    if (!hasValidStripeKey()) {
+        if (!hasValidAuctionStripeSecretKey()) {
         throw new functions.https.HttpsError('failed-precondition', 'Stripe is not configured on the server.');
     }
+
+        const auctionStripe = getAuctionStripeClient();
 
     const { name, email, phone, ticketBundleId, bundleSelections } = data || {};
     if (!name || !email || !phone) {
@@ -2859,7 +2903,7 @@ exports.createAuctionPaymentIntent = functions.https.onCall(async (data) => {
     const orderId = orderRef.id;
 
     try {
-        const paymentIntent = await stripe.paymentIntents.create({
+        const paymentIntent = await auctionStripe.paymentIntents.create({
             amount: totalAmountCents,
             currency: 'usd',
             payment_method_types: ['card', 'link', 'us_bank_account'],
@@ -2908,9 +2952,11 @@ exports.createAuctionPaymentIntent = functions.https.onCall(async (data) => {
 });
 
 exports.createAuctionCheckoutSession = functions.https.onCall(async (data) => {
-    if (!hasValidStripeKey()) {
+    if (!hasValidAuctionStripeSecretKey()) {
         throw new functions.https.HttpsError('failed-precondition', 'Stripe is not configured on the server.');
     }
+
+    const auctionStripe = getAuctionStripeClient();
 
     const { name, email, phone, ticketBundleId, bundleSelections } = data || {};
     if (!name || !email || !phone) throw new functions.https.HttpsError('invalid-argument','Invalid input.');
@@ -2975,7 +3021,7 @@ exports.createAuctionCheckoutSession = functions.https.onCall(async (data) => {
         note:''
     });
     const baseUrl = process.env.APP_URL || process.env.SITE_URL || 'https://ydeseniors.com';
-    const session = await stripe.checkout.sessions.create({
+    const session = await auctionStripe.checkout.sessions.create({
         mode:'payment', payment_method_types:['card'],
         line_items: lineItems,
         success_url:`${baseUrl}/auction/success?session_id={CHECKOUT_SESSION_ID}`,
@@ -2997,6 +3043,44 @@ exports.createAuctionCheckoutSession = functions.https.onCall(async (data) => {
         const message = error?.message || 'Unable to create checkout session.';
         throw new functions.https.HttpsError('internal', message);
     }
+});
+
+exports.confirmAuctionPaymentIntentPaid = functions.https.onCall(async (data) => {
+    if (!hasValidAuctionStripeSecretKey()) {
+        throw new functions.https.HttpsError('failed-precondition', 'Stripe is not configured on the server.');
+    }
+
+    const { orderId, paymentIntentId } = data || {};
+    if (!orderId || !paymentIntentId) {
+        throw new functions.https.HttpsError('invalid-argument', 'Missing fields.');
+    }
+
+    const auctionStripe = getAuctionStripeClient();
+    const db = admin.firestore();
+    const ref = db.collection('auctionOrders').doc(orderId);
+    const snap = await ref.get();
+    if (!snap.exists) {
+        throw new functions.https.HttpsError('not-found', 'Order not found.');
+    }
+
+    const order = snap.data();
+    if (order.paymentIntentId !== paymentIntentId) {
+        throw new functions.https.HttpsError('permission-denied', 'Payment intent mismatch.');
+    }
+
+    const pi = await auctionStripe.paymentIntents.retrieve(paymentIntentId);
+    if (pi.status !== 'succeeded') {
+        throw new functions.https.HttpsError('failed-precondition', `Payment status is ${pi.status}.`);
+    }
+
+    await ref.set({
+        status: 'paid',
+        paymentIntentId: pi.id,
+        amountPaid: ((pi.amount || 0) / 100),
+        paidAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    return { ok: true };
 });
 
 exports.submitAuctionAllocation = functions.https.onCall(async (data) => {

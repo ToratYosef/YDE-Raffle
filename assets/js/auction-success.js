@@ -14,6 +14,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const submitFn = httpsCallable(getFunctions(app), 'submitAuctionAllocation');
+const confirmAuctionPaymentFn = httpsCallable(getFunctions(app), 'confirmAuctionPaymentIntentPaid');
 
 const COOKIE_NAME = 'auction_pending_order';
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
@@ -216,6 +217,20 @@ const run = async () => {
     clearCookie(COOKIE_NAME);
     showSubmittedState();
     return;
+  }
+
+  if (order.status !== 'paid' && paymentIntentId && (order.orderId || order.id)) {
+    try {
+      await confirmAuctionPaymentFn({
+        orderId: order.orderId || order.id,
+        paymentIntentId
+      });
+      const refreshed = await findOrderByPaymentIntentId(paymentIntentId);
+      if (refreshed) order = refreshed;
+    } catch (error) {
+      statusEl.textContent = error?.message || 'Payment is being confirmed. Please refresh in a few seconds.';
+      return;
+    }
   }
 
   if (order.status !== 'paid') {

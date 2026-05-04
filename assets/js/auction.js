@@ -12,9 +12,10 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const createPaymentIntent = httpsCallable(getFunctions(app), 'createAuctionPaymentIntent');
+const getAuctionStripeConfig = httpsCallable(getFunctions(app), 'getAuctionStripeConfig');
 const { ticketBundles, auctionPackages } = window.AUCTION_DATA;
 
-const stripe = Stripe('pk_live_51JFiZnKhiMP0wjNsMlHMg2o7Eo6xaWczALlQ0eu0GVpnWel1Pgz1AbUVXUJGs2pFaavhaln5jKpHSrRhxrBppBDq00Hijyiu4V');
+let stripe = null;
 
 const bundleWrap = document.getElementById('bundles');
 const packageWrap = document.getElementById('packages');
@@ -36,6 +37,17 @@ const bundleQtyEls = {};
 let stripeElements = null;
 let activeOrderId = '';
 let activePaymentIntentId = '';
+
+const ensureAuctionStripe = async () => {
+  if (stripe) return stripe;
+  const response = await getAuctionStripeConfig({});
+  const publishableKey = response?.data?.publishableKey;
+  if (!publishableKey) {
+    throw new Error('Auction Stripe publishable key is missing.');
+  }
+  stripe = Stripe(publishableKey);
+  return stripe;
+};
 
 const packageThemes = [
   {
@@ -272,6 +284,7 @@ checkoutBtn.addEventListener('click', async () => {
   checkoutBtn.disabled = true;
   checkoutBtn.textContent = 'Preparing payment...';
   try {
+    const stripeInstance = await ensureAuctionStripe();
     const payload = { name, email, phone, bundleSelections: selected };
     if (legacyTicketBundleId) payload.ticketBundleId = legacyTicketBundleId;
 
@@ -282,7 +295,7 @@ checkoutBtn.addEventListener('click', async () => {
 
     if (!clientSecret) throw new Error('No client secret returned.');
 
-    stripeElements = stripe.elements({
+    stripeElements = stripeInstance.elements({
       clientSecret,
       appearance: {
         theme: 'night',

@@ -122,21 +122,13 @@ const getWheelEntriesForPackage = (packageId) => {
 };
 
 const buildWheelUrl = (packageName, entries) => {
+  const logoUrl = 'https://raw.githubusercontent.com/ToratYosef/ToratYosef..github.io/refs/heads/main/assets/logos.jpeg';
   const params = new URLSearchParams({
     entries: entries.join(','),
     title: `${packageName} - YDE Auction`,
-    description: `${entries.length} entries`,
-    colors: 'facc15,38bdf8,34d399,f59e0b,f472b6,60a5fa,a78bfa',
-    spinTime: '8',
-    confetti: 'false',
-    hideOverlayText: 'true',
-    displayWinnerDialog: 'true',
-    winnerMessage: 'Winner: {name}',
-    pageBackgroundColor: '0d1222',
-    pageGradient: 'false',
-    removeBackground: 'true'
+    centerImage: logoUrl
   });
-  return `https://wheelofnames.com/?${params.toString()}`;
+  return `https://wheelofnames.com/view?${params.toString()}`;
 };
 
 const renderWheel = () => {

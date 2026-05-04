@@ -62,14 +62,14 @@ const renderStats = () => {
   const totalOrders = orders.length;
   const totalTickets = orders.reduce((sum, o) => sum + Number(o.ticketCount || 0), 0);
   const submitted = orders.filter((o) => o.status === 'submitted').length;
-  const pending = orders.filter((o) => o.status === 'pending' || o.status === 'paid').length;
+  const paid = orders.filter((o) => o.status === 'paid').length;
   const totalStripe = orders.filter((o) => o.source === 'stripe').reduce((sum, o) => sum + Number(o.amountPaid || 0), 0);
 
   statsEl.innerHTML = [
     statCard('Orders', totalOrders),
     statCard('Tickets', totalTickets),
     statCard('Submitted', submitted),
-    statCard('Pending', pending),
+    statCard('Paid', paid),
     statCard('Stripe Total', `$${totalStripe.toFixed(2)}`)
   ].join('');
 };
@@ -164,7 +164,9 @@ const renderWheel = () => {
 
 const load = async () => {
   const snap = await getDocs(collection(db, 'auctionOrders'));
-  orders = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  orders = snap.docs
+    .map((doc) => ({ id: doc.id, ...doc.data() }))
+    .filter((order) => order.status === 'paid' || order.status === 'submitted');
   orders.sort((a, b) => {
     const aTime = a.createdAt?.seconds || 0;
     const bTime = b.createdAt?.seconds || 0;

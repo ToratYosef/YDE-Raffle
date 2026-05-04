@@ -2846,6 +2846,75 @@ const AUCTION_BUNDLES = {
 const AUCTION_PACKAGES = ['package1','package2','package3','package4','package5'];
 const auctionZeroAlloc = () => ({ package1:0, package2:0, package3:0, package4:0, package5:0 });
 
+function normalizeAuctionIdentity(value) {
+    return String(value || '').trim().toLowerCase();
+}
+
+async function findReusablePendingAuctionOrder(db, { name, email, phone }) {
+    const pendingSnap = await db.collection('auctionOrders')
+        .where('status', '==', 'pending')
+        .limit(100)
+        .get();
+
+    const targetEmail = normalizeAuctionIdentity(email);
+    const targetPhone = normalizeAuctionIdentity(phone);
+    const targetName = normalizeAuctionIdentity(name);
+
+    let bestDoc = null;
+    let bestCreatedAt = 0;
+
+    pendingSnap.forEach((doc) => {
+        const data = doc.data() || {};
+        if ((data.source || '') !== 'stripe') return;
+
+        const sameEmail = normalizeAuctionIdentity(data.email) === targetEmail;
+        const samePhone = normalizeAuctionIdentity(data.phone) === targetPhone;
+        const sameName = normalizeAuctionIdentity(data.name) === targetName;
+        if (!sameEmail || !samePhone || !sameName) return;
+
+        const createdAt = Number(data.createdAt?.seconds || 0);
+        if (!bestDoc || createdAt > bestCreatedAt) {
+            bestDoc = doc;
+            bestCreatedAt = createdAt;
+        }
+    });
+
+    return bestDoc;
+}
+
+async function deleteDuplicatePendingAuctionOrders(db, { keepOrderId, name, email, phone }) {
+    const pendingSnap = await db.collection('auctionOrders')
+        .where('status', '==', 'pending')
+        .limit(100)
+        .get();
+
+    const targetEmail = normalizeAuctionIdentity(email);
+    const targetPhone = normalizeAuctionIdentity(phone);
+    const targetName = normalizeAuctionIdentity(name);
+
+    const batch = db.batch();
+    let deleteCount = 0;
+
+    pendingSnap.forEach((doc) => {
+        if (doc.id === keepOrderId) return;
+
+        const data = doc.data() || {};
+        if ((data.source || '') !== 'stripe') return;
+
+        const sameEmail = normalizeAuctionIdentity(data.email) === targetEmail;
+        const samePhone = normalizeAuctionIdentity(data.phone) === targetPhone;
+        const sameName = normalizeAuctionIdentity(data.name) === targetName;
+        if (!sameEmail || !samePhone || !sameName) return;
+
+        batch.delete(doc.ref);
+        deleteCount += 1;
+    });
+
+    if (deleteCount > 0) {
+        await batch.commit();
+    }
+}
+
 exports.getAuctionStripeConfig = functions.https.onCall(async () => {
     if (!hasValidAuctionStripePublishableKey()) {
         throw new functions.https.HttpsError('failed-precondition', 'Auction Stripe publishable key is not configured.');
@@ -2858,11 +2927,11 @@ exports.getAuctionStripeConfig = functions.https.onCall(async () => {
 });
 
 exports.createAuctionPaymentIntent = functions.https.onCall(async (data) => {
-        if (!hasValidAuctionStripeSecretKey()) {
+    if (!hasValidAuctionStripeSecretKey()) {
         throw new functions.https.HttpsError('failed-precondition', 'Stripe is not configured on the server.');
     }
 
-        const auctionStripe = getAuctionStripeClient();
+    const auctionStripe = getAuctionStripeClient();
 
     const { name, email, phone, ticketBundleId, bundleSelections } = data || {};
     if (!name || !email || !phone) {
@@ -2899,8 +2968,20 @@ exports.createAuctionPaymentIntent = functions.https.onCall(async (data) => {
 
     const primaryBundleId = selectedBundleIds.length === 1 ? selectedBundleIds[0] : 'mixed';
     const db = admin.firestore();
-    const orderRef = db.collection('auctionOrders').doc();
+    const reusablePendingDoc = await findReusablePendingAuctionOrder(db, { name, email, phone });
+    const orderRef = reusablePendingDoc ? reusablePendingDoc.ref : db.collection('auctionOrders').doc();
     const orderId = orderRef.id;
+
+    if (reusablePendingDoc) {
+        const prev = reusablePendingDoc.data() || {};
+        if (prev.paymentIntentId) {
+            try {
+                await auctionStripe.paymentIntents.cancel(prev.paymentIntentId);
+            } catch (cancelError) {
+                console.warn(`Unable to cancel previous auction payment intent ${prev.paymentIntentId}:`, cancelError?.message || cancelError);
+            }
+        }
+    }
 
     try {
         const paymentIntent = await auctionStripe.paymentIntents.create({
@@ -2935,9 +3016,10 @@ exports.createAuctionPaymentIntent = functions.https.onCall(async (data) => {
             stripeSessionId: '',
             paymentIntentId: paymentIntent.id,
             allocations: auctionZeroAlloc(),
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            createdAt: reusablePendingDoc ? (reusablePendingDoc.data()?.createdAt || admin.firestore.FieldValue.serverTimestamp()) : admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             note: ''
-        });
+        }, { merge: true });
 
         return {
             clientSecret: paymentIntent.client_secret,
@@ -3080,6 +3162,13 @@ exports.confirmAuctionPaymentIntentPaid = functions.https.onCall(async (data) =>
         paidAt: admin.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
 
+    await deleteDuplicatePendingAuctionOrders(db, {
+        keepOrderId: orderId,
+        name: order.name,
+        email: order.email,
+        phone: order.phone
+    });
+
     return { ok: true };
 });
 
@@ -3136,6 +3225,13 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
                         amountPaid: ((pi.amount || 0) / 100),
                         paidAt: admin.firestore.FieldValue.serverTimestamp()
                     }, { merge: true });
+
+                    await deleteDuplicatePendingAuctionOrders(admin.firestore(), {
+                        keepOrderId: orderId,
+                        name: order.name,
+                        email: order.email,
+                        phone: order.phone
+                    });
                 }
             }
         }
@@ -3143,7 +3239,7 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object; if (session.metadata && session.metadata.type === 'auction') {
       const orderId = session.metadata.orderId; const ref = admin.firestore().collection('auctionOrders').doc(orderId); const snap = await ref.get();
-      if (snap.exists) { const order = snap.data(); if (order.status === 'pending' || order.status === 'paid') { await ref.set({ status:'paid', stripeSessionId: session.id, paymentIntentId: session.payment_intent || '', amountPaid: ((session.amount_total || 0) / 100), paidAt: admin.firestore.FieldValue.serverTimestamp() }, { merge:true }); } }
+            if (snap.exists) { const order = snap.data(); if (order.status === 'pending' || order.status === 'paid') { await ref.set({ status:'paid', stripeSessionId: session.id, paymentIntentId: session.payment_intent || '', amountPaid: ((session.amount_total || 0) / 100), paidAt: admin.firestore.FieldValue.serverTimestamp() }, { merge:true }); await deleteDuplicatePendingAuctionOrders(admin.firestore(), { keepOrderId: orderId, name: order.name, email: order.email, phone: order.phone }); } }
     }
   }
   res.json({ received: true });

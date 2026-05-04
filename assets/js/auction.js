@@ -240,10 +240,12 @@ ticketBundles.forEach((bundle, index) => {
       <p class="text-lg sm:text-xl uppercase tracking-wider text-slate-200 mt-1">Ticket${bundle.ticketCount > 1 ? 's' : ''}</p>
       <p class="text-4xl sm:text-5xl font-semibold text-yellow-100 mt-2">$${bundle.price}</p>
     </div>
-    <div class="mt-3 sm:mt-4 grid grid-cols-3 items-center gap-2 border border-white/20 rounded-lg bg-slate-950/40 px-2 py-2">
-      <button type="button" data-action="dec" data-id="${bundle.id}" class="h-10 sm:h-11 rounded-md bg-white/10 hover:bg-white/20 text-white font-bold text-lg">-</button>
-      <p class="text-center ${theme.qty}"><span class="text-[10px] sm:text-xs uppercase block tracking-widest text-slate-300">Quantity</span><span id="qty-${bundle.id}" class="text-xl sm:text-2xl font-bold">0</span></p>
-      <button type="button" data-action="inc" data-id="${bundle.id}" class="h-10 sm:h-11 rounded-md bg-white/10 hover:bg-white/20 text-white font-bold text-lg">+</button>
+    <div class="mt-3 sm:mt-4 border border-white/20 rounded-lg bg-slate-950/40 px-2 py-2">
+      <div class="grid grid-cols-2 gap-2">
+        <button type="button" data-action="dec" data-id="${bundle.id}" class="h-10 sm:h-11 rounded-md bg-white/10 hover:bg-white/20 text-white font-bold text-lg">-</button>
+        <button type="button" data-action="inc" data-id="${bundle.id}" class="h-10 sm:h-11 rounded-md bg-white/10 hover:bg-white/20 text-white font-bold text-lg">+</button>
+      </div>
+      <p class="text-center ${theme.qty} mt-2"><span class="text-[10px] sm:text-xs uppercase block tracking-widest text-slate-300">Quantity</span><span id="qty-${bundle.id}" class="text-xl sm:text-2xl font-bold">0</span></p>
     </div>
   `;
 
@@ -308,8 +310,9 @@ checkoutBtn.addEventListener('click', async () => {
     const paymentElement = stripeElements.create('payment');
     paymentElement.mount('#auctionPaymentElementContainer');
 
+    const safeTotalAmount = Number(getBundleTotals().totalAmount || 0);
     paymentSectionEl.style.display = 'block';
-    stripePayBtn.textContent = `Pay $${totalAmount.toFixed(2)}`;
+    stripePayBtn.textContent = `Pay $${safeTotalAmount.toFixed(2)}`;
     checkoutBtn.textContent = 'Payment Ready';
     err.textContent = '';
   } catch (e) {

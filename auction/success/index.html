@@ -1,13 +1,117 @@
-<!DOCTYPE html><html lang="en"><head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>YDE Senior Fund - Auction Success</title><link rel="icon" type="image/png" href="/favicon/favicon.jpeg">
-<script src="https://cdn.tailwindcss.com"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-<style>body{font-family:'Inter',sans-serif;background-color:#0d1222;background-image:linear-gradient(135deg,#0d1222 0%,#151a2d 100%)}.bebas-neue{font-family:'Bebas Neue',sans-serif}@media(max-width:767px){#main-menu li{width:100%}#main-menu li a{display:block;text-align:center;padding:.75rem 1rem}}</style>
-</head><body class="text-white min-h-screen flex flex-col">
-<header class="bg-black/40 py-4 px-4 md:px-12 fixed w-full top-0 z-50 shadow-2xl backdrop-blur-sm"><nav class="container mx-auto flex justify-between items-center flex-wrap md:flex-nowrap"><div class="flex items-center justify-between w-full md:w-auto"><a href="/" class="flex items-center space-x-2"><img src="https://raw.githubusercontent.com/ToratYosef/ToratYosef..github.io/refs/heads/main/assets/logos.jpeg" alt="YDE Logo" class="h-14 sm:h-16 md:h-20 w-auto rounded-full ring-2 ring-yellow-400 p-1"></a><button id="menu-toggle" class="md:hidden text-white focus:outline-none" aria-label="Toggle menu"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg></button></div><ul id="main-menu" class="hidden md:flex flex-col md:flex-row items-center space-y-2 md:space-y-0 md:space-x-8 text-base font-semibold w-full md:w-auto mt-4 md:mt-0"><li><a href="/rolex-raffle/" class="text-white hover:text-yellow-400">Rolex Raffle</a></li><li><a href="/leaderboard/" class="text-white hover:text-yellow-400">Leaderboard</a></li><li><a href="/auction/" class="py-2 px-4 rounded-full bg-yellow-400 text-black font-bold">Auction</a></li><li><a href="/donate/" class="text-white hover:text-yellow-400">Donate Now</a></li></ul></nav></header>
-<main class="flex-grow pt-28 px-4 md:px-8"><div class="container mx-auto max-w-6xl bg-slate-900/40 border border-slate-700 rounded-2xl p-6 md:p-10"><h1 class="bebas-neue text-5xl text-yellow-400 mb-4">Payment Success</h1><div id="status" class="text-slate-200">Loading...</div><div id="alloc" class="hidden mt-6"></div></div></main>
-<footer class="bg-black/40 py-8 mt-auto shadow-[0_-5px_15px_rgba(0,0,0,0.5)]"><div class="container mx-auto px-4 text-center"><h3 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4">Contact</h3><div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-gray-400 mb-8"><div><p class="font-bold text-white">Morris E.</p><p>+1 (848)-282-6434</p></div><div><p class="font-bold text-white">Daniel K.</p><p>+1 (917) 858-0904</p></div><div><p class="font-bold text-white">Saul S.</p><p>+1 (929)-584-5753</p></div></div></div></footer>
-<script>document.getElementById('menu-toggle').addEventListener('click',()=>document.getElementById('main-menu').classList.toggle('hidden'));</script>
-<script src="/assets/js/auction-data.js"></script><script type="module" src="/assets/js/auction-success.js"></script></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>YDE Senior Fund - Auction Success</title>
+	<link rel="icon" type="image/png" href="/favicon/favicon.jpeg">
+	<script src="https://cdn.tailwindcss.com"></script>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+	<style>
+		body {
+			font-family: 'Inter', sans-serif;
+			background-color: #0d1222;
+			background-image: linear-gradient(135deg, #0d1222 0%, #151a2d 100%);
+		}
+
+		.bebas-neue {
+			font-family: 'Bebas Neue', sans-serif;
+		}
+
+		.glass-panel {
+			background: rgba(43, 49, 63, 0.4);
+			backdrop-filter: blur(10px);
+			-webkit-backdrop-filter: blur(10px);
+			border: 1px solid rgba(255, 255, 255, 0.1);
+		}
+
+		@media (max-width: 767px) {
+			#main-menu li {
+				width: 100%;
+			}
+
+			#main-menu li a {
+				display: block;
+				text-align: center;
+				padding: 0.75rem 1rem;
+			}
+		}
+	</style>
+</head>
+<body class="text-white min-h-screen flex flex-col">
+	<header class="bg-black/40 py-4 px-4 md:px-12 fixed w-full top-0 z-50 shadow-2xl backdrop-blur-sm">
+		<nav class="container mx-auto flex justify-between items-center flex-wrap md:flex-nowrap">
+			<div class="flex items-center justify-between w-full md:w-auto">
+				<a href="/" class="flex items-center space-x-2">
+					<img src="https://raw.githubusercontent.com/ToratYosef/ToratYosef..github.io/refs/heads/main/assets/logos.jpeg" alt="YDE Logo" class="h-14 sm:h-16 md:h-20 w-auto rounded-full ring-2 ring-yellow-400 p-1">
+				</a>
+				<button id="menu-toggle" class="md:hidden text-white focus:outline-none" aria-label="Toggle menu">
+					<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+				</button>
+			</div>
+			<ul id="main-menu" class="hidden md:flex flex-col md:flex-row items-center space-y-2 md:space-y-0 md:space-x-8 text-base font-semibold w-full md:w-auto mt-4 md:mt-0">
+				<li><a href="/rolex-raffle/" class="text-white hover:text-yellow-400 transition-colors duration-300 block">Rolex Raffle</a></li>
+				<li><a href="/leaderboard/" class="text-white hover:text-yellow-400 transition-colors duration-300 block">Leaderboard</a></li>
+				<li><a href="/auction/" class="py-2 px-4 rounded-full bg-yellow-400 text-black font-bold block">Auction</a></li>
+				<li><a href="/donate/" class="text-white hover:text-yellow-400 transition-colors duration-300 block">Donate Now</a></li>
+			</ul>
+		</nav>
+	</header>
+
+	<main class="flex-grow pt-24 sm:pt-28 px-4 md:px-8 lg:px-16">
+		<div class="container mx-auto max-w-4xl glass-panel rounded-2xl shadow-2xl p-5 sm:p-8">
+			<h1 class="bebas-neue text-5xl sm:text-6xl text-yellow-400 mb-2">Payment Success</h1>
+			<p id="status" class="text-slate-200 text-base sm:text-lg">Checking your payment details...</p>
+			<div id="confirmationBox" class="hidden mt-6 rounded-xl border border-emerald-300/40 bg-emerald-500/10 p-4">
+				<p class="text-emerald-100 font-semibold">Your tickets have been submitted successfully.</p>
+				<p class="text-emerald-200/90 text-sm mt-1">Thank you for supporting the YDE Senior Fund.</p>
+				<a href="/auction/" class="inline-block mt-4 bg-yellow-400 hover:bg-yellow-500 text-black font-bold px-4 py-2 rounded-full transition-colors duration-300">Back to Auction</a>
+			</div>
+		</div>
+	</main>
+
+	<div id="allocationModalOverlay" class="fixed inset-0 z-[90] bg-black/70 backdrop-blur-sm hidden p-3 sm:p-4">
+		<div class="mx-auto mt-4 sm:mt-10 max-w-3xl max-h-[92vh] overflow-y-auto rounded-2xl border border-slate-600 bg-slate-900 shadow-2xl">
+			<div class="p-4 sm:p-6 border-b border-slate-700">
+				<p class="text-xs uppercase tracking-wider text-slate-400">Choose Ticket Allocation</p>
+				<h2 class="bebas-neue text-4xl sm:text-5xl text-yellow-400">Allocate Your Tickets</h2>
+				<p id="allocationSummary" class="text-slate-200 mt-2"></p>
+				<p id="remainingLabel" class="text-lg font-semibold text-emerald-300 mt-1"></p>
+			</div>
+			<div id="allocationRows" class="p-4 sm:p-6 space-y-3"></div>
+			<div class="p-4 sm:p-6 border-t border-slate-700">
+				<p id="allocationErr" class="text-red-300 min-h-6 mb-2"></p>
+				<button id="submitAllocationBtn" class="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold py-3 rounded-full transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>Submit Ticket Allocation</button>
+			</div>
+		</div>
+	</div>
+
+	<footer class="bg-black/40 py-8 mt-auto shadow-[0_-5px_15px_rgba(0,0,0,0.5)]">
+		<div class="container mx-auto px-4 text-center">
+			<h3 class="bebas-neue text-3xl font-bold text-yellow-400 mb-4">Contact</h3>
+			<div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 text-gray-400 mb-8">
+				<div>
+					<p class="font-bold text-white">Morris E.</p>
+					<p>+1 (848)-282-6434</p>
+				</div>
+				<div>
+					<p class="font-bold text-white">Daniel K.</p>
+					<p>+1 (917) 858-0904</p>
+				</div>
+				<div>
+					<p class="font-bold text-white">Saul S.</p>
+					<p>+1 (929)-584-5753</p>
+				</div>
+			</div>
+		</div>
+	</footer>
+
+	<script>
+		document.getElementById('menu-toggle').addEventListener('click', () => document.getElementById('main-menu').classList.toggle('hidden'));
+	</script>
+	<script src="/assets/js/auction-data.js"></script>
+	<script type="module" src="/assets/js/auction-success.js"></script>
+</body>
+</html>

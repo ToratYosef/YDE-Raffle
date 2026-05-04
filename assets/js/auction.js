@@ -238,6 +238,8 @@ checkoutBtn.addEventListener('click', async () => {
   const email = emailEl.value.trim();
   const phone = phoneEl.value.trim();
   const selected = Object.fromEntries(Object.entries(bundleState).filter(([, qty]) => Number(qty) > 0));
+  const selectedBundleIds = Object.keys(selected);
+  const legacyTicketBundleId = selectedBundleIds.length === 1 ? selectedBundleIds[0] : null;
   const { totalTickets } = getBundleTotals();
 
   if (!name || !email || !phone || totalTickets < 1) {
@@ -248,12 +250,16 @@ checkoutBtn.addEventListener('click', async () => {
   checkoutBtn.disabled = true;
   checkoutBtn.textContent = 'Preparing checkout...';
   try {
-    const response = await createCheckout({ name, email, phone, bundleSelections: selected });
+    const payload = { name, email, phone, bundleSelections: selected };
+    if (legacyTicketBundleId) payload.ticketBundleId = legacyTicketBundleId;
+
+    const response = await createCheckout(payload);
     if (!response?.data?.url) throw new Error('No checkout URL returned.');
     window.location.href = response.data.url;
   } catch (e) {
-    err.textContent = e?.message || 'Checkout failed. Please try again.';
+    const details = e?.details ? ` (${e.details})` : '';
+    err.textContent = `${e?.message || 'Checkout failed. Please try again.'}${details}`;
     checkoutBtn.disabled = false;
-    checkoutBtn.textContent = 'Proceed to Stripe Checkout';
+    checkoutBtn.textContent = 'Proceed to Payment';
   }
 });

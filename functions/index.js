@@ -2789,6 +2789,10 @@ const AUCTION_PACKAGES = ['package1','package2','package3','package4','package5'
 const auctionZeroAlloc = () => ({ package1:0, package2:0, package3:0, package4:0, package5:0 });
 
 exports.createAuctionCheckoutSession = functions.https.onCall(async (data) => {
+    if (!process.env.STRIPE_SECRET_KEY) {
+        throw new functions.https.HttpsError('failed-precondition', 'Stripe is not configured on the server.');
+    }
+
     const { name, email, phone, ticketBundleId, bundleSelections } = data || {};
     if (!name || !email || !phone) throw new functions.https.HttpsError('invalid-argument','Invalid input.');
 
@@ -2829,10 +2833,12 @@ exports.createAuctionCheckoutSession = functions.https.onCall(async (data) => {
         });
     }
 
-    const primaryBundleId = selectedBundleIds.length === 1 ? selectedBundleIds[0] : 'mixed';
-  const db = admin.firestore();
-  const orderRef = db.collection('auctionOrders').doc();
-  const orderId = orderRef.id;
+        const primaryBundleId = selectedBundleIds.length === 1 ? selectedBundleIds[0] : 'mixed';
+        const db = admin.firestore();
+        const orderRef = db.collection('auctionOrders').doc();
+        const orderId = orderRef.id;
+
+        try {
     await orderRef.set({
         orderId,
         status:'pending',
@@ -2849,12 +2855,12 @@ exports.createAuctionCheckoutSession = functions.https.onCall(async (data) => {
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         note:''
     });
-  const baseUrl = process.env.APP_URL || process.env.SITE_URL || 'https://ydeseniors.com';
-  const session = await stripe.checkout.sessions.create({
-    mode:'payment', payment_method_types:['card'],
+    const baseUrl = process.env.APP_URL || process.env.SITE_URL || 'https://ydeseniors.com';
+    const session = await stripe.checkout.sessions.create({
+        mode:'payment', payment_method_types:['card'],
         line_items: lineItems,
-    success_url:`${baseUrl}/auction/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url:`${baseUrl}/auction`,
+        success_url:`${baseUrl}/auction/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url:`${baseUrl}/auction`,
         metadata:{
             type:'auction',
             orderId,
@@ -2865,8 +2871,13 @@ exports.createAuctionCheckoutSession = functions.https.onCall(async (data) => {
             ticketCount: String(totalTickets),
             bundleSelections: JSON.stringify(normalizedSelections)
         }
-  });
-  return { url: session.url, orderId };
+    });
+    return { url: session.url, orderId };
+    } catch (error) {
+        console.error('createAuctionCheckoutSession failed:', error);
+        const message = error?.message || 'Unable to create checkout session.';
+        throw new functions.https.HttpsError('internal', message);
+    }
 });
 
 exports.submitAuctionAllocation = functions.https.onCall(async (data) => {

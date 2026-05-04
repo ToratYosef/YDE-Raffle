@@ -26,6 +26,7 @@ const manualFormEl = document.getElementById('manualForm');
 const manualErrEl = document.getElementById('manualErr');
 const manualSubmitEl = document.getElementById('manualSubmit');
 const wheelEl = document.getElementById('wheel');
+
 const allocModalEl = document.getElementById('allocModal');
 const allocModalMetaEl = document.getElementById('allocModalMeta');
 const allocModalTicketsEl = document.getElementById('allocModalTickets');
@@ -48,6 +49,8 @@ manualFormEl.innerHTML = `
   <input id="mtickets" class="w-full rounded-lg border border-slate-700 bg-slate-950 p-2" type="number" min="1" placeholder="Ticket count">
   ${packageIds.map((id, idx) => `<input id="mp${idx + 1}" class="w-full rounded-lg border border-slate-700 bg-slate-950 p-2" type="number" min="0" placeholder="${id}">`).join('')}
 `;
+
+const getOrderKey = (order) => order.orderId || order.id;
 
 const getSafeAllocations = (alloc) => {
   const clean = {};
@@ -85,36 +88,16 @@ const renderStats = () => {
 };
 
 const buildOrderCard = (order) => {
-  const allocations = getSafeAllocations(order.allocations);
-  const used = sumAllocations(allocations);
-  const remaining = Number(order.ticketCount || 0) - used;
-
   return `
-    <div class="rounded-xl border border-slate-700 bg-slate-900/70 p-4" data-order-card="${order.orderId || order.id}">
-      <div class="flex items-start justify-between gap-2">
-        <div>
-          <p class="text-lg font-semibold text-white">${order.name || 'Unknown'}</p>
-          <p class="text-xs text-slate-400 mt-1">${order.email || ''} ${order.phone || ''}</p>
+    <button type="button" data-edit="${getOrderKey(order)}" class="w-full text-left rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3 hover:border-yellow-300/60 hover:bg-slate-900 transition-colors duration-200">
+      <div class="flex items-center justify-between gap-3">
+        <p class="text-lg font-semibold text-white truncate">${order.name || 'Unknown'}</p>
+        <div class="flex items-center gap-2">
+          <span class="text-xs px-2 py-1 rounded-full border border-slate-600 text-slate-300">${order.status || 'unknown'}</span>
+          <span class="text-xs text-yellow-300 uppercase tracking-wider">Edit</span>
         </div>
-        <span class="text-xs px-2 py-1 rounded-full border border-slate-600 text-slate-300">${order.status || 'unknown'} / ${order.source || 'unknown'}</span>
       </div>
-
-      <div class="mt-3 text-sm text-slate-200">
-        <p>Tickets: <span class="font-semibold">${Number(order.ticketCount || 0)}</span> | Remaining: <span class="font-semibold ${remaining === 0 ? 'text-emerald-300' : 'text-amber-300'}">${remaining}</span></p>
-        <p>Amount Paid: <span class="font-semibold">$${Number(order.amountPaid || 0).toFixed(2)}</span></p>
-      </div>
-
-      <div class="mt-3 grid grid-cols-2 gap-2">
-        ${packageIds.map((id) => `
-          <label class="text-xs text-slate-300">
-            ${id}
-            <input data-order="${order.orderId || order.id}" data-p="${id}" class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 p-2" type="number" min="0" value="${allocations[id]}">
-          </label>
-        `).join('')}
-      </div>
-
-      <button data-save="${order.orderId || order.id}" class="mt-3 w-full bg-yellow-400 hover:bg-yellow-500 text-black font-semibold px-3 py-2 rounded-lg transition-colors duration-300">Save Allocations</button>
-    </div>
+    </button>
   `;
 };
 
@@ -124,93 +107,6 @@ const renderOrders = () => {
 
   ordersInfoEl.textContent = `${filtered.length} of ${orders.length} orders shown`;
   ordersEl.innerHTML = filtered.map(buildOrderCard).join('');
-};
-
-const toCsvCell = (value) => {
-  const v = String(value ?? '');
-  return `"${v.replace(/"/g, '""')}"`;
-};
-
-const buildPackageRows = (packageIndex) => {
-  const packageId = `package${packageIndex + 1}`;
-  const packageName = window.AUCTION_DATA.auctionPackages[packageIndex]?.name || packageId;
-  const rows = [];
-
-  orders.forEach((o) => {
-    const count = Number((o.allocations || {})[packageId] || 0);
-    for (let i = 1; i <= count; i += 1) {
-      rows.push({
-        name: o.name || '',
-        email: o.email || '',
-        phone: o.phone || '',
-        package: packageName,
-        ticketNumber: i,
-        orderId: o.orderId || o.id
-      });
-    }
-  });
-
-  return { packageId, packageName, rows };
-};
-
-const renderWheel = () => {
-  wheelEl.innerHTML = window.AUCTION_DATA.auctionPackages.map((pkg, idx) => {
-    const { rows } = buildPackageRows(idx);
-    const names = rows.map((r) => r.name).join('\n');
-
-    return `
-      <div class="rounded-xl border border-slate-700 bg-slate-900/70 p-4" data-wheel-card="${idx}">
-        <h3 class="text-xl font-semibold text-white">${pkg.name}</h3>
-        <p class="text-sm text-slate-300 mt-1">Entries: ${rows.length}</p>
-        <textarea readonly class="mt-3 w-full rounded-lg border border-slate-700 bg-slate-950 p-2 text-sm" rows="7">${names}</textarea>
-        <div class="mt-3 grid grid-cols-2 gap-2">
-          <button data-copy="${idx}" class="bg-yellow-400 hover:bg-yellow-500 text-black font-semibold px-3 py-2 rounded-lg transition-colors duration-300">Copy Names</button>
-          <button data-download="${idx}" class="bg-slate-800 hover:bg-slate-700 text-white font-semibold px-3 py-2 rounded-lg border border-slate-600 transition-colors duration-300">Download CSV</button>
-        </div>
-      </div>
-    `;
-  }).join('');
-};
-
-const load = async () => {
-  const snap = await getDocs(collection(db, 'auctionOrders'));
-  orders = snap.docs
-    .map((doc) => ({ id: doc.id, ...doc.data() }))
-    .filter((order) => order.status === 'paid' || order.status === 'submitted');
-  orders.sort((a, b) => {
-    const aTime = a.createdAt?.seconds || 0;
-    const bTime = b.createdAt?.seconds || 0;
-    return bTime - aTime;
-  });
-
-  renderStats();
-  renderOrders();
-  renderWheel();
-const getOrderKey = (order) => order.orderId || order.id;
-
-const buildOrderCard = (order) => {
-
-searchEl.addEventListener('input', renderOrders);
-
-  const orderKey = getOrderKey(order);
-manualSubmitEl.addEventListener('click', async () => {
-  manualErrEl.textContent = '';
-    <button type="button" data-edit="${orderKey}" class="w-full text-left rounded-xl border border-slate-700 bg-slate-900/70 p-4 hover:border-yellow-300/60 hover:bg-slate-900 transition-colors duration-200">
-      <div class="flex items-start justify-between gap-3">
-  packageIds.forEach((id, idx) => {
-          <p class="text-lg font-semibold text-white">${order.name || 'Unknown'}</p>
-          <p class="text-xs text-slate-400 mt-1">${order.email || ''}</p>
-  });
-        <span class="text-xs px-2 py-1 rounded-full border border-slate-600 text-slate-300">${order.status || 'unknown'}</span>
-  const payload = {
-      <div class="mt-3 flex items-center justify-between gap-2 text-sm">
-        <p class="text-slate-200">Tickets <span class="font-semibold text-white">${Number(order.ticketCount || 0)}</span></p>
-        <p class="text-slate-200">Remaining <span class="font-semibold ${remaining === 0 ? 'text-emerald-300' : 'text-amber-300'}">${remaining}</span></p>
-        <p class="text-slate-200">Paid <span class="font-semibold text-white">$${Number(order.amountPaid || 0).toFixed(2)}</span></p>
-    note: document.getElementById('mnote').value,
-      <p class="mt-2 text-xs text-yellow-300 uppercase tracking-wider">Click to edit allocations</p>
-    </button>
-  `;
 };
 
 const getWheelEntriesForPackage = (packageId) => {
@@ -235,8 +131,10 @@ const buildWheelUrl = (packageName, entries) => {
     confetti: 'false',
     hideOverlayText: 'true',
     displayWinnerDialog: 'true',
+    winnerMessage: 'Winner: {name}',
     pageBackgroundColor: '0d1222',
-    pageGradient: 'false'
+    pageGradient: 'false',
+    removeBackground: 'true'
   });
   return `https://wheelofnames.com/?${params.toString()}`;
 };
@@ -258,14 +156,6 @@ const renderWheel = () => {
       </div>
     `;
   }).join('');
-};
-
-const renderOrders = () => {
-  const search = (searchEl.value || '').toLowerCase();
-  const filtered = orders.filter((o) => `${o.name || ''} ${o.email || ''} ${o.phone || ''}`.toLowerCase().includes(search));
-
-  ordersInfoEl.textContent = `${filtered.length} of ${orders.length} orders shown`;
-  ordersEl.innerHTML = filtered.map(buildOrderCard).join('');
 };
 
 const openAllocModal = (orderId) => {
@@ -344,6 +234,7 @@ const load = async () => {
   orders = snap.docs
     .map((doc) => ({ id: doc.id, ...doc.data() }))
     .filter((order) => order.status === 'paid' || order.status === 'submitted');
+
   orders.sort((a, b) => {
     const aTime = a.createdAt?.seconds || 0;
     const bTime = b.createdAt?.seconds || 0;

@@ -2097,18 +2097,22 @@
                 entries = entries.filter((entry) => entry.referrerRefId === activeRefIdFilter);
             }
 
-            const validStatuses = new Set(['paid', 'converted', 'succeeded', 'MANUAL_SALE']);
+            const validStatuses = new Set(['paid', 'converted', 'succeeded', 'manual_sale']);
             const names = [];
 
             entries.forEach((entry) => {
-                if (!validStatuses.has(entry.status)) return;
+                const normalizedStatus = String(entry.status || '').trim().toLowerCase();
+                if (!validStatuses.has(normalizedStatus)) return;
 
                 const ticketCount = parseInt(entry.ticketsBought || entry.ticketCount, 10) || 0;
                 if (ticketCount < 1) return;
 
-                const name = (entry.fullName || entry.name || entry.firstName || '').trim() || 'Unknown';
+                const name = String(entry.fullName || entry.name || entry.firstName || '')
+                    .replace(/\s+/g, ' ')
+                    .trim() || 'Unknown';
+
                 for (let i = 0; i < ticketCount; i += 1) {
-                    names.push(name);
+                    names.push(`${name} - ${i + 1}`);
                 }
             });
 

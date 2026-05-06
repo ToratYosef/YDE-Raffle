@@ -23,6 +23,7 @@ const totalPaidEl = document.getElementById('totalPaid');
 const packageMap = new Map((window.AUCTION_DATA?.auctionPackages || []).map((pkg) => [pkg.id, pkg]));
 
 const toMoney = (value) => `$${Number(value || 0).toFixed(2)}`;
+const wait = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
 const findOrderByPaymentIntentId = async (paymentIntentId) => {
   const intentQuery = query(collection(db, 'auctionOrders'), where('paymentIntentId', '==', paymentIntentId));
@@ -108,28 +109,29 @@ const run = async () => {
 
   statusEl.textContent = 'Confirming your payment details...';
   let order = null;
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    if (paymentIntentId) order = await findOrderByPaymentIntentId(paymentIntentId);
+    if (!order && sessionId) order = await findOrderBySessionId(sessionId);
+    if (!order && orderId) order = await findOrderByOrderId(orderId);
 
-  if (paymentIntentId) order = await findOrderByPaymentIntentId(paymentIntentId);
-  if (!order && sessionId) order = await findOrderBySessionId(sessionId);
-  if (!order && orderId) order = await findOrderByOrderId(orderId);
+    if (order?.status === 'paid') break;
 
-  if (!order) {
-    statusEl.textContent = 'Payment is still being confirmed. Please refresh in a few seconds.';
-    return;
-  }
+    if (order && paymentIntentId) {
+      try {
+        await confirmAuctionPaymentFn({ orderId: order.orderId || order.id, paymentIntentId });
+      } catch {
+        // Webhook remains source of truth; continue polling.
+      }
+    }
 
-  if (order.status !== 'paid' && paymentIntentId) {
-    try {
-      await confirmAuctionPaymentFn({ orderId: order.orderId || order.id, paymentIntentId });
-      const refreshed = await findOrderByPaymentIntentId(paymentIntentId);
-      if (refreshed) order = refreshed;
-    } catch (error) {
-      statusEl.textContent = error?.message || 'Payment is still being confirmed. Please refresh in a few seconds.';
-      return;
+    if (attempt < 7) {
+      statusEl.textContent = 'Payment received. Finalizing your entry details...';
+      await wait(2500);
+      order = null;
     }
   }
 
-  if (order.status !== 'paid') {
+  if (!order || order.status !== 'paid') {
     statusEl.textContent = 'Payment is still being confirmed. Please refresh in a few seconds.';
     return;
   }

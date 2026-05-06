@@ -2917,6 +2917,20 @@ function normalizeAuctionCustomer(data) {
     return { name, email, phone };
 }
 
+function parseAuctionEntriesFromMetadata(raw) {
+    if (!raw || typeof raw !== 'string') {
+        return emptyAuctionEntries();
+    }
+
+    try {
+        const parsed = JSON.parse(raw);
+        return normalizeAuctionEntries(parsed);
+    } catch (error) {
+        console.warn('Unable to parse auction metadata entries:', error?.message || error);
+        return emptyAuctionEntries();
+    }
+}
+
 function normalizeAuctionIdentity(value) {
     return String(value || '').trim().toLowerCase();
 }
@@ -3281,7 +3295,11 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
             if (snap.exists) {
                 const order = snap.data();
                 if (order.status === 'pending' || order.status === 'paid') {
-                    await ref.set({
+                    const metadataEntries = parseAuctionEntriesFromMetadata(pi?.metadata?.entries || '');
+                    const metadataLines = buildAuctionLineItemsFromEntries(metadataEntries);
+                    const metadataTotals = getAuctionTotals(metadataLines);
+
+                    const updatePayload = {
                         status: 'paid',
                         paid: true,
                         paymentIntentId: pi.id,
@@ -3289,7 +3307,24 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
                         total: cleanAmount((pi.amount || 0) / 100),
                         paidAt: admin.firestore.FieldValue.serverTimestamp(),
                         updatedAt: admin.firestore.FieldValue.serverTimestamp()
-                    }, { merge: true });
+                    };
+
+                    const hasEntries = Number(order?.totalEntries || 0) > 0;
+                    if (!hasEntries && metadataTotals.totalEntries > 0) {
+                        updatePayload.entries = metadataEntries;
+                        updatePayload.lineItems = metadataLines;
+                        updatePayload.totalEntries = metadataTotals.totalEntries;
+                        updatePayload.subtotal = metadataTotals.subtotal;
+                        if (!order?.customer) {
+                            updatePayload.customer = {
+                                name: sanitizeString(pi?.metadata?.name || order?.name || ''),
+                                email: sanitizeString(pi?.metadata?.email || order?.email || ''),
+                                phone: sanitizeString(pi?.metadata?.phone || order?.phone || '')
+                            };
+                        }
+                    }
+
+                    await ref.set(updatePayload, { merge: true });
 
                     await deleteDuplicatePendingAuctionOrders(admin.firestore(), {
                         keepOrderId: orderId,
@@ -3304,7 +3339,43 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object; if (session.metadata && session.metadata.type === 'auction') {
       const orderId = session.metadata.orderId; const ref = admin.firestore().collection('auctionOrders').doc(orderId); const snap = await ref.get();
-            if (snap.exists) { const order = snap.data(); if (order.status === 'pending' || order.status === 'paid') { await ref.set({ status:'paid', paid:true, stripeSessionId: session.id, paymentIntentId: session.payment_intent || '', amountPaid: ((session.amount_total || 0) / 100), total: cleanAmount((session.amount_total || 0) / 100), paidAt: admin.firestore.FieldValue.serverTimestamp(), updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge:true }); await deleteDuplicatePendingAuctionOrders(admin.firestore(), { keepOrderId: orderId, name: order.name, email: order.email, phone: order.phone }); } }
+            if (snap.exists) {
+                const order = snap.data();
+                if (order.status === 'pending' || order.status === 'paid') {
+                    const metadataEntries = parseAuctionEntriesFromMetadata(session?.metadata?.entries || '');
+                    const metadataLines = buildAuctionLineItemsFromEntries(metadataEntries);
+                    const metadataTotals = getAuctionTotals(metadataLines);
+
+                    const updatePayload = {
+                        status:'paid',
+                        paid:true,
+                        stripeSessionId: session.id,
+                        paymentIntentId: session.payment_intent || '',
+                        amountPaid: ((session.amount_total || 0) / 100),
+                        total: cleanAmount((session.amount_total || 0) / 100),
+                        paidAt: admin.firestore.FieldValue.serverTimestamp(),
+                        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+                    };
+
+                    const hasEntries = Number(order?.totalEntries || 0) > 0;
+                    if (!hasEntries && metadataTotals.totalEntries > 0) {
+                        updatePayload.entries = metadataEntries;
+                        updatePayload.lineItems = metadataLines;
+                        updatePayload.totalEntries = metadataTotals.totalEntries;
+                        updatePayload.subtotal = metadataTotals.subtotal;
+                        if (!order?.customer) {
+                            updatePayload.customer = {
+                                name: sanitizeString(session?.metadata?.name || order?.name || ''),
+                                email: sanitizeString(session?.metadata?.email || order?.email || ''),
+                                phone: sanitizeString(session?.metadata?.phone || order?.phone || '')
+                            };
+                        }
+                    }
+
+                    await ref.set(updatePayload, { merge:true });
+                    await deleteDuplicatePendingAuctionOrders(admin.firestore(), { keepOrderId: orderId, name: order.name, email: order.email, phone: order.phone });
+                }
+            }
     }
   }
   res.json({ received: true });

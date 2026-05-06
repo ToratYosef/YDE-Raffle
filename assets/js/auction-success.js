@@ -25,10 +25,14 @@ const modalOverlay = document.getElementById('allocationModalOverlay');
 const allocationRows = document.getElementById('allocationRows');
 const allocationSummary = document.getElementById('allocationSummary');
 const remainingLabel = document.getElementById('remainingLabel');
+const allocationTotalTickets = document.getElementById('allocationTotalTickets');
+const allocationUsedTickets = document.getElementById('allocationUsedTickets');
 const submitBtn = document.getElementById('submitAllocationBtn');
 const allocationErr = document.getElementById('allocationErr');
 
 const packageList = (window.AUCTION_DATA?.auctionPackages || []).map((pkg) => ({ id: pkg.id, name: pkg.name }));
+let openTicketPrizeModal = null;
+let typedBuffer = '';
 
 const setCookie = (name, value, maxAge) => {
   document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${maxAge}; samesite=lax`;
@@ -65,6 +69,52 @@ const showSubmittedState = () => {
   statusEl.textContent = 'Your ticket allocation is complete.';
   confirmationBox.classList.remove('hidden');
   modalOverlay.classList.add('hidden');
+  modalOverlay.classList.remove('flex');
+};
+
+const showAllocationError = (message) => {
+  if (!message) {
+    allocationErr.textContent = '';
+    allocationErr.classList.add('hidden');
+    return;
+  }
+
+  allocationErr.textContent = message;
+  allocationErr.classList.remove('hidden');
+};
+
+const isAdminModeDetected = () => {
+  const params = new URLSearchParams(window.location.search);
+  if (window.location.pathname.startsWith('/auction/admin')) return true;
+  if (params.get('admin') === '1') return true;
+
+  try {
+    return window.localStorage?.getItem('auctionAdminMode') === '1';
+  } catch {
+    return false;
+  }
+};
+
+const setupAdminModalShortcut = () => {
+  if (!isAdminModeDetected()) return;
+
+  document.addEventListener('keydown', (e) => {
+    if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
+
+    const active = document.activeElement;
+    const tag = active?.tagName?.toLowerCase();
+    const isTypingField = tag === 'input' || tag === 'textarea' || active?.isContentEditable;
+    if (isTypingField) return;
+    if (typeof e.key !== 'string' || e.key.length !== 1) return;
+
+    typedBuffer = (typedBuffer + e.key.toLowerCase()).slice(-20);
+    if (typedBuffer.endsWith('modal')) {
+      if (typeof openTicketPrizeModal === 'function') {
+        openTicketPrizeModal();
+      }
+      typedBuffer = '';
+    }
+  });
 };
 
 const findOrderByPaymentIntentId = async (paymentIntentId) => {
@@ -84,40 +134,97 @@ const findOrderBySessionId = async (sessionId) => {
 };
 
 const buildAllocator = ({ order, sessionId, paymentIntentId }) => {
+  const totalTickets = Number(order.ticketCount || 0);
   const allocations = {};
   packageList.forEach((pkg) => {
-    allocations[pkg.id] = 0;
+    allocations[pkg.id] = Math.max(0, Number((order.allocations || {})[pkg.id] || 0));
   });
 
   const getTotalUsed = () => Object.values(allocations).reduce((sum, val) => sum + Number(val || 0), 0);
-  const getRemaining = () => Number(order.ticketCount || 0) - getTotalUsed();
+  const getRemaining = () => totalTickets - getTotalUsed();
+
+  const setPackageValue = (packageId, nextValue) => {
+    if (!(packageId in allocations)) return;
+
+    const safeValue = Math.max(0, Math.floor(Number(nextValue) || 0));
+    const maxForPackage = Math.max(0, totalTickets - (getTotalUsed() - allocations[packageId]));
+    allocations[packageId] = Math.min(safeValue, maxForPackage);
+  };
+
+  const syncPackageInputs = () => {
+    packageList.forEach((pkg) => {
+      const currentValue = allocations[pkg.id] || 0;
+      const qtyEl = allocationRows.querySelector(`[data-qty="${pkg.id}"]`);
+      const inputEl = allocationRows.querySelector(`input[data-package-input="${pkg.id}"]`);
+      const cardEl = allocationRows.querySelector(`[data-package-row="${pkg.id}"]`);
+      if (qtyEl) qtyEl.textContent = String(currentValue);
+      if (inputEl) inputEl.value = String(currentValue);
+
+      if (cardEl) {
+        cardEl.classList.toggle('border-cyan-400/70', currentValue > 0);
+        cardEl.classList.toggle('bg-cyan-500/10', currentValue > 0);
+        cardEl.classList.toggle('shadow-cyan-900/35', currentValue > 0);
+        cardEl.classList.toggle('border-slate-700/80', currentValue === 0);
+      }
+    });
+  };
 
   const updateUiState = () => {
     const remaining = getRemaining();
+    const used = getTotalUsed();
     const atMax = remaining === 0;
 
-    remainingLabel.textContent = `Remaining Tickets: ${remaining}`;
-    remainingLabel.className = `text-lg font-semibold mt-1 ${atMax ? 'text-amber-300' : 'text-emerald-300'}`;
+    allocationTotalTickets.textContent = String(totalTickets);
+    allocationUsedTickets.textContent = String(used);
+    remainingLabel.textContent = String(remaining);
+    remainingLabel.className = `text-xl font-bold ${remaining === 0 ? 'text-amber-300' : 'text-emerald-300'}`;
 
-    submitBtn.disabled = remaining !== 0;
+    const overAllocated = remaining < 0;
+    const notComplete = remaining > 0;
+    submitBtn.disabled = overAllocated || notComplete;
+
+    if (overAllocated) {
+      showAllocationError(`You allocated ${Math.abs(remaining)} too many tickets. Please reduce some entries.`);
+    } else if (notComplete) {
+      showAllocationError(`Assign ${remaining} more ticket${remaining === 1 ? '' : 's'} before submitting.`);
+    } else {
+      showAllocationError('');
+    }
 
     allocationRows.querySelectorAll('button[data-role="inc"]').forEach((btn) => {
-      btn.disabled = atMax;
-      btn.classList.toggle('opacity-40', atMax);
-      btn.classList.toggle('cursor-not-allowed', atMax);
+      const packageId = btn.dataset.package;
+      const packageValue = allocations[packageId] || 0;
+      const disableIncrease = atMax && packageValue <= 0;
+      btn.disabled = disableIncrease;
+      btn.classList.toggle('opacity-40', disableIncrease);
+      btn.classList.toggle('cursor-not-allowed', disableIncrease);
     });
+
+    syncPackageInputs();
   };
 
   const renderRows = () => {
     allocationRows.innerHTML = packageList.map((pkg) => {
       const value = allocations[pkg.id] || 0;
       return `
-        <div class="rounded-xl border border-slate-700 bg-slate-950/50 p-3 sm:p-4">
-          <p class="font-semibold text-white text-base sm:text-lg">${pkg.name}</p>
-          <div class="mt-3 grid grid-cols-3 gap-2 items-center">
-            <button type="button" data-role="dec" data-package="${pkg.id}" class="h-10 rounded-md bg-white/10 hover:bg-white/20 text-lg font-bold">-</button>
-            <p class="text-center text-slate-100"><span class="text-xs uppercase tracking-widest text-slate-400 block">Quantity</span><span id="qty-${pkg.id}" class="text-2xl font-bold">${value}</span></p>
-            <button type="button" data-role="inc" data-package="${pkg.id}" class="h-10 rounded-md bg-white/10 hover:bg-white/20 text-lg font-bold">+</button>
+        <div data-package-row="${pkg.id}" class="rounded-2xl border border-slate-700/80 bg-slate-950/55 p-3.5 sm:p-4 transition-all duration-200 shadow-lg shadow-black/20">
+          <div class="flex items-start justify-between gap-2">
+            <p class="font-semibold text-white text-base sm:text-lg leading-tight">${pkg.name}</p>
+            <span class="text-[10px] uppercase tracking-widest rounded-full border border-slate-600 px-2 py-1 text-slate-300">Prize</span>
+          </div>
+
+          <div class="mt-3 grid grid-cols-[44px_1fr_44px] gap-2 items-center">
+            <button type="button" data-role="dec" data-package="${pkg.id}" class="h-11 rounded-lg border border-slate-600 bg-slate-800/90 hover:bg-slate-700 text-xl font-bold text-white transition-colors">-</button>
+
+            <div class="rounded-xl border border-slate-700 bg-slate-900/80 px-2.5 py-2">
+              <label class="block text-[10px] uppercase tracking-widest text-slate-400">Tickets In This Prize</label>
+              <div class="mt-1 flex items-center justify-between gap-2">
+                <span data-qty="${pkg.id}" class="text-xl font-bold text-cyan-300 leading-none">${value}</span>
+                <input data-package-input="${pkg.id}" type="number" min="0" inputmode="numeric" class="w-20 rounded-lg border border-slate-600 bg-slate-950 px-2.5 py-1.5 text-right text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-400" value="${value}">
+              </div>
+            </div>
+
+            <button type="button" data-role="inc" data-package="${pkg.id}" class="h-11 rounded-lg border border-cyan-500/60 bg-cyan-500/15 hover:bg-cyan-500/25 text-xl font-bold text-cyan-200 transition-colors">+</button>
           </div>
         </div>
       `;
@@ -126,7 +233,7 @@ const buildAllocator = ({ order, sessionId, paymentIntentId }) => {
     updateUiState();
   };
 
-  allocationRows.addEventListener('click', (event) => {
+  allocationRows.onclick = (event) => {
     const btn = event.target.closest('button[data-package]');
     if (!btn) return;
 
@@ -134,18 +241,29 @@ const buildAllocator = ({ order, sessionId, paymentIntentId }) => {
     const role = btn.dataset.role;
 
     if (!(packageId in allocations)) return;
-    if (role === 'inc' && getRemaining() > 0) allocations[packageId] += 1;
-    if (role === 'dec') allocations[packageId] = Math.max(0, allocations[packageId] - 1);
+    if (role === 'inc') setPackageValue(packageId, allocations[packageId] + 1);
+    if (role === 'dec') setPackageValue(packageId, allocations[packageId] - 1);
 
-    const qtyEl = document.getElementById(`qty-${packageId}`);
-    if (qtyEl) qtyEl.textContent = String(allocations[packageId]);
     updateUiState();
-  });
+  };
 
-  submitBtn.addEventListener('click', async () => {
-    allocationErr.textContent = '';
-    if (getRemaining() !== 0) {
-      allocationErr.textContent = 'Please allocate all tickets before submitting.';
+  allocationRows.oninput = (event) => {
+    const input = event.target.closest('input[data-package-input]');
+    if (!input) return;
+
+    const packageId = input.dataset.packageInput;
+    setPackageValue(packageId, input.value);
+    updateUiState();
+  };
+
+  submitBtn.onclick = async () => {
+    showAllocationError('');
+    if (getRemaining() > 0) {
+      showAllocationError('Please allocate all tickets before submitting.');
+      return;
+    }
+    if (getRemaining() < 0) {
+      showAllocationError('You allocated too many tickets. Please reduce entries and try again.');
       return;
     }
 
@@ -162,17 +280,23 @@ const buildAllocator = ({ order, sessionId, paymentIntentId }) => {
       clearCookie(COOKIE_NAME);
       window.location.href = '/auction/success/?submitted=1';
     } catch (error) {
-      allocationErr.textContent = error?.message || 'Submission failed. Please try again.';
+      showAllocationError(error?.message || 'Submission failed. Please try again.');
       submitBtn.disabled = false;
       submitBtn.textContent = 'Submit Ticket Allocation';
       updateUiState();
     }
-  });
+  };
 
   allocationSummary.textContent = `${order.name} | ${order.email} | ${order.phone} | Total Tickets: ${order.ticketCount}`;
   submitBtn.textContent = 'Submit Ticket Allocation';
   renderRows();
-  modalOverlay.classList.remove('hidden');
+
+  openTicketPrizeModal = () => {
+    modalOverlay.classList.remove('hidden');
+    modalOverlay.classList.add('flex');
+  };
+
+  openTicketPrizeModal();
 };
 
 const run = async () => {
@@ -253,3 +377,5 @@ const run = async () => {
 run().catch((error) => {
   statusEl.textContent = error?.message || 'Unable to load ticket allocation.';
 });
+
+setupAdminModalShortcut();

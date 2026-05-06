@@ -72,18 +72,34 @@
 		</div>
 	</main>
 
-	<div id="allocationModalOverlay" class="fixed inset-0 z-[90] bg-black/70 backdrop-blur-sm hidden p-3 sm:p-4">
-		<div class="mx-auto mt-4 sm:mt-10 max-w-3xl max-h-[92vh] overflow-y-auto rounded-2xl border border-slate-600 bg-slate-900 shadow-2xl">
-			<div class="p-4 sm:p-6 border-b border-slate-700">
-				<p class="text-xs uppercase tracking-wider text-slate-400">Choose Ticket Allocation</p>
-				<h2 class="bebas-neue text-4xl sm:text-5xl text-yellow-400">Allocate Your Tickets</h2>
-				<p id="allocationSummary" class="text-slate-200 mt-2"></p>
-				<p id="remainingLabel" class="text-lg font-semibold text-emerald-300 mt-1"></p>
+	<div id="allocationModalOverlay" class="fixed inset-0 z-[90] hidden items-center justify-center bg-slate-950/80 backdrop-blur-md p-3 sm:p-5">
+		<div class="w-full max-w-4xl max-h-[94vh] overflow-hidden rounded-3xl border border-slate-700/80 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 shadow-[0_30px_90px_rgba(0,0,0,0.65)]">
+			<div class="border-b border-slate-700/80 bg-slate-900/70 p-4 sm:p-6">
+				<p class="text-xs uppercase tracking-[0.2em] text-slate-400">Choose Ticket Allocation</p>
+				<h2 class="bebas-neue text-4xl sm:text-5xl text-yellow-300 leading-none mt-1">Enter Tickets Into Prizes</h2>
+				<p id="allocationSummary" class="text-slate-200 mt-2 text-sm sm:text-base"></p>
+
+				<div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+					<div class="rounded-xl border border-slate-700 bg-slate-950/70 px-3 py-2.5">
+						<p class="text-[11px] uppercase tracking-widest text-slate-400">Total Tickets</p>
+						<p id="allocationTotalTickets" class="text-xl font-bold text-white">0</p>
+					</div>
+					<div class="rounded-xl border border-slate-700 bg-slate-950/70 px-3 py-2.5">
+						<p class="text-[11px] uppercase tracking-widest text-slate-400">Used</p>
+						<p id="allocationUsedTickets" class="text-xl font-bold text-cyan-300">0</p>
+					</div>
+					<div class="rounded-xl border border-slate-700 bg-slate-950/70 px-3 py-2.5">
+						<p class="text-[11px] uppercase tracking-widest text-slate-400">Remaining</p>
+						<p id="remainingLabel" class="text-xl font-bold text-emerald-300">0</p>
+					</div>
+				</div>
 			</div>
-			<div id="allocationRows" class="p-4 sm:p-6 space-y-3"></div>
-			<div class="p-4 sm:p-6 border-t border-slate-700">
-				<p id="allocationErr" class="text-red-300 min-h-6 mb-2"></p>
-				<button id="submitAllocationBtn" class="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold py-3 rounded-full transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>Submit Ticket Allocation</button>
+
+			<div id="allocationRows" class="p-4 sm:p-6 overflow-y-auto max-h-[50vh] grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4"></div>
+
+			<div class="border-t border-slate-700/80 bg-slate-900/80 p-4 sm:p-6">
+				<p id="allocationErr" class="hidden rounded-lg border border-red-400/40 bg-red-500/10 px-3 py-2 text-sm text-red-200 mb-3"></p>
+				<button id="submitAllocationBtn" class="w-full rounded-xl bg-yellow-400 px-4 py-3 text-base font-bold text-black shadow-lg shadow-yellow-500/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0">Submit Ticket Allocation</button>
 			</div>
 		</div>
 	</div>

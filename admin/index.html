@@ -2112,10 +2112,10 @@
                     .trim() || 'Unknown';
                 const phoneNumber = String(entry.phoneNumber || entry.phone || '')
                     .replace(/\s+/g, ' ')
-                    .trim() || 'No Phone';
+                    .trim();
 
                 for (let i = 0; i < ticketCount; i += 1) {
-                    names.push(`${name} - ${phoneNumber}`);
+                    names.push(phoneNumber ? `${name} - ${phoneNumber}` : name);
                 }
             });
 

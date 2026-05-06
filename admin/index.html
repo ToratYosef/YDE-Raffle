@@ -2137,15 +2137,26 @@
 
         const buildRolexReferralNames = () => {
             const entries = dashboardData.rolexEntries || [];
-            const validStatuses = new Set(['paid', 'converted', 'succeeded', 'manual_sale']);
+            const validStatuses = new Set(['paid', 'converted', 'succeeded', 'manual_sale', 'manual_sale'.toUpperCase(), 'MANUAL_SALE']);
+
+            // Build a refId → name lookup from loaded referrers
+            const refIdToName = new Map();
+            (dashboardData.referrers || []).forEach((r) => {
+                if (r.refId && r.name) refIdToName.set(r.refId, r.name);
+            });
+
             const referrerCounts = new Map();
 
             entries.forEach((entry) => {
                 const normalizedStatus = String(entry.status || '').trim().toLowerCase();
-                if (!validStatuses.has(normalizedStatus)) return;
+                if (!validStatuses.has(entry.status) && !validStatuses.has(normalizedStatus)) return;
 
-                const referrerName = String(entry.referrerName || '').trim();
-                if (!referrerName) return;
+                // Resolve referrer name: stored field first, then lookup by refId
+                let referrerName = String(entry.referrerName || '').trim();
+                if (!referrerName || referrerName.toLowerCase() === 'n/a') {
+                    referrerName = (entry.referrerRefId && refIdToName.get(entry.referrerRefId)) || '';
+                }
+                if (!referrerName || referrerName.toLowerCase() === 'n/a') return;
 
                 const ticketCount = parseInt(entry.ticketsBought || entry.ticketCount, 10) || 0;
                 if (ticketCount < 1) return;

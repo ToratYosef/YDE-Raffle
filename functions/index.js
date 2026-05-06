@@ -1204,6 +1204,12 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
                         const metadataEntries = parseAuctionEntriesFromMetadata(paymentIntent?.metadata?.entries || '');
                         const metadataLines = buildAuctionLineItemsFromEntries(metadataEntries);
                         const metadataTotals = getAuctionTotals(metadataLines);
+                        const storedEntries = normalizeAuctionEntries(order?.entries || {});
+                        const storedLines = buildAuctionLineItemsFromEntries(storedEntries);
+                        const storedTotals = getAuctionTotals(storedLines);
+                        const canonicalEntries = metadataTotals.totalEntries > 0 ? metadataEntries : storedEntries;
+                        const canonicalLines = metadataTotals.totalEntries > 0 ? metadataLines : storedLines;
+                        const canonicalTotals = metadataTotals.totalEntries > 0 ? metadataTotals : storedTotals;
 
                         const updatePayload = {
                             status: 'paid',
@@ -1215,12 +1221,11 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
                             updatedAt: admin.firestore.FieldValue.serverTimestamp()
                         };
 
-                        const hasEntries = Number(order?.totalEntries || 0) > 0;
-                        if (!hasEntries && metadataTotals.totalEntries > 0) {
-                            updatePayload.entries = metadataEntries;
-                            updatePayload.lineItems = metadataLines;
-                            updatePayload.totalEntries = metadataTotals.totalEntries;
-                            updatePayload.subtotal = metadataTotals.subtotal;
+                        if (canonicalTotals.totalEntries > 0) {
+                            updatePayload.entries = canonicalEntries;
+                            updatePayload.lineItems = canonicalLines;
+                            updatePayload.totalEntries = canonicalTotals.totalEntries;
+                            updatePayload.subtotal = canonicalTotals.subtotal;
                             if (!order?.customer) {
                                 updatePayload.customer = {
                                     name: sanitizeString(paymentIntent?.metadata?.name || order?.name || ''),
@@ -1463,6 +1468,12 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
                         const metadataEntries = parseAuctionEntriesFromMetadata(session?.metadata?.entries || '');
                         const metadataLines = buildAuctionLineItemsFromEntries(metadataEntries);
                         const metadataTotals = getAuctionTotals(metadataLines);
+                        const storedEntries = normalizeAuctionEntries(order?.entries || {});
+                        const storedLines = buildAuctionLineItemsFromEntries(storedEntries);
+                        const storedTotals = getAuctionTotals(storedLines);
+                        const canonicalEntries = metadataTotals.totalEntries > 0 ? metadataEntries : storedEntries;
+                        const canonicalLines = metadataTotals.totalEntries > 0 ? metadataLines : storedLines;
+                        const canonicalTotals = metadataTotals.totalEntries > 0 ? metadataTotals : storedTotals;
 
                         const updatePayload = {
                             status: 'paid',
@@ -1475,12 +1486,11 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
                             updatedAt: admin.firestore.FieldValue.serverTimestamp()
                         };
 
-                        const hasEntries = Number(order?.totalEntries || 0) > 0;
-                        if (!hasEntries && metadataTotals.totalEntries > 0) {
-                            updatePayload.entries = metadataEntries;
-                            updatePayload.lineItems = metadataLines;
-                            updatePayload.totalEntries = metadataTotals.totalEntries;
-                            updatePayload.subtotal = metadataTotals.subtotal;
+                        if (canonicalTotals.totalEntries > 0) {
+                            updatePayload.entries = canonicalEntries;
+                            updatePayload.lineItems = canonicalLines;
+                            updatePayload.totalEntries = canonicalTotals.totalEntries;
+                            updatePayload.subtotal = canonicalTotals.subtotal;
                             if (!order?.customer) {
                                 updatePayload.customer = {
                                     name: sanitizeString(session?.metadata?.name || order?.name || ''),

@@ -48,6 +48,20 @@ function getAuctionStripePublishableKey() {
     return process.env.AUCTION_STRIPE_PUBLISHABLE_KEY_TEST || process.env.STRIPE_PUBLISHABLE_KEY_TEST || '';
 }
 
+function getStripeWebhookSecret() {
+    if (AUCTION_LIVE_MODE) {
+        return process.env.STRIPE_WEBHOOK_SECRET_LIVE
+            || process.env.AUCTION_STRIPE_WEBHOOK_SECRET_LIVE
+            || process.env.STRIPE_WEBHOOK_SECRET
+            || '';
+    }
+
+    return process.env.STRIPE_WEBHOOK_SECRET_TEST
+        || process.env.AUCTION_STRIPE_WEBHOOK_SECRET_TEST
+        || process.env.STRIPE_WEBHOOK_SECRET
+        || '';
+}
+
 function hasValidAuctionStripeSecretKey() {
     const key = getAuctionStripeSecretKey();
     return typeof key === 'string' && key.startsWith('sk_');
@@ -1175,7 +1189,7 @@ exports.createDonationPaymentIntent = functions.https.onCall(async (data, contex
  */
 exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
     const sig = req.headers['stripe-signature'];
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    const webhookSecret = getStripeWebhookSecret();
     let event;
 
     try {
@@ -1187,6 +1201,61 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
 
     if (event.type === 'payment_intent.succeeded') {
         const paymentIntent = event.data.object;
+
+        if (paymentIntent.metadata && paymentIntent.metadata.type === 'auction') {
+            try {
+                const orderId = paymentIntent.metadata.orderId;
+                const ref = admin.firestore().collection('auctionOrders').doc(orderId);
+                const snap = await ref.get();
+
+                if (snap.exists) {
+                    const order = snap.data();
+                    if (order.status === 'pending' || order.status === 'paid') {
+                        const metadataEntries = parseAuctionEntriesFromMetadata(paymentIntent?.metadata?.entries || '');
+                        const metadataLines = buildAuctionLineItemsFromEntries(metadataEntries);
+                        const metadataTotals = getAuctionTotals(metadataLines);
+
+                        const updatePayload = {
+                            status: 'paid',
+                            paid: true,
+                            paymentIntentId: paymentIntent.id,
+                            amountPaid: ((paymentIntent.amount || 0) / 100),
+                            total: cleanAmount((paymentIntent.amount || 0) / 100),
+                            paidAt: admin.firestore.FieldValue.serverTimestamp(),
+                            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+                        };
+
+                        const hasEntries = Number(order?.totalEntries || 0) > 0;
+                        if (!hasEntries && metadataTotals.totalEntries > 0) {
+                            updatePayload.entries = metadataEntries;
+                            updatePayload.lineItems = metadataLines;
+                            updatePayload.totalEntries = metadataTotals.totalEntries;
+                            updatePayload.subtotal = metadataTotals.subtotal;
+                            if (!order?.customer) {
+                                updatePayload.customer = {
+                                    name: sanitizeString(paymentIntent?.metadata?.name || order?.name || ''),
+                                    email: sanitizeString(paymentIntent?.metadata?.email || order?.email || ''),
+                                    phone: sanitizeString(paymentIntent?.metadata?.phone || order?.phone || '')
+                                };
+                            }
+                        }
+
+                        await ref.set(updatePayload, { merge: true });
+                        await deleteDuplicatePendingAuctionOrders(admin.firestore(), {
+                            keepOrderId: orderId,
+                            name: order.name,
+                            email: order.email,
+                            phone: order.phone
+                        });
+                    }
+                }
+
+                return res.status(200).send('Auction webhook processed successfully.');
+            } catch (error) {
+                console.error('Error processing auction payment_intent.succeeded webhook:', error);
+                return res.status(500).send('Internal Server Error during auction webhook processing.');
+            }
+        }
 
         // Metadata extraction
         // NOTE: Sanitize metadata as it came from the client via the PI creation function
@@ -1389,6 +1458,66 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
             console.error('Error processing payment_intent.succeeded webhook:', error);
             res.status(500).send('Internal Server Error during webhook processing.');
         }
+    } else if (event.type === 'checkout.session.completed') {
+        const session = event.data.object;
+
+        if (session.metadata && session.metadata.type === 'auction') {
+            try {
+                const orderId = session.metadata.orderId;
+                const ref = admin.firestore().collection('auctionOrders').doc(orderId);
+                const snap = await ref.get();
+
+                if (snap.exists) {
+                    const order = snap.data();
+                    if (order.status === 'pending' || order.status === 'paid') {
+                        const metadataEntries = parseAuctionEntriesFromMetadata(session?.metadata?.entries || '');
+                        const metadataLines = buildAuctionLineItemsFromEntries(metadataEntries);
+                        const metadataTotals = getAuctionTotals(metadataLines);
+
+                        const updatePayload = {
+                            status: 'paid',
+                            paid: true,
+                            stripeSessionId: session.id,
+                            paymentIntentId: session.payment_intent || '',
+                            amountPaid: ((session.amount_total || 0) / 100),
+                            total: cleanAmount((session.amount_total || 0) / 100),
+                            paidAt: admin.firestore.FieldValue.serverTimestamp(),
+                            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+                        };
+
+                        const hasEntries = Number(order?.totalEntries || 0) > 0;
+                        if (!hasEntries && metadataTotals.totalEntries > 0) {
+                            updatePayload.entries = metadataEntries;
+                            updatePayload.lineItems = metadataLines;
+                            updatePayload.totalEntries = metadataTotals.totalEntries;
+                            updatePayload.subtotal = metadataTotals.subtotal;
+                            if (!order?.customer) {
+                                updatePayload.customer = {
+                                    name: sanitizeString(session?.metadata?.name || order?.name || ''),
+                                    email: sanitizeString(session?.metadata?.email || order?.email || ''),
+                                    phone: sanitizeString(session?.metadata?.phone || order?.phone || '')
+                                };
+                            }
+                        }
+
+                        await ref.set(updatePayload, { merge: true });
+                        await deleteDuplicatePendingAuctionOrders(admin.firestore(), {
+                            keepOrderId: orderId,
+                            name: order.name,
+                            email: order.email,
+                            phone: order.phone
+                        });
+                    }
+                }
+
+                return res.status(200).send('Auction checkout session processed successfully.');
+            } catch (error) {
+                console.error('Error processing auction checkout.session.completed webhook:', error);
+                return res.status(500).send('Internal Server Error during auction checkout webhook processing.');
+            }
+        }
+
+        return res.status(200).send('Webhook event ignored (uninteresting checkout session).');
     } else {
         res.status(200).send('Webhook event ignored (uninteresting type).');
     }
@@ -3283,100 +3412,3 @@ exports.updateAuctionAllocationAdmin = functions.https.onCall(async (data, conte
     return { ok: true };
 });
 
-exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
-  const sig = req.headers['stripe-signature']; let event;
-  try { event = stripe.webhooks.constructEvent(req.rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET); } catch (err) { res.status(400).send(`Webhook Error: ${err.message}`); return; }
-    if (event.type === 'payment_intent.succeeded') {
-        const pi = event.data.object;
-        if (pi.metadata && pi.metadata.type === 'auction') {
-            const orderId = pi.metadata.orderId;
-            const ref = admin.firestore().collection('auctionOrders').doc(orderId);
-            const snap = await ref.get();
-            if (snap.exists) {
-                const order = snap.data();
-                if (order.status === 'pending' || order.status === 'paid') {
-                    const metadataEntries = parseAuctionEntriesFromMetadata(pi?.metadata?.entries || '');
-                    const metadataLines = buildAuctionLineItemsFromEntries(metadataEntries);
-                    const metadataTotals = getAuctionTotals(metadataLines);
-
-                    const updatePayload = {
-                        status: 'paid',
-                        paid: true,
-                        paymentIntentId: pi.id,
-                        amountPaid: ((pi.amount || 0) / 100),
-                        total: cleanAmount((pi.amount || 0) / 100),
-                        paidAt: admin.firestore.FieldValue.serverTimestamp(),
-                        updatedAt: admin.firestore.FieldValue.serverTimestamp()
-                    };
-
-                    const hasEntries = Number(order?.totalEntries || 0) > 0;
-                    if (!hasEntries && metadataTotals.totalEntries > 0) {
-                        updatePayload.entries = metadataEntries;
-                        updatePayload.lineItems = metadataLines;
-                        updatePayload.totalEntries = metadataTotals.totalEntries;
-                        updatePayload.subtotal = metadataTotals.subtotal;
-                        if (!order?.customer) {
-                            updatePayload.customer = {
-                                name: sanitizeString(pi?.metadata?.name || order?.name || ''),
-                                email: sanitizeString(pi?.metadata?.email || order?.email || ''),
-                                phone: sanitizeString(pi?.metadata?.phone || order?.phone || '')
-                            };
-                        }
-                    }
-
-                    await ref.set(updatePayload, { merge: true });
-
-                    await deleteDuplicatePendingAuctionOrders(admin.firestore(), {
-                        keepOrderId: orderId,
-                        name: order.name,
-                        email: order.email,
-                        phone: order.phone
-                    });
-                }
-            }
-        }
-    }
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object; if (session.metadata && session.metadata.type === 'auction') {
-      const orderId = session.metadata.orderId; const ref = admin.firestore().collection('auctionOrders').doc(orderId); const snap = await ref.get();
-            if (snap.exists) {
-                const order = snap.data();
-                if (order.status === 'pending' || order.status === 'paid') {
-                    const metadataEntries = parseAuctionEntriesFromMetadata(session?.metadata?.entries || '');
-                    const metadataLines = buildAuctionLineItemsFromEntries(metadataEntries);
-                    const metadataTotals = getAuctionTotals(metadataLines);
-
-                    const updatePayload = {
-                        status:'paid',
-                        paid:true,
-                        stripeSessionId: session.id,
-                        paymentIntentId: session.payment_intent || '',
-                        amountPaid: ((session.amount_total || 0) / 100),
-                        total: cleanAmount((session.amount_total || 0) / 100),
-                        paidAt: admin.firestore.FieldValue.serverTimestamp(),
-                        updatedAt: admin.firestore.FieldValue.serverTimestamp()
-                    };
-
-                    const hasEntries = Number(order?.totalEntries || 0) > 0;
-                    if (!hasEntries && metadataTotals.totalEntries > 0) {
-                        updatePayload.entries = metadataEntries;
-                        updatePayload.lineItems = metadataLines;
-                        updatePayload.totalEntries = metadataTotals.totalEntries;
-                        updatePayload.subtotal = metadataTotals.subtotal;
-                        if (!order?.customer) {
-                            updatePayload.customer = {
-                                name: sanitizeString(session?.metadata?.name || order?.name || ''),
-                                email: sanitizeString(session?.metadata?.email || order?.email || ''),
-                                phone: sanitizeString(session?.metadata?.phone || order?.phone || '')
-                            };
-                        }
-                    }
-
-                    await ref.set(updatePayload, { merge:true });
-                    await deleteDuplicatePendingAuctionOrders(admin.firestore(), { keepOrderId: orderId, name: order.name, email: order.email, phone: order.phone });
-                }
-            }
-    }
-  }
-  res.json({ received: true });
-});

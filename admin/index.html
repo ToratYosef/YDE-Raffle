@@ -779,6 +779,9 @@
                                 <option value="assigned">Assigned</option>
                                 <option value="unassigned">Unassigned</option>
                             </select>
+                            <button id="importRolexWheelButton" type="button" class="px-3 py-2 bg-yellow-500 text-black text-sm font-semibold rounded-lg hover:bg-yellow-600 transition-colors">
+                                Import Names To Wheel
+                            </button>
                         </div>
                     </div>
 
@@ -2085,6 +2088,52 @@
                 `;
                 tbody.appendChild(tr);
             });
+        };
+
+        const buildRolexWheelNames = () => {
+            let entries = filterSalesEntries(dashboardData.rolexEntries || [], rolexFilter);
+
+            if (activeRefIdFilter) {
+                entries = entries.filter((entry) => entry.referrerRefId === activeRefIdFilter);
+            }
+
+            const validStatuses = new Set(['paid', 'converted', 'succeeded', 'MANUAL_SALE']);
+            const names = [];
+
+            entries.forEach((entry) => {
+                if (!validStatuses.has(entry.status)) return;
+
+                const ticketCount = parseInt(entry.ticketsBought || entry.ticketCount, 10) || 0;
+                if (ticketCount < 1) return;
+
+                const name = (entry.fullName || entry.name || entry.firstName || '').trim() || 'Unknown';
+                for (let i = 0; i < ticketCount; i += 1) {
+                    names.push(name);
+                }
+            });
+
+            return names;
+        };
+
+        const buildRolexWheelUrl = (names) => {
+            const logoUrl = 'https://raw.githubusercontent.com/ToratYosef/ToratYosef..github.io/refs/heads/main/assets/logos.jpeg';
+            const params = new URLSearchParams({
+                entries: names.join(','),
+                title: 'Rolex Raffle - YDE',
+                centerImage: logoUrl
+            });
+            return `https://wheelofnames.com/view?${params.toString()}`;
+        };
+
+        const handleImportRolexNamesToWheel = () => {
+            const names = buildRolexWheelNames();
+            if (!names.length) {
+                showCustomPopup('No Entries', 'No eligible Rolex ticket names were found for the current filter.');
+                return;
+            }
+
+            const url = buildRolexWheelUrl(names);
+            window.open(url, '_blank', 'noopener');
         };
 
         const switchTab = (tabName) => {
@@ -3557,6 +3606,11 @@
                     rolexFilter = e.target.value;
                     renderRolexTable(dashboardData.rolexEntries);
                 });
+            }
+
+            const importRolexWheelButton = document.getElementById('importRolexWheelButton');
+            if (importRolexWheelButton) {
+                importRolexWheelButton.addEventListener('click', handleImportRolexNamesToWheel);
             }
         };
 

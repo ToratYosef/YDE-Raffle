@@ -782,6 +782,9 @@
                             <button id="importRolexWheelButton" type="button" class="px-3 py-2 bg-yellow-500 text-black text-sm font-semibold rounded-lg hover:bg-yellow-600 transition-colors">
                                 Copy Names
                             </button>
+                            <button id="copyRolexReferralNamesButton" type="button" class="px-3 py-2 bg-purple-500 text-white text-sm font-semibold rounded-lg hover:bg-purple-600 transition-colors">
+                                Copy Referral Names
+                            </button>
                         </div>
                     </div>
 
@@ -2130,6 +2133,44 @@
                 centerImage: logoUrl
             });
             return `https://wheelofnames.com/view?${params.toString()}`;
+        };
+
+        const buildRolexReferralNames = () => {
+            const entries = dashboardData.rolexEntries || [];
+            const validStatuses = new Set(['paid', 'converted', 'succeeded', 'manual_sale']);
+            const referrerCounts = new Map();
+
+            entries.forEach((entry) => {
+                const normalizedStatus = String(entry.status || '').trim().toLowerCase();
+                if (!validStatuses.has(normalizedStatus)) return;
+
+                const referrerName = String(entry.referrerName || '').trim();
+                if (!referrerName) return;
+
+                const ticketCount = parseInt(entry.ticketsBought || entry.ticketCount, 10) || 0;
+                if (ticketCount < 1) return;
+
+                referrerCounts.set(referrerName, (referrerCounts.get(referrerName) || 0) + ticketCount);
+            });
+
+            const names = [];
+            referrerCounts.forEach((count, name) => {
+                for (let i = 0; i < count; i++) names.push(name);
+            });
+            return names;
+        };
+
+        const handleCopyRolexReferralNames = () => {
+            const names = buildRolexReferralNames();
+            if (!names.length) {
+                showCustomPopup('No Referrals', 'No referred Rolex ticket entries were found.');
+                return;
+            }
+            navigator.clipboard.writeText(names.join('\n')).then(() => {
+                showCustomPopup('Copied!', `${names.length} referral entr${names.length !== 1 ? 'ies' : 'y'} copied to clipboard. Paste into Wheel of Names.`);
+            }).catch(() => {
+                showCustomPopup('Referral Names', names.join('\n'));
+            });
         };
 
         const handleImportRolexNamesToWheel = () => {
@@ -3621,6 +3662,11 @@
             const importRolexWheelButton = document.getElementById('importRolexWheelButton');
             if (importRolexWheelButton) {
                 importRolexWheelButton.addEventListener('click', handleImportRolexNamesToWheel);
+            }
+
+            const copyRolexReferralNamesButton = document.getElementById('copyRolexReferralNamesButton');
+            if (copyRolexReferralNamesButton) {
+                copyRolexReferralNamesButton.addEventListener('click', handleCopyRolexReferralNames);
             }
         };
 

@@ -228,6 +228,10 @@
                         <!-- Title -->
                         <h2 id="raffle-form-title" class="bebas-neue text-4xl font-bold text-white mb-6 uppercase">BUY YOUR TICKETS!</h2>
 
+						<div id="raffle-sales-closed-message" class="hidden rounded-xl border border-amber-400/40 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
+							Rolex raffle ticket sales are closed. The raffle is over and the drawing is soon.
+						</div>
+
                         <!-- Full Name (Using solid dark input color: bg-[#3d4554]) -->
                         <div id="raffle-name-container">
                             <input type="text" id="raffle-name" name="name" placeholder="Full Name" 
@@ -435,6 +439,7 @@
             const raffleControlsContainer = document.getElementById('raffle-controls-container');
             const raffleFeeCheckboxContainer = document.getElementById('raffle-fee-checkbox-container');
             const raffleTotalDisplayContainer = document.getElementById('raffle-total-display-container');
+            const raffleSalesClosedMessage = document.getElementById('raffle-sales-closed-message');
 
             const raffleNameInput = document.getElementById('raffle-name');
             const raffleEmailInput = document.getElementById('raffle-email');
@@ -468,6 +473,7 @@
             const FEE_FLAT = 0.30;
             const MIN_TICKETS = 1;
             const TOTAL_ROLEX_TICKETS = 300;
+            const SALES_CLOSED = true;
             let elements;
             let currentTicketQuantity = MIN_TICKETS;
             let currentTotalAmount = TICKET_PRICE;
@@ -513,6 +519,19 @@
                 coverFeeCheckbox.disabled = disabled;
             }
 
+            function applySalesClosedState() {
+                raffleFormTitle.textContent = 'TICKET SALES CLOSED';
+                raffleSalesClosedMessage.classList.remove('hidden');
+                raffleProceedToPaymentButton.disabled = true;
+                raffleProceedToPaymentButton.querySelector('.button-text').textContent = 'Sales Closed';
+                raffleProceedToPaymentButton.classList.add('opacity-60', 'cursor-not-allowed');
+                raffleStripePayButton.disabled = true;
+                raffleStripePayButton.querySelector('.button-text').textContent = 'Sales Closed';
+                raffleStripePayButton.classList.add('opacity-60', 'cursor-not-allowed');
+                raffleStripePaymentElement.classList.add('hidden');
+                setFormInputsDisabled(true);
+            }
+
             function cleanTicketCount(value) {
                 const num = parseInt(value, 10);
                 if (Number.isNaN(num)) return 0;
@@ -525,6 +544,11 @@
                 ticketsSoldCount.textContent = sold.toString();
                 ticketsTotalCount.textContent = TOTAL_ROLEX_TICKETS.toString();
                 ticketQuantityInput.max = ticketsRemaining > 0 ? ticketsRemaining.toString() : '0';
+
+				if (SALES_CLOSED) {
+					applySalesClosedState();
+					return;
+				}
 
                 if (ticketsRemaining <= 0) {
                     raffleProceedToPaymentButton.disabled = true;
@@ -690,6 +714,10 @@
 
 
             raffleProceedToPaymentButton.addEventListener('click', async () => {
+				if (SALES_CLOSED) {
+					showCustomPopup('Sales Closed', 'Rolex raffle ticket sales are closed. The drawing is soon.');
+					return;
+				}
                 if (!validateInitialForm()) {
                     return;
                 }
@@ -737,6 +765,11 @@
             });
 
             raffleStripePayButton.addEventListener('click', async (event) => {
+                if (SALES_CLOSED) {
+                    event.preventDefault();
+                    showCustomPopup('Sales Closed', 'Rolex raffle ticket sales are closed. The drawing is soon.');
+                    return;
+                }
                 event.preventDefault();
 
                 showGlobalLoadingOverlay("Processing Payment...", true);

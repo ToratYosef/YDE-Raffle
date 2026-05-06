@@ -2166,11 +2166,13 @@
                 showCustomPopup('No Referrals', 'No referred Rolex ticket entries were found.');
                 return;
             }
-            navigator.clipboard.writeText(names.join('\n')).then(() => {
-                showCustomPopup('Copied!', `${names.length} referral entr${names.length !== 1 ? 'ies' : 'y'} copied to clipboard. Paste into Wheel of Names.`);
-            }).catch(() => {
-                showCustomPopup('Referral Names', names.join('\n'));
+            const logoUrl = 'https://raw.githubusercontent.com/ToratYosef/ToratYosef..github.io/refs/heads/main/assets/logos.jpeg';
+            const params = new URLSearchParams({
+                entries: names.join(','),
+                title: 'Referral Raffle - YDE',
+                centerImage: logoUrl
             });
+            window.open(`https://wheelofnames.com/view?${params.toString()}`, '_blank', 'noopener');
         };
 
         const handleImportRolexNamesToWheel = () => {

@@ -16,51 +16,26 @@ const db = getFirestore(app);
 const fns = getFunctions(app);
 
 const createManual = httpsCallable(fns, 'createManualAuctionOrder');
-const updateAlloc = httpsCallable(fns, 'updateAuctionAllocationAdmin');
 
 const statsEl = document.getElementById('stats');
+const packageTotalsEl = document.getElementById('packageTotals');
 const searchEl = document.getElementById('search');
 const ordersInfoEl = document.getElementById('ordersInfo');
 const ordersEl = document.getElementById('orders');
 const manualFormEl = document.getElementById('manualForm');
 const manualErrEl = document.getElementById('manualErr');
 const manualSubmitEl = document.getElementById('manualSubmit');
-const wheelEl = document.getElementById('wheel');
+const wheelPackageEl = document.getElementById('wheelPackage');
+const wheelInfoEl = document.getElementById('wheelInfo');
+const wheelNamesEl = document.getElementById('wheelNames');
+const openWheelBtn = document.getElementById('openWheel');
 
-const allocModalEl = document.getElementById('allocModal');
-const allocModalMetaEl = document.getElementById('allocModalMeta');
-const allocModalTicketsEl = document.getElementById('allocModalTickets');
-const allocModalRemainingEl = document.getElementById('allocModalRemaining');
-const allocModalAmountEl = document.getElementById('allocModalAmount');
-const allocModalFieldsEl = document.getElementById('allocModalFields');
-const allocModalErrEl = document.getElementById('allocModalErr');
-const allocModalSaveEl = document.getElementById('allocModalSave');
-const allocModalCloseEl = document.getElementById('allocModalClose');
-const allocModalCancelEl = document.getElementById('allocModalCancel');
+const packages = window.AUCTION_DATA?.auctionPackages || [];
+const packageMap = new Map(packages.map((pkg) => [pkg.id, pkg]));
 
-const packageIds = ['package1', 'package2', 'package3', 'package4', 'package5'];
-let orders = [];
-let activeModalOrderId = '';
+let paidOrders = [];
 
-manualFormEl.innerHTML = `
-  <input id="mname" class="w-full rounded-lg border border-slate-700 bg-slate-950 p-2" placeholder="Full name">
-  <input id="memail" class="w-full rounded-lg border border-slate-700 bg-slate-950 p-2" placeholder="Email">
-  <input id="mphone" class="w-full rounded-lg border border-slate-700 bg-slate-950 p-2" placeholder="Phone">
-  <input id="mtickets" class="w-full rounded-lg border border-slate-700 bg-slate-950 p-2" type="number" min="1" placeholder="Ticket count">
-  ${packageIds.map((id, idx) => `<input id="mp${idx + 1}" class="w-full rounded-lg border border-slate-700 bg-slate-950 p-2" type="number" min="0" placeholder="${id}">`).join('')}
-`;
-
-const getOrderKey = (order) => order.orderId || order.id;
-
-const getSafeAllocations = (alloc) => {
-  const clean = {};
-  packageIds.forEach((id) => {
-    clean[id] = Number((alloc || {})[id] || 0);
-  });
-  return clean;
-};
-
-const sumAllocations = (alloc) => packageIds.reduce((sum, id) => sum + Number((alloc || {})[id] || 0), 0);
+const toMoney = (amount) => `$${Number(amount || 0).toFixed(2)}`;
 
 const statCard = (label, value) => {
   return `
@@ -71,236 +46,239 @@ const statCard = (label, value) => {
   `;
 };
 
-const renderStats = () => {
-  const totalOrders = orders.length;
-  const totalTickets = orders.reduce((sum, o) => sum + Number(o.ticketCount || 0), 0);
-  const submitted = orders.filter((o) => o.status === 'submitted').length;
-  const paid = orders.filter((o) => o.status === 'paid').length;
-  const totalStripe = orders.filter((o) => o.source === 'stripe').reduce((sum, o) => sum + Number(o.amountPaid || 0), 0);
+const getOrderEntries = (order) => {
+  if (order.entries && typeof order.entries === 'object') return order.entries;
 
-  statsEl.innerHTML = [
-    statCard('Orders', totalOrders),
-    statCard('Tickets', totalTickets),
-    statCard('Submitted', submitted),
-    statCard('Paid', paid),
-    statCard('Stripe Total', `$${totalStripe.toFixed(2)}`)
-  ].join('');
-};
-
-const buildOrderCard = (order) => {
-  return `
-    <button type="button" data-edit="${getOrderKey(order)}" class="w-full text-left rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3 hover:border-yellow-300/60 hover:bg-slate-900 transition-colors duration-200">
-      <div class="flex items-center justify-between gap-3">
-        <p class="text-lg font-semibold text-white truncate">${order.name || 'Unknown'}</p>
-        <div class="flex items-center gap-2">
-          <span class="text-xs px-2 py-1 rounded-full border border-slate-600 text-slate-300">${order.status || 'unknown'}</span>
-          <span class="text-xs text-yellow-300 uppercase tracking-wider">Edit</span>
-        </div>
-      </div>
-    </button>
-  `;
-};
-
-const renderOrders = () => {
-  const search = (searchEl.value || '').toLowerCase();
-  const filtered = orders.filter((o) => `${o.name || ''} ${o.email || ''} ${o.phone || ''}`.toLowerCase().includes(search));
-
-  ordersInfoEl.textContent = `${filtered.length} of ${orders.length} orders shown`;
-  ordersEl.innerHTML = filtered.map(buildOrderCard).join('');
-};
-
-const getWheelEntriesForPackage = (packageId) => {
-  const entries = [];
-  orders.forEach((o) => {
-    const count = Number((o.allocations || {})[packageId] || 0);
-    const name = (o.name || '').trim() || 'Unknown';
-    for (let i = 0; i < count; i += 1) {
-      entries.push(name);
-    }
+  const entries = {};
+  packages.forEach((pkg) => {
+    entries[pkg.id] = Number((order.allocations || {})[pkg.id] || 0);
   });
   return entries;
 };
 
-const buildWheelUrl = (packageName, entries) => {
-  const logoUrl = 'https://raw.githubusercontent.com/ToratYosef/ToratYosef..github.io/refs/heads/main/assets/logos.jpeg';
-  const params = new URLSearchParams({
-    entries: entries.join(','),
-    title: `${packageName} - YDE Auction`,
-    centerImage: logoUrl
-  });
-  return `https://wheelofnames.com/view?${params.toString()}`;
+const getOrderLineItems = (order) => {
+  if (Array.isArray(order.lineItems) && order.lineItems.length) return order.lineItems;
+
+  const entries = getOrderEntries(order);
+  return packages
+    .map((pkg) => {
+      const quantity = Number(entries[pkg.id] || 0);
+      if (quantity <= 0) return null;
+      const unitPrice = Number(pkg.price || 0);
+      return {
+        packageId: pkg.id,
+        name: pkg.name,
+        quantity,
+        unitPrice,
+        total: quantity * unitPrice
+      };
+    })
+    .filter(Boolean);
 };
 
-const renderWheel = () => {
-  wheelEl.innerHTML = window.AUCTION_DATA.auctionPackages.map((pkg, idx) => {
-    const packageId = `package${idx + 1}`;
-    const entries = getWheelEntriesForPackage(packageId);
-    const preview = Array.from(new Set(entries)).slice(0, 3).join(', ');
+const getPaidAmount = (order) => {
+  if (Number(order.total) > 0) return Number(order.total);
+  if (Number(order.amountPaid) > 0) return Number(order.amountPaid);
+  return getOrderLineItems(order).reduce((sum, line) => sum + Number(line.total || 0), 0);
+};
+
+const getEntriesForPackage = (packageId) => {
+  const names = [];
+  paidOrders.forEach((order) => {
+    const qty = Number(getOrderEntries(order)[packageId] || 0);
+    if (qty <= 0) return;
+
+    const name = (order.name || '').trim() || 'Unknown';
+    for (let i = 0; i < qty; i += 1) names.push(name);
+  });
+  return names;
+};
+
+const renderStats = () => {
+  const totalOrders = paidOrders.length;
+  const totalEntries = paidOrders.reduce((sum, order) => {
+    return sum + Object.values(getOrderEntries(order)).reduce((entrySum, qty) => entrySum + Number(qty || 0), 0);
+  }, 0);
+  const totalRevenue = paidOrders.reduce((sum, order) => sum + getPaidAmount(order), 0);
+
+  statsEl.innerHTML = [
+    statCard('Paid Orders', totalOrders),
+    statCard('Total Entries', totalEntries),
+    statCard('Total Revenue', toMoney(totalRevenue)),
+    statCard('Stripe Orders', paidOrders.filter((o) => o.source === 'stripe').length),
+    statCard('Manual Orders', paidOrders.filter((o) => o.source === 'manual').length)
+  ].join('');
+};
+
+const renderPackageTotals = () => {
+  packageTotalsEl.innerHTML = packages.map((pkg) => {
+    const entries = paidOrders.reduce((sum, order) => sum + Number(getOrderEntries(order)[pkg.id] || 0), 0);
+    const revenue = entries * Number(pkg.price || 0);
 
     return `
-      <div class="rounded-xl border border-slate-700 bg-slate-900/70 p-4" data-wheel-card="${idx}">
-        <h3 class="text-xl font-semibold text-white">${pkg.name}</h3>
-        <p class="text-sm text-slate-300 mt-1">Entries: ${entries.length}</p>
-        <p class="text-xs text-slate-400 mt-2 min-h-5">${preview || 'No names yet'}</p>
-        <button ${entries.length ? '' : 'disabled'} data-wheel-open="${idx}" class="mt-3 w-full bg-yellow-400 hover:bg-yellow-500 text-black font-semibold px-3 py-2 rounded-lg transition-colors duration-300 disabled:opacity-40 disabled:cursor-not-allowed">
-          Submit To Wheel Of Names
-        </button>
+      <div class="rounded-xl border border-slate-700 bg-slate-900/70 p-3">
+        <div class="flex items-center justify-between gap-3">
+          <p class="font-semibold text-white">${pkg.name}</p>
+          <span class="text-xs text-slate-300">$${pkg.price}/entry</span>
+        </div>
+        <p class="text-sm text-slate-300 mt-1">Entries: <span class="text-white font-semibold">${entries}</span></p>
+        <p class="text-sm text-slate-300">Revenue: <span class="text-yellow-300 font-semibold">${toMoney(revenue)}</span></p>
       </div>
     `;
   }).join('');
 };
 
-const openAllocModal = (orderId) => {
-  const order = orders.find((o) => getOrderKey(o) === orderId);
-  if (!order) return;
+const buildOrderCard = (order) => {
+  const lineItems = getOrderLineItems(order);
+  const compact = lineItems.map((line) => `${line.name}: ${line.quantity}`).join(' | ');
 
-  activeModalOrderId = orderId;
-  const allocations = getSafeAllocations(order.allocations);
-
-  allocModalMetaEl.textContent = `${order.name || 'Unknown'} • ${order.email || ''} ${order.phone || ''}`;
-  allocModalTicketsEl.textContent = String(Number(order.ticketCount || 0));
-  allocModalAmountEl.textContent = `$${Number(order.amountPaid || 0).toFixed(2)}`;
-  allocModalErrEl.textContent = '';
-
-  allocModalFieldsEl.innerHTML = packageIds.map((id) => `
-    <label class="text-xs text-slate-300">
-      ${id}
-      <input data-modal-p="${id}" class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 p-2" type="number" min="0" value="${allocations[id]}">
-    </label>
-  `).join('');
-
-  const syncRemaining = () => {
-    let sum = 0;
-    allocModalFieldsEl.querySelectorAll('input[data-modal-p]').forEach((input) => {
-      const value = Math.max(0, Number(input.value || 0));
-      sum += value;
-    });
-    const remaining = Number(order.ticketCount || 0) - sum;
-    allocModalRemainingEl.textContent = String(remaining);
-    allocModalRemainingEl.className = `font-semibold ${remaining === 0 ? 'text-emerald-300' : 'text-amber-300'}`;
-  };
-
-  allocModalFieldsEl.querySelectorAll('input[data-modal-p]').forEach((input) => {
-    input.addEventListener('input', syncRemaining);
-  });
-
-  syncRemaining();
-  allocModalEl.classList.remove('hidden');
-  allocModalEl.classList.add('flex');
+  return `
+    <div class="rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <p class="text-lg font-semibold text-white">${order.name || 'Unknown'}</p>
+        <span class="text-xs px-2 py-1 rounded-full border border-slate-600 text-slate-300">${order.source || 'unknown'}</span>
+      </div>
+      <p class="text-xs text-slate-300 mt-1">${order.email || ''} ${order.phone || ''}</p>
+      <p class="text-sm text-slate-200 mt-2">${compact || 'No entries'}</p>
+      <p class="text-sm text-yellow-300 mt-1 font-semibold">${toMoney(getPaidAmount(order))}</p>
+    </div>
+  `;
 };
 
-const closeAllocModal = () => {
-  activeModalOrderId = '';
-  allocModalEl.classList.add('hidden');
-  allocModalEl.classList.remove('flex');
-  allocModalFieldsEl.innerHTML = '';
-  allocModalErrEl.textContent = '';
+const renderOrders = () => {
+  const search = (searchEl.value || '').toLowerCase();
+  const filtered = paidOrders.filter((order) => `${order.name || ''} ${order.email || ''} ${order.phone || ''}`.toLowerCase().includes(search));
+
+  ordersInfoEl.textContent = `${filtered.length} of ${paidOrders.length} paid orders shown`;
+  ordersEl.innerHTML = filtered.map(buildOrderCard).join('');
 };
 
-const saveAllocModal = async () => {
-  if (!activeModalOrderId) return;
+const renderWheelPackages = () => {
+  wheelPackageEl.innerHTML = packages.map((pkg) => `<option value="${pkg.id}">${pkg.number}. ${pkg.name}</option>`).join('');
+};
 
-  const allocations = {};
-  allocModalFieldsEl.querySelectorAll('input[data-modal-p]').forEach((input) => {
-    allocations[input.dataset.modalP] = Number(input.value || 0);
-  });
-
-  allocModalSaveEl.disabled = true;
-  allocModalSaveEl.textContent = 'Saving...';
-  allocModalErrEl.textContent = '';
-
-  try {
-    await updateAlloc({ orderId: activeModalOrderId, allocations });
-    await load();
-    closeAllocModal();
-  } catch (error) {
-    allocModalErrEl.textContent = error?.message || 'Save failed';
-  } finally {
-    allocModalSaveEl.disabled = false;
-    allocModalSaveEl.textContent = 'Save Allocations';
+const renderWheelPreview = () => {
+  const packageId = wheelPackageEl.value;
+  const pkg = packageMap.get(packageId);
+  if (!packageId || !pkg) {
+    wheelInfoEl.textContent = 'Select a package to preview wheel entries.';
+    wheelNamesEl.textContent = '';
+    return;
   }
+
+  const names = getEntriesForPackage(packageId);
+  wheelInfoEl.textContent = `${pkg.name}: ${names.length} total entries (${new Set(names).size} unique names)`;
+  wheelNamesEl.textContent = names.length ? names.join(', ') : 'No paid entries yet for this package.';
+};
+
+const buildWheelUrl = (pkg, names) => {
+  const logoUrl = 'https://raw.githubusercontent.com/ToratYosef/ToratYosef..github.io/refs/heads/main/assets/logos.jpeg';
+  const params = new URLSearchParams({
+    entries: names.join(','),
+    title: `${pkg.name} - YDE Auction`,
+    centerImage: logoUrl
+  });
+  return `https://wheelofnames.com/view?${params.toString()}`;
+};
+
+const renderManualForm = () => {
+  manualFormEl.innerHTML = `
+    <input id="mname" class="w-full rounded-lg border border-slate-700 bg-slate-950 p-2" placeholder="Full name">
+    <input id="memail" class="w-full rounded-lg border border-slate-700 bg-slate-950 p-2" placeholder="Email">
+    <input id="mphone" class="w-full rounded-lg border border-slate-700 bg-slate-950 p-2" placeholder="Phone">
+    <label class="text-sm text-slate-300">Package
+      <select id="mpackage" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-2 text-white">
+        ${packages.map((pkg) => `<option value="${pkg.id}">${pkg.name} ($${pkg.price}/entry)</option>`).join('')}
+      </select>
+    </label>
+    <input id="mquantity" class="w-full rounded-lg border border-slate-700 bg-slate-950 p-2" type="number" min="1" step="1" placeholder="Quantity">
+    <input id="mnote" class="w-full rounded-lg border border-slate-700 bg-slate-950 p-2" placeholder="Note (optional)">
+  `;
 };
 
 const load = async () => {
   const snap = await getDocs(collection(db, 'auctionOrders'));
-  orders = snap.docs
+  paidOrders = snap.docs
     .map((doc) => ({ id: doc.id, ...doc.data() }))
-    .filter((order) => order.status === 'paid' || order.status === 'submitted');
+    .filter((order) => order.status === 'paid');
 
-  orders.sort((a, b) => {
-    const aTime = a.createdAt?.seconds || 0;
-    const bTime = b.createdAt?.seconds || 0;
+  paidOrders.sort((a, b) => {
+    const aTime = Number(a.paidAt?.seconds || a.createdAt?.seconds || 0);
+    const bTime = Number(b.paidAt?.seconds || b.createdAt?.seconds || 0);
     return bTime - aTime;
   });
 
   renderStats();
+  renderPackageTotals();
   renderOrders();
-  renderWheel();
+  renderWheelPreview();
 };
 
 searchEl.addEventListener('input', renderOrders);
+wheelPackageEl.addEventListener('change', renderWheelPreview);
+
+openWheelBtn.addEventListener('click', () => {
+  const packageId = wheelPackageEl.value;
+  const pkg = packageMap.get(packageId);
+  if (!packageId || !pkg) return;
+
+  const names = getEntriesForPackage(packageId);
+  if (!names.length) return;
+
+  window.open(buildWheelUrl(pkg, names), '_blank', 'noopener');
+});
 
 manualSubmitEl.addEventListener('click', async () => {
   manualErrEl.textContent = '';
 
-  const allocations = {};
-  packageIds.forEach((id, idx) => {
-    const input = document.getElementById(`mp${idx + 1}`);
-    allocations[id] = Number(input?.value || 0);
-  });
+  const name = document.getElementById('mname').value.trim();
+  const email = document.getElementById('memail').value.trim();
+  const phone = document.getElementById('mphone').value.trim();
+  const packageId = document.getElementById('mpackage').value;
+  const quantity = Math.max(0, Math.floor(Number(document.getElementById('mquantity').value || 0)));
+  const note = document.getElementById('mnote').value.trim();
+  const pkg = packageMap.get(packageId);
 
-  const payload = {
-    name: document.getElementById('mname').value,
-    email: document.getElementById('memail').value,
-    phone: document.getElementById('mphone').value,
-    ticketCount: Number(document.getElementById('mtickets').value || 0),
-    allocations
-  };
+  if (!name || !email || !phone || !pkg || quantity < 1) {
+    manualErrEl.textContent = 'Please enter name, email, phone, package, and quantity.';
+    return;
+  }
+
+  const entries = Object.fromEntries(packages.map((candidate) => [candidate.id, candidate.id === packageId ? quantity : 0]));
+  const lineItems = [{
+    packageId,
+    name: pkg.name,
+    quantity,
+    unitPrice: Number(pkg.price),
+    total: Number(pkg.price) * quantity
+  }];
 
   manualSubmitEl.disabled = true;
   manualSubmitEl.textContent = 'Creating...';
   try {
-    await createManual(payload);
-    await load();
+    await createManual({
+      customer: { name, email, phone },
+      entries,
+      lineItems,
+      total: lineItems[0].total,
+      note
+    });
+
     manualFormEl.querySelectorAll('input').forEach((input) => {
       input.value = '';
     });
+
+    await load();
   } catch (error) {
-    manualErrEl.textContent = error?.message || 'Failed to create manual order.';
+    manualErrEl.textContent = error?.message || 'Failed to create manual entry.';
   } finally {
     manualSubmitEl.disabled = false;
-    manualSubmitEl.textContent = 'Create Manual Order';
+    manualSubmitEl.textContent = 'Create Manual Entry';
   }
 });
 
-ordersEl.addEventListener('click', (event) => {
-  const editBtn = event.target.closest('button[data-edit]');
-  if (!editBtn) return;
-  openAllocModal(editBtn.dataset.edit);
-});
-
-allocModalCloseEl.addEventListener('click', closeAllocModal);
-allocModalCancelEl.addEventListener('click', closeAllocModal);
-allocModalSaveEl.addEventListener('click', saveAllocModal);
-
-allocModalEl.addEventListener('click', (event) => {
-  if (event.target === allocModalEl) closeAllocModal();
-});
-
-wheelEl.addEventListener('click', (event) => {
-  const wheelBtn = event.target.closest('button[data-wheel-open]');
-  if (!wheelBtn) return;
-
-  const idx = Number(wheelBtn.dataset.wheelOpen);
-  const packageId = `package${idx + 1}`;
-  const packageName = window.AUCTION_DATA.auctionPackages[idx]?.name || packageId;
-  const entries = getWheelEntriesForPackage(packageId);
-  if (!entries.length) return;
-
-  const url = buildWheelUrl(packageName, entries);
-  window.open(url, '_blank', 'noopener');
-});
-
+renderManualForm();
+renderWheelPackages();
 load().catch((error) => {
   ordersInfoEl.textContent = error?.message || 'Failed to load auction orders.';
 });

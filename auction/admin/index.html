@@ -70,6 +70,11 @@
       <section id="stats" class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6"></section>
 
       <section class="rounded-xl border border-slate-700 bg-slate-900/55 p-4 mb-6">
+        <h2 class="bebas-neue text-4xl text-yellow-400 mb-3">Package Totals</h2>
+        <div id="packageTotals" class="grid md:grid-cols-2 gap-3"></div>
+      </section>
+
+      <section class="rounded-xl border border-slate-700 bg-slate-900/55 p-4 mb-6">
         <label for="search" class="text-sm uppercase tracking-wider text-slate-300">Search Orders</label>
         <input id="search" class="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 p-3" placeholder="Search by name, email, or phone">
       </section>
@@ -84,43 +89,22 @@
         <h2 class="bebas-neue text-4xl text-yellow-400 mb-3">Manual Entry</h2>
         <div id="manualForm" class="grid md:grid-cols-3 gap-3"></div>
         <p id="manualErr" class="text-red-300 min-h-6 mt-2"></p>
-        <button id="manualSubmit" class="mt-1 bg-yellow-400 hover:bg-yellow-500 text-black font-bold px-4 py-2 rounded-lg transition-colors duration-300">Create Manual Order</button>
+        <button id="manualSubmit" class="mt-1 bg-yellow-400 hover:bg-yellow-500 text-black font-bold px-4 py-2 rounded-lg transition-colors duration-300">Create Manual Entry</button>
       </section>
 
       <section class="rounded-xl border border-slate-700 bg-slate-900/55 p-4">
         <h2 class="bebas-neue text-4xl text-yellow-400 mb-3">Wheel of Names</h2>
-        <div id="wheel" class="grid lg:grid-cols-2 gap-4"></div>
+        <div class="grid md:grid-cols-[1fr_auto] gap-3 items-end mb-4">
+          <label class="text-sm text-slate-300">Package
+            <select id="wheelPackage" class="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 p-3 text-white"></select>
+          </label>
+          <button id="openWheel" class="h-12 bg-yellow-400 hover:bg-yellow-500 text-black font-semibold px-4 rounded-lg">Open Wheel</button>
+        </div>
+        <p id="wheelInfo" class="text-sm text-slate-300 mb-2"></p>
+        <div id="wheelNames" class="rounded-lg border border-slate-700 bg-slate-950/70 p-3 text-sm text-slate-200 min-h-28"></div>
       </section>
     </div>
   </main>
-
-  <div id="allocModal" class="fixed inset-0 z-[80] hidden items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-    <div class="w-full max-w-2xl rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl">
-      <div class="flex items-start justify-between gap-3 p-4 sm:p-5 border-b border-slate-700">
-        <div>
-          <h3 class="bebas-neue text-4xl text-yellow-400 leading-none">Edit Allocations</h3>
-          <p id="allocModalMeta" class="text-xs sm:text-sm text-slate-300 mt-2"></p>
-        </div>
-        <button id="allocModalClose" class="text-slate-300 hover:text-white text-xl leading-none" aria-label="Close">&times;</button>
-      </div>
-
-      <div class="p-4 sm:p-5">
-        <div class="rounded-lg border border-slate-700 bg-slate-950/70 p-3 text-sm text-slate-200">
-          <p>Tickets: <span id="allocModalTickets" class="font-semibold text-white">0</span></p>
-          <p>Remaining: <span id="allocModalRemaining" class="font-semibold text-amber-300">0</span></p>
-          <p>Amount Paid: <span id="allocModalAmount" class="font-semibold text-white">$0.00</span></p>
-        </div>
-
-        <div id="allocModalFields" class="mt-4 grid grid-cols-2 gap-2"></div>
-        <p id="allocModalErr" class="text-red-300 min-h-6 mt-2"></p>
-      </div>
-
-      <div class="p-4 sm:p-5 border-t border-slate-700 flex flex-col sm:flex-row gap-2 sm:justify-end">
-        <button id="allocModalCancel" class="w-full sm:w-auto px-4 py-2 rounded-lg border border-slate-600 bg-slate-800 hover:bg-slate-700 text-white">Cancel</button>
-        <button id="allocModalSave" class="w-full sm:w-auto bg-yellow-400 hover:bg-yellow-500 text-black font-semibold px-4 py-2 rounded-lg">Save Allocations</button>
-      </div>
-    </div>
-  </div>
 
   <footer class="bg-black/40 py-8 mt-auto shadow-[0_-5px_15px_rgba(0,0,0,0.5)]">
     <div class="container mx-auto px-4 text-center">

@@ -3,10 +3,10 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<meta name="description" content="Enter the YDE Senior Fund Chinese Auction. Pick your ticket bundle, check out securely, and place tickets on premium prizes.">
-	<meta name="keywords" content="YDE, Chinese Auction, Senior Fund, Raffle, Tickets, Fundraising">
+	<meta name="description" content="Enter the YDE Senior Fund Chinese Auction with direct package entries. Choose entries per package and checkout securely.">
+	<meta name="keywords" content="YDE, Chinese Auction, Senior Fund, Raffle, Entries, Fundraising">
 	<meta name="author" content="Saul Setton">
-	<title>YDE Senior Fund - Auction</title>
+	<title>YDE Senior Fund - Chinese Auction</title>
 	<link rel="icon" type="image/png" href="/favicon/favicon.jpeg">
 	<script src="https://cdn.tailwindcss.com"></script>
 	<script src="https://js.stripe.com/v3/"></script>
@@ -32,8 +32,9 @@
 		}
 
 		.checkout-shell {
-			background: rgba(26, 32, 50, 0.85);
-			border: 1px solid rgba(148, 163, 184, 0.3);
+			background: rgba(17, 24, 39, 0.78);
+			border: 1px solid rgba(148, 163, 184, 0.35);
+			box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
 		}
 
 		.checkout-field {
@@ -84,65 +85,60 @@
 	</header>
 
 	<main class="flex-grow pt-24 sm:pt-28 px-3 sm:px-4 md:px-8 lg:px-16">
-		<div class="container mx-auto p-3 sm:p-6 md:p-10 glass-panel rounded-2xl shadow-2xl max-w-7xl">
-			<section class="text-center mb-8 md:mb-10">
-				<h1 class="bebas-neue text-5xl sm:text-6xl md:text-7xl text-yellow-400 drop-shadow-lg">Chinese Auction</h1>
-				<p class="text-gray-200 text-base sm:text-lg md:text-xl mt-2">Pick your ticket amount, check out, then allocate tickets to your favorite packages.</p>
-				<p class="text-emerald-400 font-semibold mt-2">Premium giveaway lineup worth over $26,000</p>
+		<div class="container mx-auto p-3 sm:p-6 md:p-8 glass-panel rounded-2xl shadow-2xl max-w-7xl">
+			<section class="text-center mb-6 sm:mb-8">
+				<h2 id="raffleSubtitle" class="text-3xl sm:text-4xl md:text-5xl text-white font-semibold"></h2>
+				<p id="raffleTagline" class="text-slate-200 text-base sm:text-lg mt-2"></p>
 			</section>
 
-			<section class="space-y-5 sm:space-y-6 md:space-y-8">
-				<div class="bg-slate-900/55 border border-slate-700 rounded-2xl p-4 sm:p-6 md:p-8">
-					<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 mb-4">
-						<h2 class="bebas-neue text-3xl sm:text-4xl text-yellow-400">Prize Packages</h2>
-						<span class="text-xs sm:text-sm uppercase tracking-wide text-slate-300">Choose where your tickets go</span>
+			<section class="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-5 sm:gap-6 lg:gap-8">
+				<div class="space-y-5">
+					<div class="bg-slate-900/55 border border-slate-700 rounded-2xl p-4 sm:p-6">
+						<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 mb-4">
+							<h2 class="bebas-neue text-3xl sm:text-4xl text-yellow-400">Choose Your Packages</h2>
+							<span class="text-xs sm:text-sm uppercase tracking-wide text-slate-300">Direct package entries</span>
+						</div>
+						<div id="packages" class="grid gap-4"></div>
 					</div>
-					<div id="packages" class="space-y-4"></div>
+
+					<div class="checkout-shell rounded-2xl p-4 sm:p-6">
+						<h2 class="bebas-neue text-4xl sm:text-5xl text-white mb-4">Customer Info</h2>
+						<div class="space-y-3">
+							<input id="name" class="checkout-field w-full rounded-xl p-3.5 sm:p-4 focus:outline-none focus:ring-2 focus:ring-yellow-400" placeholder="Full Name">
+							<input id="email" class="checkout-field w-full rounded-xl p-3.5 sm:p-4 focus:outline-none focus:ring-2 focus:ring-yellow-400" placeholder="Email Address">
+							<input id="phone" class="checkout-field w-full rounded-xl p-3.5 sm:p-4 focus:outline-none focus:ring-2 focus:ring-yellow-400" placeholder="Phone Number">
+						</div>
+
+						<div id="auctionPaymentSection" class="mt-4 rounded-xl border border-slate-600 bg-slate-900/80 p-3 sm:p-4">
+							<div id="auctionPaymentElementContainer"></div>
+							<button id="auctionStripePayButton" class="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold px-6 py-3 rounded-full mt-4 transition-colors duration-300">Pay Now</button>
+						</div>
+
+						<p id="err" class="text-red-400 mt-3 min-h-6"></p>
+					</div>
 				</div>
 
-				<div class="checkout-shell rounded-2xl p-4 sm:p-6 md:p-8">
-					<h2 class="bebas-neue text-4xl sm:text-6xl text-white text-center mb-5 sm:mb-6">Buy Your Tickets!</h2>
-					<p class="text-slate-300 mb-2 font-semibold">Build your ticket quantity</p>
-					<div id="bundles" class="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4"></div>
+				<aside class="lg:sticky lg:top-28 h-fit rounded-2xl border border-slate-700/90 bg-slate-950/80 p-4 sm:p-5 checkout-shell">
+					<h3 class="bebas-neue text-4xl text-yellow-400">Order Summary</h3>
+					<p id="summaryEmpty" class="text-sm text-slate-300 mt-2">No package entries selected yet.</p>
+					<div id="summaryRows" class="mt-3 grid gap-2"></div>
 
-					<div class="mt-4 rounded-xl border border-slate-600/80 bg-gradient-to-br from-slate-950/85 to-slate-900/65 px-3 py-3 sm:px-4 sm:py-4 shadow-inner shadow-black/25">
-						<p id="selectedBundleLabel" class="text-sm sm:text-base font-semibold text-slate-100">No bundle selected</p>
-						<div id="selectionBreakdown" class="mt-3 grid gap-2"></div>
+					<div class="mt-4 border-t border-slate-700 pt-4 space-y-2">
+						<div class="flex items-center justify-between text-sm text-slate-200">
+							<span>Total Entries</span>
+							<span id="totalEntries" class="font-semibold text-white">0</span>
+						</div>
+						<div class="flex items-center justify-between text-lg">
+							<span class="font-semibold text-white">Total Price</span>
+							<span id="checkoutTotal" class="font-bold text-yellow-300">$0.00</span>
+						</div>
 					</div>
 
-					<div class="mt-4 space-y-3">
-						<input id="name" class="checkout-field w-full rounded-xl p-3.5 sm:p-4 focus:outline-none focus:ring-2 focus:ring-yellow-400" placeholder="Full Name">
-						<input id="email" class="checkout-field w-full rounded-xl p-3.5 sm:p-4 focus:outline-none focus:ring-2 focus:ring-yellow-400" placeholder="Email Address">
-						<input id="phone" class="checkout-field w-full rounded-xl p-3.5 sm:p-4 focus:outline-none focus:ring-2 focus:ring-yellow-400" placeholder="Phone Number">
-					</div>
-
-					<div class="mt-5 sm:mt-6 text-center">
-						<p class="bebas-neue text-3xl sm:text-5xl text-white tracking-wide">Total: <span id="checkoutTotal" class="text-yellow-400">$0.00</span></p>
-					</div>
-
-					<button id="checkout" class="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold px-6 py-3 rounded-full mt-4 transition-colors duration-300">
-						Proceed to Payment
+					<button id="checkout" class="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold px-6 py-3 rounded-full mt-4 transition-colors duration-300 disabled:opacity-60 disabled:cursor-not-allowed" disabled>
+						Checkout
 					</button>
-
-					<div id="auctionPaymentSection" class="mt-4 rounded-xl border border-slate-600 bg-slate-900/80 p-3 sm:p-4">
-						<div id="auctionPaymentElementContainer"></div>
-						<button id="auctionStripePayButton" class="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold px-6 py-3 rounded-full mt-4 transition-colors duration-300">
-							Pay Now
-						</button>
-					</div>
-
-					<p id="err" class="text-red-400 mt-3 min-h-6"></p>
-				</div>
-
-				<div class="bg-slate-900/50 border border-slate-700 rounded-2xl p-5 sm:p-6">
-					<h3 class="bebas-neue text-2xl sm:text-3xl text-yellow-400 mb-3">How It Works</h3>
-					<ol class="list-decimal list-inside text-gray-200 space-y-2 text-sm sm:text-base">
-						<li>Use + and - on ticket cards to pick your total.</li>
-						<li>Enter your checkout details and pay with Stripe.</li>
-						<li>After payment, assign tickets in the package modal.</li>
-						<li>Submit once and your entries are locked in.</li>
-					</ol>
-				</div>
+					<p class="text-xs text-slate-400 mt-2">Enter your info and select at least one entry to enable checkout.</p>
+				</aside>
 			</section>
 		</div>
 	</main>

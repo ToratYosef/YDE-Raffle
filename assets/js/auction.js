@@ -13,15 +13,20 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const createPaymentIntent = httpsCallable(getFunctions(app), 'createAuctionPaymentIntent');
 const getAuctionStripeConfig = httpsCallable(getFunctions(app), 'getAuctionStripeConfig');
-const { ticketBundles, auctionPackages } = window.AUCTION_DATA;
+const { auctionPackages, pageHeader } = window.AUCTION_DATA;
+const sortedPackages = [...auctionPackages].sort((a, b) => {
+  const priceDiff = Number(a.price || 0) - Number(b.price || 0);
+  if (priceDiff !== 0) return priceDiff;
+  return Number(a.number || 0) - Number(b.number || 0);
+});
 
 let stripe = null;
 
-const bundleWrap = document.getElementById('bundles');
 const packageWrap = document.getElementById('packages');
 const err = document.getElementById('err');
-const selectedBundleLabel = document.getElementById('selectedBundleLabel');
-const selectionBreakdown = document.getElementById('selectionBreakdown');
+const summaryRows = document.getElementById('summaryRows');
+const summaryEmpty = document.getElementById('summaryEmpty');
+const totalEntriesEl = document.getElementById('totalEntries');
 const checkoutTotalEl = document.getElementById('checkoutTotal');
 const checkoutBtn = document.getElementById('checkout');
 const nameEl = document.getElementById('name');
@@ -30,10 +35,11 @@ const phoneEl = document.getElementById('phone');
 const paymentSectionEl = document.getElementById('auctionPaymentSection');
 const paymentElementContainerEl = document.getElementById('auctionPaymentElementContainer');
 const stripePayBtn = document.getElementById('auctionStripePayButton');
+const raffleSubtitleEl = document.getElementById('raffleSubtitle');
+const raffleTaglineEl = document.getElementById('raffleTagline');
 
-const bundleState = {};
-const bundleCards = {};
-const bundleQtyEls = {};
+const packageQtyState = Object.fromEntries(auctionPackages.map((pkg) => [pkg.id, 0]));
+const quantityInputs = {};
 let stripeElements = null;
 let activeOrderId = '';
 let activePaymentIntentId = '';
@@ -51,151 +57,88 @@ const ensureAuctionStripe = async () => {
 
 const packageThemes = [
   {
-    card: 'bg-emerald-950/45 border-emerald-400/35',
-    title: 'text-emerald-300',
-    value: 'text-emerald-100/90',
-    list: 'text-emerald-50'
+    card: 'from-rose-900/45 to-rose-700/15 border-rose-300/30',
+    chip: 'bg-rose-400/20 text-rose-100 border-rose-200/35'
   },
   {
-    card: 'bg-sky-950/45 border-sky-400/35',
-    title: 'text-sky-300',
-    value: 'text-sky-100/90',
-    list: 'text-sky-50'
+    card: 'from-sky-900/45 to-sky-700/15 border-sky-300/30',
+    chip: 'bg-sky-400/20 text-sky-100 border-sky-200/35'
   },
   {
-    card: 'bg-fuchsia-950/35 border-fuchsia-400/35',
-    title: 'text-fuchsia-300',
-    value: 'text-fuchsia-100/90',
-    list: 'text-fuchsia-50'
+    card: 'from-emerald-900/45 to-emerald-700/15 border-emerald-300/30',
+    chip: 'bg-emerald-400/20 text-emerald-100 border-emerald-200/35'
   },
   {
-    card: 'bg-amber-950/45 border-amber-400/35',
-    title: 'text-amber-300',
-    value: 'text-amber-100/90',
-    list: 'text-amber-50'
+    card: 'from-amber-900/45 to-amber-700/15 border-amber-300/30',
+    chip: 'bg-amber-400/20 text-amber-100 border-amber-200/35'
+  },
+  {
+    card: 'from-indigo-900/45 to-indigo-700/15 border-indigo-300/30',
+    chip: 'bg-indigo-400/20 text-indigo-100 border-indigo-200/35'
   }
 ];
 
-const bundleThemes = [
-  {
-    card: 'bg-gradient-to-br from-rose-500/20 to-rose-900/25 border-rose-300/45',
-    qty: 'text-rose-100',
-    active: 'ring-2 ring-rose-300/80'
-  },
-  {
-    card: 'bg-gradient-to-br from-blue-500/20 to-blue-900/25 border-blue-300/45',
-    qty: 'text-blue-100',
-    active: 'ring-2 ring-blue-300/80'
-  },
-  {
-    card: 'bg-gradient-to-br from-emerald-500/20 to-emerald-900/25 border-emerald-300/45',
-    qty: 'text-emerald-100',
-    active: 'ring-2 ring-emerald-300/80'
-  },
-  {
-    card: 'bg-gradient-to-br from-amber-500/20 to-amber-900/25 border-amber-300/45',
-    qty: 'text-amber-100',
-    active: 'ring-2 ring-amber-300/80'
-  }
-];
+const toMoney = (value) => `$${Number(value || 0).toFixed(2)}`;
 
-const setBundleState = (next) => {
-  Object.keys(bundleState).forEach((k) => delete bundleState[k]);
-  Object.entries(next).forEach(([bundleId, qty]) => {
-    if (Number(qty) > 0) bundleState[bundleId] = Number(qty);
-  });
+const getLineItems = () => {
+  return sortedPackages
+    .map((pkg) => {
+      const quantity = Number(packageQtyState[pkg.id] || 0);
+      if (quantity <= 0) return null;
+      const total = quantity * Number(pkg.price || 0);
+      return {
+        packageId: pkg.id,
+        name: pkg.name,
+        quantity,
+        unitPrice: Number(pkg.price || 0),
+        total
+      };
+    })
+    .filter(Boolean);
 };
 
-const getCheapestCombination = (ticketTarget) => {
-  const target = Math.max(0, Number(ticketTarget) || 0);
-  const dp = Array(target + 1).fill(null);
-  dp[0] = { cost: 0, counts: {} };
-
-  for (let tickets = 1; tickets <= target; tickets += 1) {
-    let best = null;
-
-    for (const bundle of ticketBundles) {
-      const prevTickets = tickets - bundle.ticketCount;
-      if (prevTickets < 0 || !dp[prevTickets]) continue;
-
-      const prev = dp[prevTickets];
-      const candidateCost = prev.cost + bundle.price;
-
-      if (!best || candidateCost < best.cost) {
-        best = {
-          cost: candidateCost,
-          counts: {
-            ...prev.counts,
-            [bundle.id]: Number(prev.counts[bundle.id] || 0) + 1
-          }
-        };
-      }
-    }
-
-    dp[tickets] = best;
-  }
-
-  return dp[target]?.counts || {};
-};
-
-const getBundleTotals = () => {
-  return ticketBundles.reduce((acc, bundle) => {
-    const qty = Number(bundleState[bundle.id] || 0);
-    acc.totalTickets += qty * bundle.ticketCount;
-    acc.totalAmount += qty * bundle.price;
+const getTotals = () => {
+  const lineItems = getLineItems();
+  return lineItems.reduce((acc, line) => {
+    acc.total += line.total;
+    acc.entries += line.quantity;
     return acc;
-  }, { totalTickets: 0, totalAmount: 0 });
+  }, { total: 0, entries: 0, lineItems });
 };
 
-const refreshBundleUI = () => {
-  ticketBundles.forEach((bundle, idx) => {
-    const qty = Number(bundleState[bundle.id] || 0);
-    const card = bundleCards[bundle.id];
-    const qtyEl = bundleQtyEls[bundle.id];
-
-    if (qtyEl) qtyEl.textContent = String(qty);
-    if (card) {
-      const activeClasses = bundleThemes[idx % bundleThemes.length].active.split(' ');
-      activeClasses.forEach((cls) => card.classList.toggle(cls, qty > 0));
-    }
-  });
+const updateCheckoutEnabledState = () => {
+  const { entries } = getTotals();
+  const hasCustomer = Boolean(nameEl.value.trim() && emailEl.value.trim() && phoneEl.value.trim());
+  checkoutBtn.disabled = !hasCustomer || entries < 1;
 };
 
-const renderSelectionSummary = () => {
-  const { totalTickets, totalAmount } = getBundleTotals();
+const renderSummary = () => {
+  const { total, entries, lineItems } = getTotals();
 
-  if (checkoutTotalEl) {
-    checkoutTotalEl.textContent = `$${totalAmount.toFixed(2)}`;
-  }
+  totalEntriesEl.textContent = String(entries);
+  checkoutTotalEl.textContent = toMoney(total);
 
-  if (totalTickets === 0) {
-    selectedBundleLabel.textContent = 'No bundle selected';
-    if (selectionBreakdown) selectionBreakdown.innerHTML = '';
+  if (!lineItems.length) {
+    summaryRows.innerHTML = '';
+    summaryEmpty.classList.remove('hidden');
+    updateCheckoutEnabledState();
     return;
   }
 
-  selectedBundleLabel.textContent = `Selected: ${totalTickets} tickets for $${totalAmount.toFixed(2)}`;
+  summaryEmpty.classList.add('hidden');
+  summaryRows.innerHTML = lineItems.map((line) => `
+    <div class="rounded-xl border border-slate-700/80 bg-slate-900/75 p-3">
+      <div class="flex items-center justify-between gap-3">
+        <p class="text-sm text-slate-100">
+          <span class="font-semibold text-white">${line.name}</span>
+          <span class="text-slate-400"> · ${line.quantity} x ${toMoney(line.unitPrice)}</span>
+        </p>
+        <p class="text-sm font-semibold text-amber-300">${toMoney(line.total)}</p>
+      </div>
+    </div>
+  `).join('');
 
-  if (!selectionBreakdown) return;
-  const rows = ticketBundles
-    .filter((bundle) => Number(bundleState[bundle.id] || 0) > 0)
-    .map((bundle) => {
-      const qty = Number(bundleState[bundle.id] || 0);
-      const ticketWord = bundle.ticketCount === 1 ? 'ticket' : 'tickets';
-      const rowTotal = qty * bundle.price;
-      return `
-        <div class="flex items-center justify-between gap-3 rounded-lg border border-slate-700/80 bg-slate-950/60 px-3 py-2">
-          <p class="text-xs sm:text-sm text-slate-200">
-            <span class="font-semibold text-white">${qty} x ${bundle.ticketCount}</span>
-            <span class="text-slate-300"> ${ticketWord}</span>
-            <span class="text-slate-400"> · $${bundle.price} each</span>
-          </p>
-          <p class="text-sm sm:text-base font-semibold text-yellow-300">$${rowTotal.toFixed(2)}</p>
-        </div>
-      `;
-    });
-
-  selectionBreakdown.innerHTML = rows.join('');
+  updateCheckoutEnabledState();
 };
 
 const resetPaymentSection = () => {
@@ -207,89 +150,105 @@ const resetPaymentSection = () => {
   activePaymentIntentId = '';
   stripePayBtn.disabled = false;
   stripePayBtn.textContent = 'Pay Now';
-  checkoutBtn.disabled = false;
-  checkoutBtn.textContent = 'Proceed to Payment';
+  checkoutBtn.textContent = 'Checkout';
+  updateCheckoutEnabledState();
 };
 
-const applyTicketDelta = (deltaTickets) => {
-  const { totalTickets, totalAmount } = getBundleTotals();
-  const nextTickets = Math.max(0, totalTickets + deltaTickets);
-  const optimizedCounts = getCheapestCombination(nextTickets);
-
-  setBundleState(optimizedCounts);
-  refreshBundleUI();
-  renderSelectionSummary();
+const setPackageQty = (packageId, qty) => {
+  if (!(packageId in packageQtyState)) return;
+  packageQtyState[packageId] = Math.max(0, Math.floor(Number(qty) || 0));
+  if (quantityInputs[packageId]) {
+    quantityInputs[packageId].value = String(packageQtyState[packageId]);
+  }
+  renderSummary();
   resetPaymentSection();
 };
 
-auctionPackages.forEach((pkg, index) => {
+const renderPageHeader = () => {
+  if (!pageHeader) return;
+  if (raffleSubtitleEl) raffleSubtitleEl.textContent = pageHeader.subtitle || '';
+  if (raffleTaglineEl) raffleTaglineEl.textContent = pageHeader.tagline || '';
+};
+
+const createQtyControlMarkup = (pkg) => {
+  return `
+    <div class="mt-4 rounded-xl border border-white/15 bg-slate-950/35 p-3">
+      <p class="text-[11px] uppercase tracking-[0.18em] text-slate-300">Entries</p>
+      <div class="mt-2 grid grid-cols-[44px_1fr_44px] gap-2 items-center">
+        <button type="button" data-action="dec" data-id="${pkg.id}" class="h-11 rounded-lg border border-slate-500 bg-slate-800/80 text-xl font-bold text-white hover:bg-slate-700">-</button>
+        <input type="number" min="0" step="1" inputmode="numeric" data-id="${pkg.id}" data-role="qty-input" class="h-11 rounded-lg border border-slate-500 bg-slate-950/80 px-3 text-center text-lg font-semibold text-white focus:outline-none focus:ring-2 focus:ring-amber-300" value="0">
+        <button type="button" data-action="inc" data-id="${pkg.id}" class="h-11 rounded-lg border border-amber-300/70 bg-amber-300/20 text-xl font-bold text-amber-100 hover:bg-amber-300/30">+</button>
+      </div>
+      <p class="mt-2 text-sm text-slate-300">Line total: <span data-role="line-total" data-id="${pkg.id}" class="font-semibold text-amber-200">$0.00</span></p>
+    </div>
+  `;
+};
+
+const syncLineTotals = () => {
+  sortedPackages.forEach((pkg) => {
+    const qty = Number(packageQtyState[pkg.id] || 0);
+    const lineTotal = qty * Number(pkg.price || 0);
+    const lineTotalEl = packageWrap.querySelector(`[data-role="line-total"][data-id="${pkg.id}"]`);
+    if (lineTotalEl) lineTotalEl.textContent = toMoney(lineTotal);
+  });
+};
+
+sortedPackages.forEach((pkg, index) => {
   const theme = packageThemes[index % packageThemes.length];
   const card = document.createElement('div');
-  card.className = `rounded-xl p-5 border transition-transform duration-200 hover:-translate-y-0.5 ${theme.card}`;
+  card.className = `rounded-2xl p-5 border bg-gradient-to-br transition-transform duration-200 hover:-translate-y-0.5 ${theme.card}`;
   card.innerHTML = `
-    <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4 md:gap-6">
-      <div class="md:w-64 md:flex-shrink-0">
-        <h3 class="font-semibold text-2xl leading-tight ${theme.title}">${pkg.name}</h3>
-        <p class="mt-2 text-sm ${theme.value}">Value: ${pkg.value}</p>
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <p class="inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] uppercase tracking-[0.15em] ${theme.chip}">Package ${pkg.number}</p>
+        <h3 class="mt-2 font-semibold text-2xl leading-tight text-white">${pkg.name}</h3>
+        ${pkg.titleText ? `<p class="mt-1 text-sm text-slate-100">${pkg.titleText}</p>` : ''}
+        ${pkg.sponsor ? `<p class="mt-1 text-xs text-slate-300">${pkg.sponsor}</p>` : ''}
       </div>
-      <ul class="text-sm space-y-1.5 ${theme.list} md:flex-1 md:border-l md:border-white/15 md:pl-5">
-        ${pkg.prizes.map((p) => `<li>• ${p}</li>`).join('')}
-      </ul>
-    </div>
-  `;
-  packageWrap.appendChild(card);
-});
-
-ticketBundles.forEach((bundle, index) => {
-  const theme = bundleThemes[index % bundleThemes.length];
-  const card = document.createElement('div');
-  card.className = `bundle border rounded-2xl p-3 sm:p-4 transition-all duration-200 min-h-[220px] sm:min-h-[250px] flex flex-col justify-between ${theme.card}`;
-  card.innerHTML = `
-    <div>
-      <p class="text-4xl sm:text-5xl font-bold text-white leading-none">${bundle.ticketCount}</p>
-      <p class="text-lg sm:text-xl uppercase tracking-wider text-slate-200 mt-1">Ticket${bundle.ticketCount > 1 ? 's' : ''}</p>
-      <p class="text-4xl sm:text-5xl font-semibold text-yellow-100 mt-2">$${bundle.price}</p>
-    </div>
-    <div class="mt-3 sm:mt-4 border border-white/20 rounded-lg bg-slate-950/40 px-2 py-2">
-      <div class="grid grid-cols-2 gap-2">
-        <button type="button" data-action="dec" data-id="${bundle.id}" class="h-10 sm:h-11 rounded-md bg-white/10 hover:bg-white/20 text-white font-bold text-lg">-</button>
-        <button type="button" data-action="inc" data-id="${bundle.id}" class="h-10 sm:h-11 rounded-md bg-white/10 hover:bg-white/20 text-white font-bold text-lg">+</button>
+      <div class="text-right">
+        <p class="text-xs uppercase tracking-[0.15em] text-slate-300">Entry Price</p>
+        <p class="text-2xl font-bold text-amber-300">${toMoney(pkg.price)}</p>
+        <p class="mt-1 text-xs text-slate-300">Value ${pkg.value}</p>
       </div>
-      <p class="text-center ${theme.qty} mt-2"><span class="text-[10px] sm:text-xs uppercase block tracking-widest text-slate-300">Quantity</span><span id="qty-${bundle.id}" class="text-xl sm:text-2xl font-bold">0</span></p>
     </div>
+    ${pkg.items?.length ? `<ul class="mt-4 text-sm space-y-1.5 text-slate-100 border-t border-white/15 pt-4">${pkg.items.map((item) => `<li>• ${item}</li>`).join('')}</ul>` : ''}
+    ${createQtyControlMarkup(pkg)}
   `;
-
-  bundleCards[bundle.id] = card;
-  bundleQtyEls[bundle.id] = card.querySelector(`#qty-${bundle.id}`);
 
   card.addEventListener('click', (event) => {
-    const target = event.target.closest('button[data-action]');
-    if (!target) return;
-
-    const action = target.dataset.action;
-    if (action === 'inc') applyTicketDelta(bundle.ticketCount);
-    if (action === 'dec') applyTicketDelta(-bundle.ticketCount);
+    const button = event.target.closest('button[data-action][data-id]');
+    if (!button) return;
+    const packageId = button.dataset.id;
+    const delta = button.dataset.action === 'inc' ? 1 : -1;
+    setPackageQty(packageId, Number(packageQtyState[packageId] || 0) + delta);
+    syncLineTotals();
   });
 
-  bundleWrap.appendChild(card);
-});
+  const qtyInput = card.querySelector('input[data-role="qty-input"]');
+  if (qtyInput) {
+    quantityInputs[pkg.id] = qtyInput;
+    qtyInput.addEventListener('input', () => {
+      setPackageQty(pkg.id, qtyInput.value);
+      syncLineTotals();
+    });
+  }
 
-setBundleState({});
-refreshBundleUI();
-renderSelectionSummary();
+  packageWrap.appendChild(card);
+});
+renderPageHeader();
+renderSummary();
+syncLineTotals();
 
 checkoutBtn.addEventListener('click', async () => {
   err.textContent = '';
   const name = nameEl.value.trim();
   const email = emailEl.value.trim();
   const phone = phoneEl.value.trim();
-  const selected = Object.fromEntries(Object.entries(bundleState).filter(([, qty]) => Number(qty) > 0));
-  const selectedBundleIds = Object.keys(selected);
-  const legacyTicketBundleId = selectedBundleIds.length === 1 ? selectedBundleIds[0] : null;
-  const { totalTickets, totalAmount } = getBundleTotals();
+  const { total, entries, lineItems } = getTotals();
+  const entriesByPackage = Object.fromEntries(sortedPackages.map((pkg) => [pkg.id, Number(packageQtyState[pkg.id] || 0)]));
 
-  if (!name || !email || !phone || totalTickets < 1) {
-    err.textContent = 'Please complete all fields and select at least 1 ticket.';
+  if (!name || !email || !phone || entries < 1) {
+    err.textContent = 'Please enter your name, email, phone, and at least one package entry.';
     return;
   }
 
@@ -297,8 +256,12 @@ checkoutBtn.addEventListener('click', async () => {
   checkoutBtn.textContent = 'Preparing payment...';
   try {
     const stripeInstance = await ensureAuctionStripe();
-    const payload = { name, email, phone, bundleSelections: selected };
-    if (legacyTicketBundleId) payload.ticketBundleId = legacyTicketBundleId;
+    const payload = {
+      customer: { name, email, phone },
+      entries: entriesByPackage,
+      lineItems,
+      total
+    };
 
     const response = await createPaymentIntent(payload);
     const clientSecret = response?.data?.clientSecret;
@@ -320,7 +283,7 @@ checkoutBtn.addEventListener('click', async () => {
     const paymentElement = stripeElements.create('payment');
     paymentElement.mount('#auctionPaymentElementContainer');
 
-    const safeTotalAmount = Number(getBundleTotals().totalAmount || 0);
+    const safeTotalAmount = Number(total || 0);
     paymentSectionEl.style.display = 'block';
     stripePayBtn.textContent = `Pay $${safeTotalAmount.toFixed(2)}`;
     checkoutBtn.textContent = 'Payment Ready';
@@ -332,7 +295,7 @@ checkoutBtn.addEventListener('click', async () => {
     const suffix = detailText ? ` (${detailText})` : '';
     err.textContent = `${e?.message || 'Checkout failed. Please try again.'}${suffix}`;
     checkoutBtn.disabled = false;
-    checkoutBtn.textContent = 'Proceed to Payment';
+    checkoutBtn.textContent = 'Checkout';
   }
 });
 
@@ -375,3 +338,6 @@ stripePayBtn.addEventListener('click', async (event) => {
 nameEl.addEventListener('input', resetPaymentSection);
 emailEl.addEventListener('input', resetPaymentSection);
 phoneEl.addEventListener('input', resetPaymentSection);
+nameEl.addEventListener('input', updateCheckoutEnabledState);
+emailEl.addEventListener('input', updateCheckoutEnabledState);
+phoneEl.addEventListener('input', updateCheckoutEnabledState);

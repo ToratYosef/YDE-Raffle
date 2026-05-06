@@ -225,7 +225,11 @@ openWheelBtn.addEventListener('click', () => {
   const names = getEntriesForPackage(packageId);
   if (!names.length) return;
 
-  window.open(buildWheelUrl(pkg, names), '_blank', 'noopener');
+  navigator.clipboard.writeText(names.join('\n')).then(() => {
+    alert(`${names.length} name${names.length !== 1 ? 's' : ''} copied to clipboard. Paste into Wheel of Names.`);
+  }).catch(() => {
+    alert('Copy failed. Names:\n' + names.join('\n'));
+  });
 });
 
 manualSubmitEl.addEventListener('click', async () => {

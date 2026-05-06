@@ -780,7 +780,7 @@
                                 <option value="unassigned">Unassigned</option>
                             </select>
                             <button id="importRolexWheelButton" type="button" class="px-3 py-2 bg-yellow-500 text-black text-sm font-semibold rounded-lg hover:bg-yellow-600 transition-colors">
-                                Import Names To Wheel
+                                Copy Names
                             </button>
                         </div>
                     </div>
@@ -2139,8 +2139,11 @@
                 return;
             }
 
-            const url = buildRolexWheelUrl(names);
-            window.open(url, '_blank', 'noopener');
+            navigator.clipboard.writeText(names.join('\n')).then(() => {
+                showCustomPopup('Copied!', `${names.length} name${names.length !== 1 ? 's' : ''} copied to clipboard. Paste into Wheel of Names.`);
+            }).catch(() => {
+                showCustomPopup('Names', names.join('\n'));
+            });
         };
 
         const switchTab = (tabName) => {

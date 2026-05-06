@@ -49,17 +49,7 @@ function getAuctionStripePublishableKey() {
 }
 
 function getStripeWebhookSecret() {
-    if (AUCTION_LIVE_MODE) {
-        return process.env.STRIPE_WEBHOOK_SECRET_LIVE
-            || process.env.AUCTION_STRIPE_WEBHOOK_SECRET_LIVE
-            || process.env.STRIPE_WEBHOOK_SECRET
-            || '';
-    }
-
-    return process.env.STRIPE_WEBHOOK_SECRET_TEST
-        || process.env.AUCTION_STRIPE_WEBHOOK_SECRET_TEST
-        || process.env.STRIPE_WEBHOOK_SECRET
-        || '';
+    return process.env.STRIPE_WEBHOOK_SECRET || '';
 }
 
 function hasValidAuctionStripeSecretKey() {

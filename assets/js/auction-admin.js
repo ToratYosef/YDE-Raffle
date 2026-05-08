@@ -338,13 +338,14 @@ const renderManualForm = () => {
     <input id="mname" class="w-full rounded-lg border border-slate-700 bg-slate-950 p-2" placeholder="Full name">
     <input id="memail" class="w-full rounded-lg border border-slate-700 bg-slate-950 p-2" placeholder="Email">
     <input id="mphone" class="w-full rounded-lg border border-slate-700 bg-slate-950 p-2" placeholder="Phone">
-    <label class="text-sm text-slate-300">Package
-      <select id="mpackage" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-2 text-white">
-        ${packages.map((pkg) => `<option value="${pkg.id}">${pkg.name} ($${pkg.price}/entry)</option>`).join('')}
-      </select>
-    </label>
-    <input id="mquantity" class="w-full rounded-lg border border-slate-700 bg-slate-950 p-2" type="number" min="1" step="1" placeholder="Quantity">
-    <input id="mnote" class="w-full rounded-lg border border-slate-700 bg-slate-950 p-2" placeholder="Note (optional)">
+    <div class="md:col-span-3 grid sm:grid-cols-2 lg:grid-cols-5 gap-3 rounded-lg border border-slate-700 bg-slate-950/60 p-3">
+      ${packages.map((pkg) => `
+        <label class="text-sm text-slate-300">${escapeHtml(pkg.name)} ($${Number(pkg.price || 0)}/entry)
+          <input id="mquantity-${pkg.id}" data-manual-package-id="${pkg.id}" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-2 text-white" type="number" min="0" step="1" placeholder="0">
+        </label>
+      `).join('')}
+    </div>
+    <input id="mnote" class="w-full rounded-lg border border-slate-700 bg-slate-950 p-2 md:col-span-3" placeholder="Note (optional)">
   `;
 };
 
@@ -393,24 +394,32 @@ manualSubmitEl.addEventListener('click', async () => {
   const name = document.getElementById('mname').value.trim();
   const email = document.getElementById('memail').value.trim();
   const phone = document.getElementById('mphone').value.trim();
-  const packageId = document.getElementById('mpackage').value;
-  const quantity = Math.max(0, Math.floor(Number(document.getElementById('mquantity').value || 0)));
   const note = document.getElementById('mnote').value.trim();
-  const pkg = packageMap.get(packageId);
+  const entries = Object.fromEntries(packages.map((pkg) => {
+    const input = document.getElementById(`mquantity-${pkg.id}`);
+    const quantity = Math.max(0, Math.floor(Number(input?.value || 0)));
+    return [pkg.id, quantity];
+  }));
+  const lineItems = packages
+    .map((pkg) => {
+      const quantity = Number(entries[pkg.id] || 0);
+      if (quantity <= 0) return null;
+      const unitPrice = Number(pkg.price || 0);
+      return {
+        packageId: pkg.id,
+        name: pkg.name,
+        quantity,
+        unitPrice,
+        total: unitPrice * quantity
+      };
+    })
+    .filter(Boolean);
+  const total = lineItems.reduce((sum, line) => sum + Number(line.total || 0), 0);
 
-  if (!name || !email || !phone || !pkg || quantity < 1) {
-    manualErrEl.textContent = 'Please enter name, email, phone, package, and quantity.';
+  if (!name || !email || !phone || lineItems.length < 1) {
+    manualErrEl.textContent = 'Please enter name, email, phone, and at least one package quantity.';
     return;
   }
-
-  const entries = Object.fromEntries(packages.map((candidate) => [candidate.id, candidate.id === packageId ? quantity : 0]));
-  const lineItems = [{
-    packageId,
-    name: pkg.name,
-    quantity,
-    unitPrice: Number(pkg.price),
-    total: Number(pkg.price) * quantity
-  }];
 
   manualSubmitEl.disabled = true;
   manualSubmitEl.textContent = 'Creating...';
@@ -419,7 +428,7 @@ manualSubmitEl.addEventListener('click', async () => {
       customer: { name, email, phone },
       entries,
       lineItems,
-      total: lineItems[0].total,
+      total,
       note
     });
 

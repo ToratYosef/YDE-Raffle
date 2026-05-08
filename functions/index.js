@@ -3343,9 +3343,9 @@ exports.submitAuctionAllocation = functions.https.onCall(async (data) => {
         throw new functions.https.HttpsError('failed-precondition', 'Ticket allocation flow is no longer supported. Entries are now selected directly by package during checkout.');
 });
 
-exports.createManualAuctionOrder = functions.https.onCall(async (data, context) => {
-    if (!isAdmin(context)) throw new functions.https.HttpsError('permission-denied', 'Admins only.');
-
+exports.createManualAuctionOrder = functions.https.onCall(async (data) => {
+    // Auction admin currently has no login flow, so manual entries are
+    // intentionally callable without auth until the admin page is protected.
     const { name, email, phone } = normalizeAuctionCustomer(data || {});
     if (!name || !email || !phone) throw new functions.https.HttpsError('invalid-argument', 'Invalid customer input.');
 
@@ -3409,6 +3409,56 @@ exports.updateAuctionAllocationAdmin = functions.https.onCall(async (data, conte
             schemaVersion: 'package-entries-v1'
     }, { merge: true });
 
+    return { ok: true };
+});
+
+exports.updateAuctionOrderAdmin = functions.https.onCall(async (data, context) => {
+    if (!isAdmin(context)) throw new functions.https.HttpsError('permission-denied', 'Admins only.');
+    const { orderId, entries } = data || {};
+    if (!orderId || !entries) throw new functions.https.HttpsError('invalid-argument', 'Missing fields.');
+
+    const { name, email, phone } = normalizeAuctionCustomer(data || {});
+    if (!name || !email || !phone) throw new functions.https.HttpsError('invalid-argument', 'Invalid customer input.');
+
+    const ref = admin.firestore().collection('auctionOrders').doc(orderId);
+    const snap = await ref.get();
+    if (!snap.exists) throw new functions.https.HttpsError('not-found', 'Order missing.');
+
+    const cleanEntries = normalizeAuctionEntries(entries);
+    const lineItems = buildAuctionLineItemsFromEntries(cleanEntries);
+    const totals = getAuctionTotals(lineItems);
+    if (totals.totalEntries < 1) throw new functions.https.HttpsError('invalid-argument', 'Order must include at least one entry.');
+
+    await ref.set({
+            name,
+            email,
+            phone,
+            customer: { name, email, phone },
+            entries: cleanEntries,
+            lineItems,
+            totalEntries: totals.totalEntries,
+            subtotal: totals.subtotal,
+            total: totals.total,
+            amountPaid: totals.total,
+            note: sanitizeString(data?.note || ''),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            schemaVersion: 'package-entries-v1'
+    }, { merge: true });
+
+    return { ok: true };
+});
+
+exports.deleteAuctionOrderAdmin = functions.https.onCall(async (data) => {
+    // Auction admin currently has no login flow, so deletion is intentionally
+    // callable without auth until the admin page is protected.
+    const orderId = sanitizeString(data?.orderId || '');
+    if (!orderId) throw new functions.https.HttpsError('invalid-argument', 'Missing order ID.');
+
+    const ref = admin.firestore().collection('auctionOrders').doc(orderId);
+    const snap = await ref.get();
+    if (!snap.exists) throw new functions.https.HttpsError('not-found', 'Order missing.');
+
+    await ref.delete();
     return { ok: true };
 });
 

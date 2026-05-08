@@ -3412,3 +3412,52 @@ exports.updateAuctionAllocationAdmin = functions.https.onCall(async (data, conte
     return { ok: true };
 });
 
+exports.updateAuctionOrderAdmin = functions.https.onCall(async (data, context) => {
+    if (!isAdmin(context)) throw new functions.https.HttpsError('permission-denied', 'Admins only.');
+    const { orderId, entries } = data || {};
+    if (!orderId || !entries) throw new functions.https.HttpsError('invalid-argument', 'Missing fields.');
+
+    const { name, email, phone } = normalizeAuctionCustomer(data || {});
+    if (!name || !email || !phone) throw new functions.https.HttpsError('invalid-argument', 'Invalid customer input.');
+
+    const ref = admin.firestore().collection('auctionOrders').doc(orderId);
+    const snap = await ref.get();
+    if (!snap.exists) throw new functions.https.HttpsError('not-found', 'Order missing.');
+
+    const cleanEntries = normalizeAuctionEntries(entries);
+    const lineItems = buildAuctionLineItemsFromEntries(cleanEntries);
+    const totals = getAuctionTotals(lineItems);
+    if (totals.totalEntries < 1) throw new functions.https.HttpsError('invalid-argument', 'Order must include at least one entry.');
+
+    await ref.set({
+            name,
+            email,
+            phone,
+            customer: { name, email, phone },
+            entries: cleanEntries,
+            lineItems,
+            totalEntries: totals.totalEntries,
+            subtotal: totals.subtotal,
+            total: totals.total,
+            amountPaid: totals.total,
+            note: sanitizeString(data?.note || ''),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            schemaVersion: 'package-entries-v1'
+    }, { merge: true });
+
+    return { ok: true };
+});
+
+exports.deleteAuctionOrderAdmin = functions.https.onCall(async (data, context) => {
+    if (!isAdmin(context)) throw new functions.https.HttpsError('permission-denied', 'Admins only.');
+    const orderId = sanitizeString(data?.orderId || '');
+    if (!orderId) throw new functions.https.HttpsError('invalid-argument', 'Missing order ID.');
+
+    const ref = admin.firestore().collection('auctionOrders').doc(orderId);
+    const snap = await ref.get();
+    if (!snap.exists) throw new functions.https.HttpsError('not-found', 'Order missing.');
+
+    await ref.delete();
+    return { ok: true };
+});
+

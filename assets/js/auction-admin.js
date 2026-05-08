@@ -16,6 +16,8 @@ const db = getFirestore(app);
 const fns = getFunctions(app);
 
 const createManual = httpsCallable(fns, 'createManualAuctionOrder');
+const updateAuctionOrder = httpsCallable(fns, 'updateAuctionOrderAdmin');
+const deleteAuctionOrder = httpsCallable(fns, 'deleteAuctionOrderAdmin');
 
 const statsEl = document.getElementById('stats');
 const packageTotalsEl = document.getElementById('packageTotals');
@@ -34,8 +36,16 @@ const packages = window.AUCTION_DATA?.auctionPackages || [];
 const packageMap = new Map(packages.map((pkg) => [pkg.id, pkg]));
 
 let paidOrders = [];
+let editingOrderId = null;
 
 const toMoney = (amount) => `$${Number(amount || 0).toFixed(2)}`;
+
+const escapeHtml = (value) => String(value || '')
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;');
 
 const statCard = (label, value) => {
   return `
@@ -128,19 +138,62 @@ const renderPackageTotals = () => {
   }).join('');
 };
 
-const buildOrderCard = (order) => {
-  const lineItems = getOrderLineItems(order);
-  const compact = lineItems.map((line) => `${line.name}: ${line.quantity}`).join(' | ');
+const buildEditForm = (order) => {
+  const entries = getOrderEntries(order);
 
   return `
-    <div class="rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3">
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <p class="text-lg font-semibold text-white">${order.name || 'Unknown'}</p>
-        <span class="text-xs px-2 py-1 rounded-full border border-slate-600 text-slate-300">${order.source || 'unknown'}</span>
+    <form class="order-edit-form mt-4 rounded-lg border border-yellow-400/40 bg-slate-950/80 p-4" data-order-id="${order.id}">
+      <div class="grid md:grid-cols-3 gap-3">
+        <label class="text-sm text-slate-300">Full name
+          <input name="name" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-white" value="${escapeHtml(order.name || '')}" required>
+        </label>
+        <label class="text-sm text-slate-300">Email
+          <input name="email" type="email" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-white" value="${escapeHtml(order.email || '')}" required>
+        </label>
+        <label class="text-sm text-slate-300">Phone
+          <input name="phone" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-white" value="${escapeHtml(order.phone || '')}" required>
+        </label>
       </div>
-      <p class="text-xs text-slate-300 mt-1">${order.email || ''} ${order.phone || ''}</p>
+      <div class="grid sm:grid-cols-2 lg:grid-cols-5 gap-3 mt-3">
+        ${packages.map((pkg) => `
+          <label class="text-sm text-slate-300">${escapeHtml(pkg.name)}
+            <input name="entry-${pkg.id}" type="number" min="0" step="1" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-white" value="${Number(entries[pkg.id] || 0)}">
+          </label>
+        `).join('')}
+      </div>
+      <label class="block text-sm text-slate-300 mt-3">Note
+        <input name="note" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-white" value="${escapeHtml(order.note || '')}">
+      </label>
+      <p class="order-edit-error text-red-300 min-h-6 mt-2"></p>
+      <div class="flex flex-wrap gap-2 mt-2">
+        <button type="submit" class="bg-yellow-400 hover:bg-yellow-500 text-black font-bold px-4 py-2 rounded-lg transition-colors duration-300">Save Changes</button>
+        <button type="button" class="cancel-edit-btn border border-slate-600 hover:border-slate-400 text-slate-200 font-semibold px-4 py-2 rounded-lg transition-colors duration-300">Cancel</button>
+      </div>
+    </form>
+  `;
+};
+
+const buildOrderCard = (order) => {
+  const lineItems = getOrderLineItems(order);
+  const compact = lineItems.map((line) => `${escapeHtml(line.name)}: ${Number(line.quantity || 0)}`).join(' | ');
+  const isEditing = editingOrderId === order.id;
+
+  return `
+    <div class="rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3" data-order-id="${order.id}">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p class="text-lg font-semibold text-white">${escapeHtml(order.name || 'Unknown')}</p>
+          <p class="text-xs text-slate-300 mt-1">${escapeHtml(order.email || '')} ${escapeHtml(order.phone || '')}</p>
+        </div>
+        <div class="flex flex-wrap items-center justify-end gap-2">
+          <span class="text-xs px-2 py-1 rounded-full border border-slate-600 text-slate-300">${escapeHtml(order.source || 'unknown')}</span>
+          <button type="button" class="edit-order-btn text-xs bg-sky-500 hover:bg-sky-400 text-white font-bold px-3 py-1.5 rounded-lg transition-colors duration-300" data-order-id="${order.id}">${isEditing ? 'Editing' : 'Edit'}</button>
+          <button type="button" class="delete-order-btn text-xs bg-red-600 hover:bg-red-500 text-white font-bold px-3 py-1.5 rounded-lg transition-colors duration-300" data-order-id="${order.id}">Delete</button>
+        </div>
+      </div>
       <p class="text-sm text-slate-200 mt-2">${compact || 'No entries'}</p>
       <p class="text-sm text-yellow-300 mt-1 font-semibold">${toMoney(getPaidAmount(order))}</p>
+      ${isEditing ? buildEditForm(order) : ''}
     </div>
   `;
 };
@@ -152,6 +205,103 @@ const renderOrders = () => {
   ordersInfoEl.textContent = `${filtered.length} of ${paidOrders.length} paid orders shown`;
   ordersEl.innerHTML = filtered.map(buildOrderCard).join('');
 };
+
+
+const getOrderFromButton = (button) => paidOrders.find((order) => order.id === button?.dataset?.orderId);
+
+const setOrderButtonsDisabled = (orderId, disabled) => {
+  ordersEl.querySelectorAll(`[data-order-id="${orderId}"] button`).forEach((button) => {
+    button.disabled = disabled;
+  });
+};
+
+const handleEditSubmit = async (form) => {
+  const orderId = form.dataset.orderId;
+  const errorEl = form.querySelector('.order-edit-error');
+  errorEl.textContent = '';
+
+  const formData = new FormData(form);
+  const entries = Object.fromEntries(packages.map((pkg) => {
+    const quantity = Math.max(0, Math.floor(Number(formData.get(`entry-${pkg.id}`) || 0)));
+    return [pkg.id, quantity];
+  }));
+  const totalEntries = Object.values(entries).reduce((sum, qty) => sum + Number(qty || 0), 0);
+
+  if (totalEntries < 1) {
+    errorEl.textContent = 'Order must include at least one entry.';
+    return;
+  }
+
+  const customer = {
+    name: String(formData.get('name') || '').trim(),
+    email: String(formData.get('email') || '').trim(),
+    phone: String(formData.get('phone') || '').trim()
+  };
+
+  if (!customer.name || !customer.email || !customer.phone) {
+    errorEl.textContent = 'Please enter name, email, and phone.';
+    return;
+  }
+
+  setOrderButtonsDisabled(orderId, true);
+  try {
+    await updateAuctionOrder({
+      orderId,
+      customer,
+      entries,
+      note: String(formData.get('note') || '').trim()
+    });
+    editingOrderId = null;
+    await load();
+  } catch (error) {
+    errorEl.textContent = error?.message || 'Failed to update order.';
+    setOrderButtonsDisabled(orderId, false);
+  }
+};
+
+ordersEl.addEventListener('click', async (event) => {
+  const editButton = event.target.closest('.edit-order-btn');
+  const deleteButton = event.target.closest('.delete-order-btn');
+  const cancelButton = event.target.closest('.cancel-edit-btn');
+
+  if (editButton) {
+    editingOrderId = editingOrderId === editButton.dataset.orderId ? null : editButton.dataset.orderId;
+    renderOrders();
+    return;
+  }
+
+  if (cancelButton) {
+    editingOrderId = null;
+    renderOrders();
+    return;
+  }
+
+  if (!deleteButton) return;
+
+  const order = getOrderFromButton(deleteButton);
+  if (!order) return;
+
+  const label = `${order.name || 'Unknown'} (${toMoney(getPaidAmount(order))})`;
+  if (!confirm(`Delete auction order for ${label}? This cannot be undone.`)) return;
+
+  setOrderButtonsDisabled(order.id, true);
+  try {
+    await deleteAuctionOrder({ orderId: order.id });
+    if (editingOrderId === order.id) editingOrderId = null;
+    await load();
+  } catch (error) {
+    alert(error?.message || 'Failed to delete order.');
+    setOrderButtonsDisabled(order.id, false);
+  }
+});
+
+ordersEl.addEventListener('submit', (event) => {
+  const form = event.target.closest('.order-edit-form');
+  if (!form) return;
+
+  event.preventDefault();
+  handleEditSubmit(form);
+});
 
 const renderWheelPackages = () => {
   wheelPackageEl.innerHTML = packages.map((pkg) => `<option value="${pkg.id}">${pkg.number}. ${pkg.name}</option>`).join('');
@@ -223,13 +373,16 @@ openWheelBtn.addEventListener('click', () => {
   if (!packageId || !pkg) return;
 
   const names = getEntriesForPackage(packageId);
-  if (!names.length) return;
+  if (!names.length) {
+    alert('No paid entries yet for this package.');
+    return;
+  }
 
-  navigator.clipboard.writeText(names.join('\n')).then(() => {
-    alert(`${names.length} name${names.length !== 1 ? 's' : ''} copied to clipboard. Paste into Wheel of Names.`);
-  }).catch(() => {
-    alert('Copy failed. Names:\n' + names.join('\n'));
-  });
+  const wheelUrl = buildWheelUrl(pkg, names);
+  const opened = window.open(wheelUrl, '_blank', 'noopener');
+  if (!opened) {
+    window.location.href = wheelUrl;
+  }
 });
 
 manualSubmitEl.addEventListener('click', async () => {

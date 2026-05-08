@@ -99,7 +99,9 @@ const getEntriesForPackage = (packageId) => {
     if (qty <= 0) return;
 
     const name = (order.name || '').trim() || 'Unknown';
-    for (let i = 0; i < qty; i += 1) names.push(name);
+    const phone = (order.phone || '').trim() || 'No phone';
+    const entryLabel = `${name} - ${phone}`;
+    for (let i = 0; i < qty; i += 1) names.push(entryLabel);
   });
   return names;
 };

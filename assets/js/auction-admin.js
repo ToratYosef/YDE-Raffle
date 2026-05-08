@@ -31,6 +31,7 @@ const wheelPackageEl = document.getElementById('wheelPackage');
 const wheelInfoEl = document.getElementById('wheelInfo');
 const wheelNamesEl = document.getElementById('wheelNames');
 const openWheelBtn = document.getElementById('openWheel');
+const openAllWheelsBtn = document.getElementById('openAllWheels');
 
 const packages = window.AUCTION_DATA?.auctionPackages || [];
 const packageMap = new Map(packages.map((pkg) => [pkg.id, pkg]));
@@ -386,6 +387,30 @@ openWheelBtn.addEventListener('click', () => {
   if (!opened) {
     window.location.href = wheelUrl;
   }
+});
+
+openAllWheelsBtn.addEventListener('click', () => {
+  let openedCount = 0;
+
+  packages.forEach((pkg) => {
+    const names = getEntriesForPackage(pkg.id);
+    if (!names.length) return;
+
+    const wheelUrl = buildWheelUrl(pkg, names);
+    const opened = window.open(wheelUrl, '_blank', 'noopener');
+    if (opened) openedCount += 1;
+  });
+
+  if (openedCount > 0) return;
+
+  const firstPackageWithEntries = packages.find((pkg) => getEntriesForPackage(pkg.id).length);
+  if (!firstPackageWithEntries) {
+    alert('No paid entries yet for any package.');
+    return;
+  }
+
+  const fallbackUrl = buildWheelUrl(firstPackageWithEntries, getEntriesForPackage(firstPackageWithEntries.id));
+  window.location.href = fallbackUrl;
 });
 
 manualSubmitEl.addEventListener('click', async () => {

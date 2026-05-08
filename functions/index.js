@@ -3343,9 +3343,9 @@ exports.submitAuctionAllocation = functions.https.onCall(async (data) => {
         throw new functions.https.HttpsError('failed-precondition', 'Ticket allocation flow is no longer supported. Entries are now selected directly by package during checkout.');
 });
 
-exports.createManualAuctionOrder = functions.https.onCall(async (data, context) => {
-    if (!isAdmin(context)) throw new functions.https.HttpsError('permission-denied', 'Admins only.');
-
+exports.createManualAuctionOrder = functions.https.onCall(async (data) => {
+    // Auction admin currently has no login flow, so manual entries are
+    // intentionally callable without auth until the admin page is protected.
     const { name, email, phone } = normalizeAuctionCustomer(data || {});
     if (!name || !email || !phone) throw new functions.https.HttpsError('invalid-argument', 'Invalid customer input.');
 

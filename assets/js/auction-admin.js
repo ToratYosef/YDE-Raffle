@@ -373,13 +373,16 @@ openWheelBtn.addEventListener('click', () => {
   if (!packageId || !pkg) return;
 
   const names = getEntriesForPackage(packageId);
-  if (!names.length) return;
+  if (!names.length) {
+    alert('No paid entries yet for this package.');
+    return;
+  }
 
-  navigator.clipboard.writeText(names.join('\n')).then(() => {
-    alert(`${names.length} name${names.length !== 1 ? 's' : ''} copied to clipboard. Paste into Wheel of Names.`);
-  }).catch(() => {
-    alert('Copy failed. Names:\n' + names.join('\n'));
-  });
+  const wheelUrl = buildWheelUrl(pkg, names);
+  const opened = window.open(wheelUrl, '_blank', 'noopener');
+  if (!opened) {
+    window.location.href = wheelUrl;
+  }
 });
 
 manualSubmitEl.addEventListener('click', async () => {
